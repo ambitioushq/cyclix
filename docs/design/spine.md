@@ -14,7 +14,7 @@ A thin station does real work in the simplest way that carries a real issue. A s
 
 | Station | Thin behaviour | Replaced by |
 | --- | --- | --- |
-| Admission | Takes the oldest open issue in Ready on the configured board, from the configured repo. Ignores everything not on the board. | The admission arm (the Ready contract, and promotion from Committed) |
+| Admission | Takes the oldest open issue in Ready on the configured board, from the configured repo. Ignores everything not on the board. | The admission arm (the Ready contract, and promotion from Next) |
 | Plan | One agent call that reads the issue and writes `plan.md` in the run folder. If the agent's answer starts with `STOP:`, the item is parked with that sentence as the reason. | The plan arm |
 | Build | One agent call in the run's worktree, given the issue and the plan, that leaves its work committed on the run's branch. | The build arm |
 | Gate | Runs the tenant's gate commands in the worktree. Records each command's exit code against the head SHA. Any failure parks the item: no fix rounds in the spine. | The gate arm |
@@ -64,10 +64,10 @@ scripts/names_check.py
 
 | From | To | Written by | When |
 | --- | --- | --- | --- |
-| Ready | Active | Runner (admission) | The item is claimed for a run |
-| Active | In review | PR station | The PR is open |
-| Active | Parked | Any station | A STOP, a failed gate, an error, or a crashed run found by the sweep |
-| Active | Needs decision | Plan station | The plan needs a human call (not produced by the thin plan) |
+| Ready | In progress | Runner (admission) | The item is claimed for a run |
+| In progress | In review | PR station | The PR is open |
+| In progress | Parked | Any station | A STOP, a failed gate, an error, or a crashed run found by the sweep |
+| In progress | Needs decision | Plan station | The plan needs a human call (not produced by the thin plan) |
 | In review | Done | Reconciler | The PR merged |
 | In review | Parked | Reconciler | The PR closed without merging |
 | Parked, Needs decision | Ready | A human only | |
@@ -75,7 +75,7 @@ scripts/names_check.py
 
 The engine never makes a move that is not in this table. A human can make any move. The sweep reads the board each pass and adjusts SQLite to match it.
 
-**Committed comes with the admission arm.** Committed is a staging state between Backlog and Ready. A human moves an issue there to say the work is committed. The admission arm then promotes it to Ready once it is safe to start: it is not a parent issue, it has no open blockers, it touches no files that work in flight touches, the review queue is under its cap, and it meets the Ready contract. An issue that fails the Ready contract goes to Needs decision. So a human decides what gets done, and the engine decides when it starts. The spine leaves this out: a human moves items straight to Ready, and the spine's config does not map the board's Committed option, so the engine ignores it.
+**Next comes with the admission arm.** Next is a staging state between Backlog and Ready. A human moves an issue there to say the work should be done soon. The admission arm then promotes it to Ready once it is safe to start: it is not a parent issue, it has no open blockers, it touches no files that work in flight touches, the review queue is under its cap, and it meets the Ready contract. An issue that fails the Ready contract goes to Needs decision. So a human decides what gets done, and the engine decides when it starts. The spine leaves this out: a human moves items straight to Ready, and the spine's config does not map the board's Next option, so the engine ignores it.
 
 ## The state core
 
@@ -192,7 +192,7 @@ status_field = "Status"
 
 [tracker.states]           # Cyclix state -> the board's option name
 ready = "Ready"
-active = "Active"
+in_progress = "In progress"
 in_review = "In review"
 parked = "Parked"
 needs_decision = "Needs decision"
@@ -223,9 +223,9 @@ runs_per_day = 6
 `cyclix run --once` makes one pass for one tenant, under a file lock so two passes never overlap:
 
 1. Read the board's items and their states.
-2. Correct SQLite to match the board. A claim on an item a human moved out of Active is released. An open run with no live process is ended with outcome `crashed`, its event is written, and its item is parked with the reason.
+2. Correct SQLite to match the board. A claim on an item a human moved out of In progress is released. An open run with no live process is ended with outcome `crashed`, its event is written, and its item is parked with the reason.
 3. Run the reconciler on every item In review.
-4. If no item is Active and the day's run limit is not reached, admit the oldest Ready item and run plan, build, gate, red-team and PR in order. Stop at the first station that does not pass.
+4. If no item is In progress and the day's run limit is not reached, admit the oldest Ready item and run plan, build, gate, red-team and PR in order. Stop at the first station that does not pass.
 
 One item at a time per tenant in the spine.
 
@@ -246,7 +246,7 @@ CI fails if any tracked file or commit message in a PR contains a name from a pr
 ## Open questions for the first session
 
 1. **The fake GitHub.** A world model, as above, or replayed recordings of real `gh` output? The world model makes scenarios cheap to write; recordings carry real quirks. The proposal is the world model, with fault injection and the shape check against recordings.
-2. **One item at a time.** Is one Active item per tenant right for the spine? It keeps the sweep simple and is all a single maintainer needs at first.
+2. **One item at a time.** Is one In progress item per tenant right for the spine? It keeps the sweep simple and is all a single maintainer needs at first.
 3. **Run limits.** A daily run count stands in for the budget cap until the operations arm. Is six a day right for Cyclix's own tenant?
 4. **Branch names.** `cyclix/<issue>-<slug>`, or the earlier loop's `<type>/<issue>-<slug>`?
 5. **The models.** Which models the plan and build stations use by default.
