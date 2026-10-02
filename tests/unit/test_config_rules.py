@@ -110,10 +110,17 @@ def test_a_missing_file_is_reported(tmp_path):
         config.load(tmp_path / "nope.toml")
 
 
-def test_the_tenant_name_finds_the_file_under_home(monkeypatch, tmp_path):
+@pytest.mark.parametrize("xdg", [None, "xdg"])
+def test_the_tenant_name_finds_the_file_in_the_config_folder(monkeypatch, tmp_path, xdg):
     monkeypatch.delenv("CYCLIX_CONFIG", raising=False)
     monkeypatch.setenv("HOME", str(tmp_path))
-    path = tmp_path / ".config" / "cyclix" / "cyclix.toml"
+    if xdg:
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / xdg))
+        folder = tmp_path / xdg
+    else:
+        monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+        folder = tmp_path / ".config"
+    path = folder / "cyclix" / "cyclix.toml"
     path.parent.mkdir(parents=True)
     path.write_text(example())
     assert config.load(tenant="cyclix").tenant.name == "cyclix"

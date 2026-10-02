@@ -1,7 +1,8 @@
 """Load and validate a tenant's TOML config.
 
 The file is found in this order: the path given, then CYCLIX_CONFIG, then
-~/.config/cyclix/<tenant>.toml when a tenant name is given. Every key is required,
+<tenant>.toml in the config folder when a tenant name is given. The config folder
+is $XDG_CONFIG_HOME/cyclix, else ~/.config/cyclix. Every key is required,
 and an unknown key is an error, so a typo never passes silently.
 """
 
@@ -139,7 +140,8 @@ def find(path, tenant):
     if env := os.environ.get("CYCLIX_CONFIG"):
         return Path(env)
     if tenant is not None:
-        return Path.home() / ".config" / "cyclix" / f"{tenant}.toml"
+        base = os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config"
+        return Path(base) / "cyclix" / f"{tenant}.toml"
     raise ConfigError("no config file given: set CYCLIX_CONFIG or pass --tenant")
 
 
