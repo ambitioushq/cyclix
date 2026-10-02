@@ -1,6 +1,6 @@
 # Iteration 0
 
-Iteration 0 is the smallest engine that takes a real issue to a merged PR. It has the state core, the GitHub adapters, the event log, the stage runner, and a thin version of every stage. When it is done, Cyclix becomes a tenant of its own loop, and each later area replaces one thin stage through that loop.
+Iteration 0 is the smallest engine that takes a real issue to a merged PR. It has the state core, the GitHub adapters, the event log, the stage runner, and a minimal version of every stage. When it is done, Cyclix becomes a tenant of its own loop, and each later area replaces one minimal stage through that loop.
 
 This document is the starting design. Each section marked **Open** is settled with the maintainer at the start of the issue that needs it, and this file is updated in that issue's PR.
 
@@ -8,11 +8,11 @@ This document is the starting design. Each section marked **Open** is settled wi
 
 One real Cyclix issue, admitted from Cyclix's own board, reaches a merged PR through Iteration 0 running as a systemd timer on the host, and the event log holds one stage-run event for each stage it passed.
 
-## What "thin" means
+## What "minimal" means
 
-A thin stage does real work in the simplest way that carries a real issue. A stub that did nothing could not build Cyclix's own issues.
+A minimal stage does real work in the simplest way that carries a real issue. A stub that did nothing could not build Cyclix's own issues.
 
-| Stage | Thin behaviour | Replaced by |
+| Stage | Minimal behaviour | Replaced by |
 | --- | --- | --- |
 | Admission | Takes the oldest open issue in Ready on the configured board, from the configured repo. Ignores everything not on the board. | The admission area (the Ready contract, and promotion from Next) |
 | Plan | One agent call that reads the issue and writes `plan.md` in the run folder. If the agent's answer starts with `STOP:`, the item is parked with that sentence as the reason. | The plan area |
@@ -67,7 +67,7 @@ scripts/names_check.py
 | Ready | In progress | Runner (admission) | The item is claimed for a run |
 | In progress | In review | PR stage | The PR is open |
 | In progress | Parked | Any stage | A STOP, a failed gate, an error, or a crashed run found by the sweep |
-| In progress | Needs decision | Plan stage | The plan needs a human call (not produced by the thin plan) |
+| In progress | Needs decision | Plan stage | The plan needs a human call (not produced by the minimal plan) |
 | In review | Done | Reconciler | The PR merged |
 | In review | Parked | Reconciler | The PR closed without merging |
 | Parked, Needs decision | Ready | A human only | |
