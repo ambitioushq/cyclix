@@ -7,7 +7,7 @@ from importlib.metadata import distribution
 from pathlib import Path
 
 import pytest
-from pytest_bdd import given, parsers, scenario, then, when
+from pytest_bdd import given, parsers, scenario, when
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -31,13 +31,3 @@ def run_command(command):
     return subprocess.run(
         shlex.split(command), capture_output=True, text=True, env=env, check=False
     )
-
-
-@then(parsers.parse("it exits {code:d}"))
-def exits_with(result, code):
-    assert result.returncode == code, result.stderr
-
-
-@then(parsers.parse('it prints "{text}"'))
-def prints(result, text):
-    assert text in result.stdout.splitlines()
