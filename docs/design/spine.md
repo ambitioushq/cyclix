@@ -96,15 +96,51 @@ class StateCore(Protocol):
     def add_spend(self, tenant: str, usd: float, tokens: int) -> None: ...
 ```
 
+```python
+@dataclass(frozen=True)
+class Claim:
+    tenant: str
+    issue: int
+    run_id: str
+    claimed_at: datetime
+
+@dataclass(frozen=True)
+class RunStart:
+    run_id: str
+    tenant: str
+    issue: int
+    station: str
+    round: int = 1
+
+@dataclass(frozen=True)
+class RunState:
+    run_id: str
+    tenant: str
+    issue: int
+    station: str
+    phase: str | None
+    round: int
+    started_at: datetime
+    fields: dict[str, object]
+```
+
+The three are kept apart because each is filled by a different side at a different time. `Claim` is a row of `claims`. `RunStart` is what the caller knows when a station starts; the core stamps `started_at`. `RunState` is what the sweep reads back from an open station. Timestamps are in UTC.
+
+**A run is one pass of an issue through the stations.** It keeps one `run_id`, which is also on the claim and names the run folder. Each station in the pass gets its own row in `runs`, unique on `(run_id, station, round)`, so the gate can run again in a later round of the same pass. A run has at most one open row at a time. `set_phase`, `add_fields`, `record_check` and `end_run` act on that open row, and each call on a run with no open row is refused.
+
+**The fields build up into the event.** `begin_run` seeds the fields with `cyclix.tenant`, `cyclix.issue.id`, `cyclix.run.id`, `cyclix.station` and `cyclix.round`. `add_fields` merges more in, and adding `cyclix.round` also moves the `round` column, so the two can't disagree. `end_run` adds `cyclix.outcome` and `cyclix.outcome.reason`, and returns the whole dict for the event writer.
+
+**The best verified commit** is the last commit whose checks all passed, counting only checks in a station row that ended with an outcome other than `crashed`. A row that is still open, or that crashed, may have stopped partway through its checks.
+
 Tables in schema version 1:
 
 - `meta(key, value)`: holds `schema_version`.
 - `claims(tenant, issue, run_id, claimed_at)`, unique on `(tenant, issue)`.
-- `runs(run_id, tenant, issue, station, phase, round, started_at, ended_at, outcome, fields_json)`. `fields_json` is the station-run event while it builds up.
-- `checks(run_id, sha, check, passed, at)`.
-- `spend(tenant, day, usd, tokens)`.
+- `runs(id, run_id, tenant, issue, station, phase, round, started_at, ended_at, outcome, fields_json)`, unique on `(run_id, station, round)`, and on `run_id` among rows with no `ended_at`. `fields_json` is the station-run event while it builds up.
+- `checks(id, run_row, sha, check, passed, at)`. `run_row` is the `runs.id` of the station row that ran the check.
+- `spend(tenant, day, usd, tokens)`, unique on `(tenant, day)`. `day` is the UTC date.
 
-The file opens in WAL mode. A schema version newer than the code refuses to run. An older one is migrated by numbered SQL steps in code.
+The file opens in WAL mode with a busy timeout of five seconds, and every write runs in one `BEGIN IMMEDIATE` transaction. A schema version newer than the code refuses to run. An older one is migrated by numbered SQL steps in code: step `i` takes the file from version `i` to `i + 1`, each in its own transaction.
 
 **Durable phases.** Before an action that changes the outside world (a push, a PR open, a board move), the station calls `set_phase` with the action's name. After a crash, the sweep reads the phase and checks the outside world before acting again: it checks for an existing PR before opening one, and for the remote branch before pushing.
 
