@@ -1,0 +1,33 @@
+[tenant]
+name = "cyclix"
+
+[tracker]
+kind = "github"
+owner = "ambitioushq"
+project = 1
+status_field = "Status"
+
+[tracker.states]           # Cyclix state -> the board's option name
+ready = "Ready"
+in_progress = "In progress"
+in_review = "In review"
+parked = "Parked"
+needs_decision = "Needs decision"
+done = "Done"
+
+[codehost]
+kind = "github"
+repo = "ambitioushq/cyclix"
+base = "main"
+
+[agent]
+command = ["claude", "-p", "--output-format", "json"]
+model_plan = "claude-opus-5-5"
+model_build = "claude-sonnet-5-5"
+timeout_minutes = 60
+
+[gate]
+commands = [["uv", "run", "ruff", "check"], ["uv", "run", "pytest", "-q"]]
+
+[limits]
+runs_per_day = 6

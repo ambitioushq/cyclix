@@ -2,6 +2,8 @@
 
 The `.feature` files in `features/` are Cyclix's functional spec. Their steps live in `steps/`. `unit/` holds unit tests, kept for rules a scenario cannot reach cheaply.
 
+Every test file needs a basename unique across `steps/` and `unit/`, because the test folders are not packages. Name a unit file after the rules it checks, such as `unit/test_config_rules.py` beside `steps/test_config.py`.
+
 ## Tags
 
 Every scenario carries the tag of the issue that introduced it, such as `@issue-4`. A later issue that changes a scenario keeps the old tag and adds its own. `pytest -m issue_4` runs one issue's scenarios. `unit/test_scenario_tags.py` fails if any scenario has no issue tag. To run the same check on its own: `uv run python tests/tag_check.py`.

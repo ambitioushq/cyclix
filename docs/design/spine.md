@@ -188,7 +188,7 @@ The earlier loop starts writing station-run events in this same schema before th
 
 ## The config file
 
-One TOML file per tenant, read with `tomllib` from the path in `CYCLIX_CONFIG`, else `~/.config/cyclix/<tenant>.toml`.
+One TOML file per tenant, read with `tomllib` from the path in `CYCLIX_CONFIG`, else `$XDG_CONFIG_HOME/cyclix/<tenant>.toml`, else `~/.config/cyclix/<tenant>.toml`. This matches how the state directory is found.
 
 ```toml
 [tenant]
