@@ -126,7 +126,17 @@ All GitHub calls go through `adapters/gh.py`, which runs `gh` with `--json` outp
 - `gh pr list -R <repo> --head <branch> --state all --json number,state,url`
 - `gh pr view <n> -R <repo> --json state,mergedAt,closedAt,headRefOid,url`
 
-**Agent** (`Agent` protocol): `run(prompt, cwd, model) -> AgentResult`, where the result holds the text answer, exit code, model, input and output tokens, cost, duration and turns. The Claude Code implementation runs the configured command (by default `claude -p --output-format json`) with the prompt on stdin and the worktree as its working directory, and parses the JSON result. The prompt and the full answer are saved in the run folder. Only numbers reach the event.
+**Agent** (`Agent` protocol): `run(prompt, cwd, model) -> AgentResult`, where the result holds the text answer, exit code, model, input and output tokens, cost, duration and turns. The Claude Code implementation runs the configured command (by default `claude -p --output-format json`) with the prompt on stdin and the worktree as its working directory, and parses the JSON result. That JSON has no top-level `model` key: the model's name is the one key of `modelUsage`. The prompt and the full answer are saved in the run folder. Only numbers reach the event.
+
+## The state directory
+
+Cyclix keeps everything it builds up while running in one state directory: the SQLite file, the event log, the run folders and the repo clones. It finds the directory in this order:
+
+1. `CYCLIX_STATE_DIR`, if set.
+2. Otherwise `$XDG_STATE_HOME/cyclix`, if `XDG_STATE_HOME` is set.
+3. Otherwise `~/.local/state/cyclix`.
+
+This follows the XDG convention, where a program keeps its settings under `~/.config` and the data it builds up under `~/.local/state`. The config file holds settings for one tenant, so the state directory is not in it. Tests set `CYCLIX_STATE_DIR` to a temporary directory for each scenario.
 
 ## Run folders and worktrees
 
@@ -233,6 +243,8 @@ One item at a time per tenant in the spine.
 
 The scenarios run against a fake GitHub world. The engine is run as a subprocess, the way systemd runs it.
 
+The fake GitHub is a world model, not replayed recordings (settled in #4). The world model makes scenarios cheap to write and lets a scenario inject a fault into any one call. Recordings would carry real quirks, but every new scenario would need a new recording. The shape check below covers the quirks that matter: the JSON keys.
+
 - **The fake world** (`tests/fakes/world.py`) is a JSON file holding issues, a board with items and states, PRs and their states. A scenario's Given steps write it; its Then steps read it.
 - **The fake `gh`** is an executable placed first on `PATH`. It supports the `gh` commands listed under "The adapters", reads and changes the world, prints output in the same JSON shape as real `gh`, and appends each call to a calls file. A scenario can inject a fault for one call (an exit code, a stderr message, a stale read).
 - **The fake agent** is an executable named in the test config's `agent.command`. A scenario gives it a script: files to write, commits to make, the text to answer, the exit code, the token and cost numbers to report.
@@ -245,7 +257,7 @@ CI fails if any tracked file or commit message in a PR contains a name from a pr
 
 ## Open questions for the first session
 
-1. **The fake GitHub.** A world model, as above, or replayed recordings of real `gh` output? The world model makes scenarios cheap to write; recordings carry real quirks. The proposal is the world model, with fault injection and the shape check against recordings.
+1. **The fake GitHub.** Settled in #4: the world model. See "The test footing".
 2. **One item at a time.** Is one In progress item per tenant right for the spine? It keeps the sweep simple and is all a single maintainer needs at first.
 3. **Run limits.** A daily run count stands in for the budget cap until the operations arm. Is six a day right for Cyclix's own tenant?
 4. **Branch names.** `cyclix/<issue>-<slug>`, or the earlier loop's `<type>/<issue>-<slug>`?

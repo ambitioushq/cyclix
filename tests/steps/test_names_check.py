@@ -80,16 +80,6 @@ def names_check_runs_over_commit(repo, env):
     return run_check(repo, env, "--commits", "HEAD~1..HEAD")
 
 
-@then(parsers.parse("it exits {code:d}"))
-def exits_with(result, code):
-    assert result.returncode == code, result.stdout + result.stderr
-
-
-@then(parsers.parse('it prints "{text}"'))
-def prints(result, text):
-    assert text in result.stdout.splitlines()
-
-
 @then(parsers.parse('the output does not contain "{text}" in any case'))
 def output_omits(result, text):
     assert text.lower() not in (result.stdout + result.stderr).lower()

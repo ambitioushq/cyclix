@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""A fake coding agent that follows a script instead of thinking.
+
+It reads the prompt from stdin and saves it as prompts/<n>.txt in $CYCLIX_FAKES_DIR,
+where n counts the calls. Then it follows entry n of agent-script.json: writes the
+files, commits them if asked, and prints the same JSON shape as
+`claude -p --output-format json`.
+"""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from world import World
+
+
+def main():
+    world = World.from_env()
+    prompt = sys.stdin.read()
+    n = len(list(world.prompts_dir.glob("*.txt"))) + 1
+    (world.prompts_dir / f"{n}.txt").write_text(prompt)
+
+    script = world.agent_script()
+    if n > len(script):
+        sys.stderr.write(f"fake agent: no script entry for call {n}\n")
+        return 2
+    step = script[n - 1]
+
+    for path, content in step["files"].items():
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content)
+    if step["commit"] and step["files"]:
+        subprocess.run(["git", "add", "--", *step["files"]], check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "Work by the fake agent"], check=True)
+
+    failed = step["exit"] != 0
+    usage = {"input_tokens": step["input_tokens"], "output_tokens": step["output_tokens"]}
+    output = {
+        "type": "result",
+        "subtype": "error_during_execution" if failed else "success",
+        "is_error": failed,
+        "result": step["answer"],
+        "session_id": f"fake-session-{n}",
+        "num_turns": step["num_turns"],
+        "duration_ms": step["duration_ms"],
+        "duration_api_ms": step["duration_ms"],
+        "total_cost_usd": step["cost_usd"],
+        "usage": {**usage, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0},
+        "modelUsage": {
+            step["model"]: {
+                "inputTokens": step["input_tokens"],
+                "outputTokens": step["output_tokens"],
+                "costUSD": step["cost_usd"],
+            }
+        },
+    }
+    print(json.dumps(output))
+    return step["exit"]
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,361 @@
+#!/usr/bin/env python3
+"""A fake gh that supports only the commands Cyclix's adapters use.
+
+It reads and changes the world in $CYCLIX_FAKES_DIR, prints JSON with the same keys
+as real gh, and records every call. A command or flag it does not know exits 2,
+so an adapter cannot come to depend on something no scenario covers.
+
+The output of `project item-edit` and `pr create` has not yet been checked
+against real gh, because both write to GitHub. The sandbox run in #15 checks them.
+"""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from world import World, next_number
+
+
+class Exit(Exception):
+    def __init__(self, code, stderr="", stdout=""):
+        self.code, self.stderr, self.stdout = code, stderr, stdout
+
+
+def unsupported():
+    return Exit(2, "fake gh: unsupported command\n")
+
+
+# Each command: its positional argument count, and the flags it accepts (all take a value).
+COMMANDS = {
+    ("project", "view"): (1, {"--owner", "--format"}),
+    ("project", "field-list"): (1, {"--owner", "--format", "--limit"}),
+    ("project", "item-list"): (1, {"--owner", "--format", "--limit"}),
+    ("project", "item-edit"): (
+        0,
+        {"--id", "--project-id", "--field-id", "--single-select-option-id", "--format"},
+    ),
+    ("issue", "view"): (1, {"-R", "--repo", "--json"}),
+    ("pr", "create"): (0, {"-R", "--repo", "--head", "--base", "--title", "--body-file"}),
+    ("pr", "list"): (0, {"-R", "--repo", "--head", "--state", "--json"}),
+    ("pr", "view"): (1, {"-R", "--repo", "--json"}),
+    ("auth", "status"): (0, set()),
+}
+
+
+def parse(argv):
+    command = tuple(argv[:2])
+    if command not in COMMANDS:
+        raise unsupported()
+    count, allowed = COMMANDS[command]
+    positional, flags = [], {}
+    rest = argv[2:]
+    while rest:
+        token = rest.pop(0)
+        if token.startswith("-"):
+            if token not in allowed or not rest:
+                raise unsupported()
+            flags[token.replace("--repo", "-R")] = rest.pop(0)
+        else:
+            positional.append(token)
+    if len(positional) != count:
+        raise unsupported()
+    return command, positional, flags
+
+
+def select(record, flags, available):
+    """Keep the fields asked for with --json, as real gh does."""
+    if "--json" not in flags:
+        raise unsupported()
+    fields = flags["--json"].split(",")
+    for field in fields:
+        if field not in available:
+            raise Exit(1, f'Unknown JSON field: "{field}"\n')
+    return {field: record[field] for field in fields}
+
+
+def check_project(data, number, flags):
+    if flags.get("--format") != "json":
+        raise unsupported()
+    board = data["board"]
+    if int(number) != board["number"] or flags.get("--owner") != board["owner"]:
+        raise Exit(1, f"Could not resolve to a ProjectV2 with the number {number}.\n")
+    return board
+
+
+def check_repo(data, flags):
+    repo = flags.get("-R")
+    if repo != data["repo"]:
+        raise Exit(1, f"GraphQL: Could not resolve to a Repository with the name '{repo}'.\n")
+
+
+def issue_by_number(data, number):
+    for issue in data["issues"]:
+        if issue["number"] == number:
+            return issue
+    return None
+
+
+def repo_url(data):
+    return f"https://github.com/{data['repo']}"
+
+
+# Commands
+
+
+def project_view(world, data, positional, flags):
+    board = check_project(data, positional[0], flags)
+    return {
+        "closed": False,
+        "fields": {"totalCount": 2},
+        "id": board["id"],
+        "items": {"totalCount": len(board["items"])},
+        "number": board["number"],
+        "owner": {"login": board["owner"], "type": "Organization"},
+        "public": False,
+        "readme": "",
+        "shortDescription": "",
+        "title": board["title"],
+        "url": f"https://github.com/orgs/{board['owner']}/projects/{board['number']}",
+    }
+
+
+def project_field_list(world, data, positional, flags):
+    board = check_project(data, positional[0], flags)
+    status = board["status_field"]
+    fields = [
+        {"id": "PVTF_title", "name": "Title", "type": "ProjectV2Field"},
+        {
+            "id": status["id"],
+            "name": status["name"],
+            "options": status["options"],
+            "type": "ProjectV2SingleSelectField",
+        },
+    ]
+    return {"fields": fields, "totalCount": len(fields)}
+
+
+def project_item_list(world, data, positional, flags):
+    board = check_project(data, positional[0], flags)
+    limit = int(flags.get("--limit", 30))
+    items = []
+    for item in board["items"][:limit]:
+        issue = issue_by_number(data, item["issue"])
+        entry = {
+            "content": {
+                "body": issue["body"],
+                "number": issue["number"],
+                "repository": data["repo"],
+                "title": issue["title"],
+                "type": "Issue",
+                "url": f"{repo_url(data)}/issues/{issue['number']}",
+            },
+            "id": item["id"],
+            "repository": repo_url(data),
+            "title": issue["title"],
+        }
+        if item["status"] is not None:  # real gh leaves the key out when no status is set
+            entry["status"] = item["status"]
+        items.append(entry)
+    return {"items": items, "totalCount": len(board["items"])}
+
+
+def project_item_edit(world, data, positional, flags):
+    board = data["board"]
+    field = board["status_field"]
+    if flags.get("--project-id") != board["id"] or flags.get("--field-id") != field["id"]:
+        raise Exit(1, "Could not resolve to a node with the global id.\n")
+    item = next((i for i in board["items"] if i["id"] == flags.get("--id")), None)
+    option = next(
+        (o for o in field["options"] if o["id"] == flags.get("--single-select-option-id")), None
+    )
+    if item is None or option is None:
+        raise Exit(1, "Could not resolve to a node with the global id.\n")
+    item["status"] = option["name"]
+    world.save(data)
+    if flags.get("--format") == "json":
+        issue = issue_by_number(data, item["issue"])
+        return {"id": item["id"], "title": issue["title"], "body": issue["body"], "type": "Issue"}
+    return None
+
+
+ISSUE_FIELDS = {"number", "title", "body", "state", "author", "labels", "url"}
+
+
+def issue_view(world, data, positional, flags):
+    check_repo(data, flags)
+    number = int(positional[0])
+    issue = issue_by_number(data, number)
+    if issue is None:
+        raise Exit(
+            1,
+            f"GraphQL: Could not resolve to an issue or pull request with the number of "
+            f"{number}. (repository.issue)\n",
+        )
+    login = issue["author"]["login"]
+    record = {
+        **issue,
+        "author": {"id": f"U_{login}", "is_bot": False, "login": login, "name": login},
+        "labels": [
+            {"id": f"L_{n}", "name": n, "description": "", "color": "ededed"}
+            for n in issue["labels"]
+        ],
+        "url": f"{repo_url(data)}/issues/{number}",
+    }
+    return select(record, flags, ISSUE_FIELDS)
+
+
+PR_FIELDS = {
+    "number", "title", "body", "state", "url", "headRefName", "baseRefName",
+    "headRefOid", "mergedAt", "closedAt",
+}  # fmt: skip
+
+
+def pr_record(world, data, pr):
+    """A PR as gh reports it. The head SHA comes from the bare remote when the branch is there."""
+    ref = f"refs/heads/{pr['head']}"
+    sha = subprocess.run(
+        ["git", "--git-dir", str(world.remote), "rev-parse", "--verify", "-q", ref],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    return {
+        "number": pr["number"],
+        "title": pr["title"],
+        "body": pr["body"],
+        "state": pr["state"],
+        "url": f"{repo_url(data)}/pull/{pr['number']}",
+        "headRefName": pr["head"],
+        "baseRefName": pr["base"],
+        "headRefOid": sha or pr["headRefOid"],
+        "mergedAt": pr["mergedAt"],
+        "closedAt": pr["closedAt"],
+    }
+
+
+def pr_create(world, data, positional, flags):
+    check_repo(data, flags)
+    for flag in ("--head", "--base", "--title", "--body-file"):
+        if flag not in flags:
+            raise unsupported()
+    head, base = flags["--head"], flags["--base"]
+    for pr in data["prs"]:
+        if pr["head"] == head and pr["base"] == base and pr["state"] == "OPEN":
+            raise Exit(
+                1,
+                f'a pull request for branch "{head}" into branch "{base}" already exists:\n'
+                f"{repo_url(data)}/pull/{pr['number']}\n",
+            )
+    number = next_number(data)
+    data["prs"].append(
+        {
+            "number": number,
+            "title": flags["--title"],
+            "body": Path(flags["--body-file"]).read_text(),
+            "head": head,
+            "base": base,
+            "state": "OPEN",
+            "headRefOid": "0" * 40,
+            "mergedAt": None,
+            "closedAt": None,
+        }
+    )
+    world.save(data)
+    return f"{repo_url(data)}/pull/{number}\n"
+
+
+def pr_list(world, data, positional, flags):
+    check_repo(data, flags)
+    state = flags.get("--state", "open")
+    if state not in {"open", "closed", "merged", "all"}:
+        raise unsupported()
+    found = []
+    for pr in data["prs"]:
+        if "--head" in flags and pr["head"] != flags["--head"]:
+            continue
+        if state not in ("all", pr["state"].lower()) and not (
+            state == "closed" and pr["state"] == "MERGED"  # real gh counts merged as closed
+        ):
+            continue
+        found.append(select(pr_record(world, data, pr), flags, PR_FIELDS))
+    return sorted(found, key=lambda pr: -pr.get("number", 0))
+
+
+def pr_view(world, data, positional, flags):
+    check_repo(data, flags)
+    number = int(positional[0])
+    pr = next((p for p in data["prs"] if p["number"] == number), None)
+    if pr is None:
+        raise Exit(
+            1,
+            f"GraphQL: Could not resolve to a PullRequest with the number of {number}. "
+            "(repository.pullRequest)\n",
+        )
+    return select(pr_record(world, data, pr), flags, PR_FIELDS)
+
+
+def auth_status(world, data, positional, flags):
+    if not data.get("logged_in", True):
+        raise Exit(1, "You are not logged into any GitHub hosts. To log in, run: gh auth login\n")
+    return "github.com\n  ✓ Logged in to github.com account fake (keyring)\n"
+
+
+HANDLERS = {
+    ("project", "view"): project_view,
+    ("project", "field-list"): project_field_list,
+    ("project", "item-list"): project_item_list,
+    ("project", "item-edit"): project_item_edit,
+    ("issue", "view"): issue_view,
+    ("pr", "create"): pr_create,
+    ("pr", "list"): pr_list,
+    ("pr", "view"): pr_view,
+    ("auth", "status"): auth_status,
+}
+
+
+def injected_fault(world, argv):
+    """Return the fault for this call, if one names a prefix of argv and this call's count."""
+    calls = world.calls()
+    for fault in world.faults():
+        prefix = fault["command"].split()
+        if argv[: len(prefix)] != prefix:
+            continue
+        earlier = sum(1 for c in calls if c["argv"][: len(prefix)] == prefix)
+        if earlier + 1 == fault["call"]:
+            return Exit(fault["exit"], fault.get("stderr", ""), fault.get("stdout", ""))
+    return None
+
+
+def run(world, argv):
+    """Return (exit code, stdout, stderr)."""
+    fault = injected_fault(world, argv)
+    if fault is not None:
+        return fault.code, fault.stdout, fault.stderr
+    try:
+        command, positional, flags = parse(argv)
+        output = HANDLERS[command](world, world.load(), positional, flags)
+    except Exit as exit:
+        return exit.code, exit.stdout, exit.stderr
+    if output is None:
+        return 0, "", ""
+    if isinstance(output, str):
+        return 0, output, ""
+    return 0, json.dumps(output) + "\n", ""
+
+
+def main():
+    world = World.from_env()
+    argv = sys.argv[1:]
+    code, stdout, stderr = run(world, argv)
+    with world.calls_path.open("a") as calls:
+        calls.write(json.dumps({"argv": argv, "exit": code}) + "\n")
+    sys.stdout.write(stdout)
+    sys.stderr.write(stderr)
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main())
