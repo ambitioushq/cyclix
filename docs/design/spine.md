@@ -14,7 +14,7 @@ A thin station does real work in the simplest way that carries a real issue. A s
 
 | Station | Thin behaviour | Replaced by |
 | --- | --- | --- |
-| Admission | Takes the oldest open issue in Ready on the configured board, from the configured repo. Ignores everything not on the board. | The admission arm (the Ready contract) |
+| Admission | Takes the oldest open issue in Ready on the configured board, from the configured repo. Ignores everything not on the board. | The admission arm (the Ready contract, and promotion from Committed) |
 | Plan | One agent call that reads the issue and writes `plan.md` in the run folder. If the agent's answer starts with `STOP:`, the item is parked with that sentence as the reason. | The plan arm |
 | Build | One agent call in the run's worktree, given the issue and the plan, that leaves its work committed on the run's branch. | The build arm |
 | Gate | Runs the tenant's gate commands in the worktree. Records each command's exit code against the head SHA. Any failure parks the item: no fix rounds in the spine. | The gate arm |
@@ -74,6 +74,8 @@ scripts/names_check.py
 | Any | Done | A human, or GitHub closing the issue | The reconciler observes it and releases any claim |
 
 The engine never makes a move that is not in this table. A human can make any move. The sweep reads the board each pass and adjusts SQLite to match it.
+
+**Committed comes with the admission arm.** Committed is a staging state between Backlog and Ready. A human moves an issue there to say the work is committed. The admission arm then promotes it to Ready once it is safe to start: it is not a parent issue, it has no open blockers, it touches no files that work in flight touches, the review queue is under its cap, and it meets the Ready contract. An issue that fails the Ready contract goes to Needs decision. So a human decides what gets done, and the engine decides when it starts. The spine leaves this out: a human moves items straight to Ready, and the spine's config does not map the board's Committed option, so the engine ignores it.
 
 ## The state core
 
