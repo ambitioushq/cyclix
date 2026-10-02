@@ -20,8 +20,8 @@ def core(tmp_path):
     core.close()
 
 
-def begin(core, run_id="r1", issue=5, station="gate", round=1):
-    core.begin_run(RunStart(run_id=run_id, tenant="t", issue=issue, station=station, round=round))
+def begin(core, run_id="r1", issue=5, stage="gate", round=1):
+    core.begin_run(RunStart(run_id=run_id, tenant="t", issue=issue, stage=stage, round=round))
 
 
 def raw(tmp_path):
@@ -105,32 +105,32 @@ def test_claims_are_per_tenant(core):
 # Runs
 
 
-def test_a_run_has_one_row_per_station(core):
-    begin(core, station="plan")
+def test_a_run_has_one_row_per_stage(core):
+    begin(core, stage="plan")
     core.end_run("r1", "passed", "")
-    begin(core, station="build")
-    assert [r.station for r in core.open_runs("t")] == ["build"]
+    begin(core, stage="build")
+    assert [r.stage for r in core.open_runs("t")] == ["build"]
 
 
-def test_a_run_cannot_open_a_second_station(core):
-    begin(core, station="plan")
-    with pytest.raises(StateError, match="already has an open station"):
-        begin(core, station="build")
+def test_a_run_cannot_open_a_second_stage(core):
+    begin(core, stage="plan")
+    with pytest.raises(StateError, match="already has an open stage"):
+        begin(core, stage="build")
 
 
-def test_a_call_on_a_run_with_no_open_station_is_refused(core):
-    with pytest.raises(StateError, match="run r9 has no open station"):
+def test_a_call_on_a_run_with_no_open_stage_is_refused(core):
+    with pytest.raises(StateError, match="run r9 has no open stage"):
         core.set_phase("r9", "push")
 
 
 def test_begin_run_seeds_the_event_identity(core):
-    begin(core, issue=12, station="pr", round=2)
+    begin(core, issue=12, stage="pr", round=2)
     fields = core.end_run("r1", "stopped", "STOP: unclear")
     assert fields == {
         "cyclix.tenant": "t",
         "cyclix.issue.id": 12,
         "cyclix.run.id": "r1",
-        "cyclix.station": "pr",
+        "cyclix.stage": "pr",
         "cyclix.round": 2,
         "cyclix.outcome": "stopped",
         "cyclix.outcome.reason": "STOP: unclear",
@@ -152,14 +152,14 @@ def test_an_ended_run_is_not_open(core):
 # Checks
 
 
-def test_checks_in_a_crashed_station_never_count(core):
+def test_checks_in_a_crashed_stage_never_count(core):
     begin(core)
     core.record_check("r1", "a", "lint", True)
     core.end_run("r1", "crashed", "no live process")
     assert core.best_verified("t", 5) is None
 
 
-def test_checks_in_an_open_station_do_not_count_yet(core):
+def test_checks_in_an_open_stage_do_not_count_yet(core):
     begin(core)
     core.record_check("r1", "a", "lint", True)
     assert core.best_verified("t", 5) is None
@@ -210,8 +210,8 @@ def state_modules(source):
     return {n.split(".")[2] for n in found if n.startswith("cyclix.state.")}
 
 
-def test_stations_import_only_state_core():
-    for path in (SRC / "stations").rglob("*.py"):
+def test_stages_import_only_state_core():
+    for path in (SRC / "stages").rglob("*.py"):
         assert state_modules(path.read_text()) <= {"core"}, path
 
 

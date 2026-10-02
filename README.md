@@ -5,7 +5,7 @@ Cyclix runs an unattended issue-to-PR loop. It takes a well-formed issue from a 
 **Pre-release. Not ready for use.** The code is written in public from the first commit. Interfaces will change without notice until v0.1.
 
 - Design: [docs/design/overview.md](docs/design/overview.md)
-- The first build iteration: [docs/design/spine.md](docs/design/spine.md)
+- The first build iteration: [docs/design/iteration-0.md](docs/design/iteration-0.md)
 - The functional spec: the Gherkin feature files in `tests/features/`
 
 ## Licence

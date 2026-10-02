@@ -1,6 +1,6 @@
 """The fake gh prints the same keys as real gh, as recorded from gh 2.102.0.
 
-Each command is called the way docs/design/spine.md, "The adapters", says the
+Each command is called the way docs/design/iteration-0.md, "The adapters", says the
 adapters call it. #15 replaces these hand-copied keys with recordings from the sandbox.
 """
 

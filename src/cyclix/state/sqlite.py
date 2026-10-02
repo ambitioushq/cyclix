@@ -33,14 +33,14 @@ MIGRATIONS = [
         run_id TEXT NOT NULL,
         tenant TEXT NOT NULL,
         issue INTEGER NOT NULL,
-        station TEXT NOT NULL,
+        stage TEXT NOT NULL,
         phase TEXT,
         round INTEGER NOT NULL,
         started_at TEXT NOT NULL,
         ended_at TEXT,
         outcome TEXT,
         fields_json TEXT NOT NULL,
-        UNIQUE (run_id, station, round)
+        UNIQUE (run_id, stage, round)
     );
     CREATE UNIQUE INDEX runs_one_open ON runs (run_id) WHERE ended_at IS NULL;
     CREATE TABLE checks (
@@ -161,19 +161,19 @@ class SqliteStateCore:
             "cyclix.tenant": run.tenant,
             "cyclix.issue.id": run.issue,
             "cyclix.run.id": run.run_id,
-            "cyclix.station": run.station,
+            "cyclix.stage": run.stage,
             "cyclix.round": run.round,
         }
         try:
             with self.write() as db:
                 db.execute(
-                    "INSERT INTO runs (run_id, tenant, issue, station, round, started_at,"
+                    "INSERT INTO runs (run_id, tenant, issue, stage, round, started_at,"
                     " fields_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (
                         run.run_id,
                         run.tenant,
                         run.issue,
-                        run.station,
+                        run.stage,
                         run.round,
                         self.stamp(),
                         json.dumps(fields),
@@ -181,8 +181,8 @@ class SqliteStateCore:
                 )
         except sqlite3.IntegrityError:
             raise StateError(
-                f"run {run.run_id} already has an open station,"
-                f" or already ran {run.station} round {run.round}"
+                f"run {run.run_id} already has an open stage,"
+                f" or already ran {run.stage} round {run.round}"
             ) from None
 
     def open_row(self, db, run_id):
@@ -191,7 +191,7 @@ class SqliteStateCore:
             (run_id,),
         ).fetchone()
         if row is None:
-            raise StateError(f"run {run_id} has no open station")
+            raise StateError(f"run {run_id} has no open stage")
         return row[0], json.loads(row[1]), row[2]
 
     def set_phase(self, run_id, phase):
@@ -209,7 +209,7 @@ class SqliteStateCore:
             )
 
     def end_run(self, run_id, outcome, reason):
-        """End the run's open station and return its event fields, outcome included."""
+        """End the run's open stage and return its event fields, outcome included."""
         with self.write() as db:
             row_id, fields, _ = self.open_row(db, run_id)
             fields["cyclix.outcome"] = outcome
@@ -222,7 +222,7 @@ class SqliteStateCore:
 
     def open_runs(self, tenant):
         rows = self.db.execute(
-            "SELECT run_id, tenant, issue, station, phase, round, started_at, fields_json"
+            "SELECT run_id, tenant, issue, stage, phase, round, started_at, fields_json"
             " FROM runs WHERE tenant = ? AND ended_at IS NULL ORDER BY started_at, id",
             (tenant,),
         )
@@ -231,13 +231,13 @@ class SqliteStateCore:
                 run_id=run_id,
                 tenant=t,
                 issue=issue,
-                station=station,
+                stage=stage,
                 phase=phase,
                 round=round_,
                 started_at=datetime.fromisoformat(started),
                 fields=json.loads(fields),
             )
-            for run_id, t, issue, station, phase, round_, started, fields in rows
+            for run_id, t, issue, stage, phase, round_, started, fields in rows
         ]
 
     # Checks
@@ -251,7 +251,7 @@ class SqliteStateCore:
             )
 
     def best_verified(self, tenant, issue):
-        """The last commit whose checks all passed, in a station row that ended without crashing.
+        """The last commit whose checks all passed, in a stage row that ended without crashing.
 
         A row still open, or ended as crashed, may have stopped partway through
         its checks, so its commits never count.

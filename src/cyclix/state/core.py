@@ -1,8 +1,8 @@
-"""The StateCore protocol: the only way stations and the runner reach the loop's state.
+"""The StateCore protocol: the only way stages and the runner reach the loop's state.
 
-A run is one pass of an issue through the stations. It keeps one run_id, which is
-also on the claim and names the run folder. Each station in the pass gets its own
-row, so one run has one row per station and round, and at most one open row at a
+A run is one pass of an issue through the stages. It keeps one run_id, which is
+also on the claim and names the run folder. Each stage in the pass gets its own
+row, so one run has one row per stage and round, and at most one open row at a
 time. set_phase, add_fields, record_check and end_run act on the run's open row.
 """
 
@@ -25,23 +25,23 @@ class Claim:
 
 @dataclass(frozen=True)
 class RunStart:
-    """What the caller knows when a station starts. The core stamps the start time."""
+    """What the caller knows when a stage starts. The core stamps the start time."""
 
     run_id: str
     tenant: str
     issue: int
-    station: str
+    stage: str
     round: int = 1
 
 
 @dataclass(frozen=True)
 class RunState:
-    """An open station row, as the sweep reads it back after a crash."""
+    """An open stage row, as the sweep reads it back after a crash."""
 
     run_id: str
     tenant: str
     issue: int
-    station: str
+    stage: str
     phase: str | None
     round: int
     started_at: datetime

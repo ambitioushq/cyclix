@@ -1,26 +1,26 @@
-# The spine
+# Iteration 0
 
-The spine is Iteration 0: the smallest engine that takes a real issue to a merged PR. It has the state core, the GitHub adapters, the event log, the station runner, and a thin version of every station. When it is done, Cyclix becomes a tenant of its own loop, and every later arm replaces one thin station through that loop.
+Iteration 0 is the smallest engine that takes a real issue to a merged PR. It has the state core, the GitHub adapters, the event log, the stage runner, and a thin version of every stage. When it is done, Cyclix becomes a tenant of its own loop, and each later area replaces one thin stage through that loop.
 
 This document is the starting design. Each section marked **Open** is settled with the maintainer at the start of the issue that needs it, and this file is updated in that issue's PR.
 
 ## Done when
 
-One real Cyclix issue, admitted from Cyclix's own board, reaches a merged PR through the spine running as a systemd timer on the host, and the event log holds one station-run event for each station it passed.
+One real Cyclix issue, admitted from Cyclix's own board, reaches a merged PR through Iteration 0 running as a systemd timer on the host, and the event log holds one stage-run event for each stage it passed.
 
 ## What "thin" means
 
-A thin station does real work in the simplest way that carries a real issue. A stub that did nothing could not build Cyclix's own issues.
+A thin stage does real work in the simplest way that carries a real issue. A stub that did nothing could not build Cyclix's own issues.
 
-| Station | Thin behaviour | Replaced by |
+| Stage | Thin behaviour | Replaced by |
 | --- | --- | --- |
-| Admission | Takes the oldest open issue in Ready on the configured board, from the configured repo. Ignores everything not on the board. | The admission arm (the Ready contract, and promotion from Next) |
-| Plan | One agent call that reads the issue and writes `plan.md` in the run folder. If the agent's answer starts with `STOP:`, the item is parked with that sentence as the reason. | The plan arm |
-| Build | One agent call in the run's worktree, given the issue and the plan, that leaves its work committed on the run's branch. | The build arm |
-| Gate | Runs the tenant's gate commands in the worktree. Records each command's exit code against the head SHA. Any failure parks the item: no fix rounds in the spine. | The gate arm |
-| Red-team | Records itself as `skipped`. | The red-team arm |
-| PR | Pushes the branch and opens a PR whose body says `Closes #<issue>`. Moves the item to In review. | The PR arm |
-| Reconciler | For each item In review: merged moves it to Done; closed without merge moves it to Parked. | The reconciler arm |
+| Admission | Takes the oldest open issue in Ready on the configured board, from the configured repo. Ignores everything not on the board. | The admission area (the Ready contract, and promotion from Next) |
+| Plan | One agent call that reads the issue and writes `plan.md` in the run folder. If the agent's answer starts with `STOP:`, the item is parked with that sentence as the reason. | The plan area |
+| Build | One agent call in the run's worktree, given the issue and the plan, that leaves its work committed on the run's branch. | The build area |
+| Gate | Runs the tenant's gate commands in the worktree. Records each command's exit code against the head SHA. Any failure parks the item: no fix rounds in Iteration 0. | The gate area |
+| Adversarial review | Records itself as `skipped`. | The adversarial review area |
+| PR | Pushes the branch and opens a PR whose body says `Closes #<issue>`. Moves the item to In review. | The PR area |
+| Reconciler | For each item In review: merged moves it to Done; closed without merge moves it to Parked. | The reconciler area |
 
 ## Package layout
 
@@ -45,10 +45,10 @@ src/cyclix/
   events/
     schema.py        field names, outcome values, schema version
     log.py           the JSON-lines writer
-  runner.py          the sweep and the station sequence
-  stations/
-    base.py          the Station protocol and the run context
-    admission.py plan.py build.py gate.py redteam.py pr.py reconciler.py
+  runner.py          the sweep and the stage sequence
+  stages/
+    base.py          the Stage protocol and the run context
+    admission.py plan.py build.py gate.py adversarial_review.py pr.py reconciler.py
   install.py         writes the systemd user units
 tests/
   features/          Gherkin feature files, the spec
@@ -65,9 +65,9 @@ scripts/names_check.py
 | From | To | Written by | When |
 | --- | --- | --- | --- |
 | Ready | In progress | Runner (admission) | The item is claimed for a run |
-| In progress | In review | PR station | The PR is open |
-| In progress | Parked | Any station | A STOP, a failed gate, an error, or a crashed run found by the sweep |
-| In progress | Needs decision | Plan station | The plan needs a human call (not produced by the thin plan) |
+| In progress | In review | PR stage | The PR is open |
+| In progress | Parked | Any stage | A STOP, a failed gate, an error, or a crashed run found by the sweep |
+| In progress | Needs decision | Plan stage | The plan needs a human call (not produced by the thin plan) |
 | In review | Done | Reconciler | The PR merged |
 | In review | Parked | Reconciler | The PR closed without merging |
 | Parked, Needs decision | Ready | A human only | |
@@ -75,11 +75,11 @@ scripts/names_check.py
 
 The engine never makes a move that is not in this table. A human can make any move. The sweep reads the board each pass and adjusts SQLite to match it.
 
-**Next comes with the admission arm.** Next is a staging state between Backlog and Ready. A human moves an issue there to say the work should be done soon. The admission arm then promotes it to Ready once it is safe to start: it is not a parent issue, it has no open blockers, it touches no files that work in flight touches, the review queue is under its cap, and it meets the Ready contract. An issue that fails the Ready contract goes to Needs decision. So a human decides what gets done, and the engine decides when it starts. The spine leaves this out: a human moves items straight to Ready, and the spine's config does not map the board's Next option, so the engine ignores it.
+**Next comes with the admission area.** Next is a staging state between Backlog and Ready. A human moves an issue there to say the work should be done soon. The full admission stage then promotes it to Ready once it is safe to start: it is not a parent issue, it has no open blockers, it touches no files that work in flight touches, the review queue is under its cap, and it meets the Ready contract. An issue that fails the Ready contract goes to Needs decision. So a human decides what gets done, and the engine decides when it starts. Iteration 0 leaves this out: a human moves items straight to Ready, and its config does not map the board's Next option, so the engine ignores it.
 
 ## The state core
 
-The stations and the runner reach SQLite only through the `StateCore` protocol in `state/core.py`.
+The stages and the runner reach SQLite only through the `StateCore` protocol in `state/core.py`.
 
 ```python
 class StateCore(Protocol):
@@ -104,45 +104,47 @@ class Claim:
     run_id: str
     claimed_at: datetime
 
+
 @dataclass(frozen=True)
 class RunStart:
     run_id: str
     tenant: str
     issue: int
-    station: str
+    stage: str
     round: int = 1
+
 
 @dataclass(frozen=True)
 class RunState:
     run_id: str
     tenant: str
     issue: int
-    station: str
+    stage: str
     phase: str | None
     round: int
     started_at: datetime
     fields: dict[str, object]
 ```
 
-The three are kept apart because each is filled by a different side at a different time. `Claim` is a row of `claims`. `RunStart` is what the caller knows when a station starts; the core stamps `started_at`. `RunState` is what the sweep reads back from an open station. Timestamps are in UTC.
+The three are kept apart because each is filled by a different side at a different time. `Claim` is a row of `claims`. `RunStart` is what the caller knows when a stage starts; the core stamps `started_at`. `RunState` is what the sweep reads back from an open stage. Timestamps are in UTC.
 
-**A run is one pass of an issue through the stations.** It keeps one `run_id`, which is also on the claim and names the run folder. Each station in the pass gets its own row in `runs`, unique on `(run_id, station, round)`, so the gate can run again in a later round of the same pass. A run has at most one open row at a time. `set_phase`, `add_fields`, `record_check` and `end_run` act on that open row, and each call on a run with no open row is refused.
+**A run is one pass of an issue through the stages.** It keeps one `run_id`, which is also on the claim and names the run folder. Each stage in the pass gets its own row in `runs`, unique on `(run_id, stage, round)`, so the gate can run again in a later round of the same pass. A run has at most one open row at a time. `set_phase`, `add_fields`, `record_check` and `end_run` act on that open row, and each call on a run with no open row is refused.
 
-**The fields build up into the event.** `begin_run` seeds the fields with `cyclix.tenant`, `cyclix.issue.id`, `cyclix.run.id`, `cyclix.station` and `cyclix.round`. `add_fields` merges more in, and adding `cyclix.round` also moves the `round` column, so the two can't disagree. `end_run` adds `cyclix.outcome` and `cyclix.outcome.reason`, and returns the whole dict for the event writer.
+**The fields build up into the event.** `begin_run` seeds the fields with `cyclix.tenant`, `cyclix.issue.id`, `cyclix.run.id`, `cyclix.stage` and `cyclix.round`. `add_fields` merges more in, and adding `cyclix.round` also moves the `round` column, so the two can't disagree. `end_run` adds `cyclix.outcome` and `cyclix.outcome.reason`, and returns the whole dict for the event writer.
 
-**The best verified commit** is the last commit whose checks all passed, counting only checks in a station row that ended with an outcome other than `crashed`. A row that is still open, or that crashed, may have stopped partway through its checks.
+**The best verified commit** is the last commit whose checks all passed, counting only checks in a stage row that ended with an outcome other than `crashed`. A row that is still open, or that crashed, may have stopped partway through its checks.
 
 Tables in schema version 1:
 
 - `meta(key, value)`: holds `schema_version`.
 - `claims(tenant, issue, run_id, claimed_at)`, unique on `(tenant, issue)`.
-- `runs(id, run_id, tenant, issue, station, phase, round, started_at, ended_at, outcome, fields_json)`, unique on `(run_id, station, round)`, and on `run_id` among rows with no `ended_at`. `fields_json` is the station-run event while it builds up.
-- `checks(id, run_row, sha, check, passed, at)`. `run_row` is the `runs.id` of the station row that ran the check.
+- `runs(id, run_id, tenant, issue, stage, phase, round, started_at, ended_at, outcome, fields_json)`, unique on `(run_id, stage, round)`, and on `run_id` among rows with no `ended_at`. `fields_json` is the stage-run event while it builds up.
+- `checks(id, run_row, sha, check, passed, at)`. `run_row` is the `runs.id` of the stage row that ran the check.
 - `spend(tenant, day, usd, tokens)`, unique on `(tenant, day)`. `day` is the UTC date.
 
 The file opens in WAL mode with a busy timeout of five seconds, and every write runs in one `BEGIN IMMEDIATE` transaction. A schema version newer than the code refuses to run. An older one is migrated by numbered SQL steps in code: step `i` takes the file from version `i` to `i + 1`, each in its own transaction.
 
-**Durable phases.** Before an action that changes the outside world (a push, a PR open, a board move), the station calls `set_phase` with the action's name. After a crash, the sweep reads the phase and checks the outside world before acting again: it checks for an existing PR before opening one, and for the remote branch before pushing.
+**Durable phases.** Before an action that changes the outside world (a push, a PR open, a board move), the stage calls `set_phase` with the action's name. After a crash, the sweep reads the phase and checks the outside world before acting again: it checks for an existing PR before opening one, and for the remote branch before pushing.
 
 ## The adapters
 
@@ -188,13 +190,13 @@ One JSON object per line in `events/<tenant>.jsonl` under the state directory. E
   "timestamp": "2026-10-02T14:03:11.204Z",
   "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
   "span_id": "00f067aa0ba902b7",
-  "body": "station_run",
+  "body": "stage_run",
   "resource": {"service.name": "cyclix", "service.version": "0.0.1"},
   "attributes": {
     "cyclix.tenant": "cyclix",
     "cyclix.issue.id": 12,
     "cyclix.run.id": "r-20261002-140211-12",
-    "cyclix.station": "gate",
+    "cyclix.stage": "gate",
     "cyclix.outcome": "parked",
     "cyclix.outcome.reason": "gate command 2 exited 1",
     "cyclix.round": 1,
@@ -214,13 +216,13 @@ One JSON object per line in `events/<tenant>.jsonl` under the state directory. E
 }
 ```
 
-- `cyclix.station` is one of `admission`, `plan`, `build`, `gate`, `redteam`, `pr`, `reconciler`, one for each station in the table at the top.
+- `cyclix.stage` is one of `admission`, `plan`, `build`, `gate`, `adversarial_review`, `pr`, `reconciler`, one for each stage in the table at the top.
 - `cyclix.outcome` is one of `passed`, `parked`, `stopped`, `failed`, `crashed`, `skipped`.
-- One trace per station run: `trace_id` is new for each run, and `span_id` names the station's span.
+- One trace per stage run: `trace_id` is new for each run, and `span_id` names the stage's span.
 - A field with no value is written as `null`, so every line has the same keys for its kind.
 - The engine version is `resource.service.version`. The config version is a hash of the config file.
 
-The earlier loop starts writing station-run events in this same schema before the spine exists, so the record starts early. Any change to schema 0 is made here first.
+The earlier loop starts writing stage-run events in this same schema before Iteration 0 exists, so the record starts early. Any change to schema 0 is made here first.
 
 ## The config file
 
@@ -271,9 +273,9 @@ runs_per_day = 6
 1. Read the board's items and their states.
 2. Correct SQLite to match the board. A claim on an item a human moved out of In progress is released. An open run with no live process is ended with outcome `crashed`, its event is written, and its item is parked with the reason.
 3. Run the reconciler on every item In review.
-4. If no item is In progress and the day's run limit is not reached, admit the oldest Ready item and run plan, build, gate, red-team and PR in order. Stop at the first station that does not pass.
+4. If no item is In progress and the day's run limit is not reached, admit the oldest Ready item and run plan, build, gate, adversarial review and PR in order. Stop at the first stage that does not pass.
 
-One item at a time per tenant in the spine.
+One item at a time per tenant in Iteration 0.
 
 ## The test footing
 
@@ -294,7 +296,7 @@ CI fails if any tracked file or commit message in a PR contains a name from a pr
 ## Open questions for the first session
 
 1. **The fake GitHub.** Settled in #4: the world model. See "The test footing".
-2. **One item at a time.** Is one In progress item per tenant right for the spine? It keeps the sweep simple and is all a single maintainer needs at first.
-3. **Run limits.** A daily run count stands in for the budget cap until the operations arm. Is six a day right for Cyclix's own tenant?
+2. **One item at a time.** Is one In progress item per tenant right for Iteration 0? It keeps the sweep simple and is all a single maintainer needs at first.
+3. **Run limits.** A daily run count stands in for the budget cap until the operations area. Is six a day right for Cyclix's own tenant?
 4. **Branch names.** `cyclix/<issue>-<slug>`, or the earlier loop's `<type>/<issue>-<slug>`?
-5. **The models.** Which models the plan and build stations use by default.
+5. **The models.** Which models the plan and build stages use by default.

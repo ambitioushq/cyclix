@@ -10,7 +10,7 @@ Feature: The state core keeps the loop's working state
 
   @issue-7
   Scenario: A run's fields build up and come back at the end
-    Given run "r1" has begun for #5 at station "build"
+    Given run "r1" has begun for #5 at stage "build"
     When the fields "cyclix.round" = 1 and "cyclix.cost.usd" = 0.4 are added
     And the run ends with outcome "passed"
     Then the returned fields hold the round, the cost and the outcome

@@ -27,8 +27,8 @@ def example():
 
 
 def test_the_example_matches_the_design_doc():
-    spine = (ROOT / "docs" / "design" / "spine.md").read_text()
-    section = spine.split("## The config file")[1]
+    design = (ROOT / "docs" / "design" / "iteration-0.md").read_text()
+    section = design.split("## The config file")[1]
     block = re.search(r"```toml\n(.*?)```", section, re.DOTALL)[1]
     assert block == example()
 

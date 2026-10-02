@@ -38,14 +38,14 @@ def empty_core(core):
     pass
 
 
-@given(parsers.parse('run "{run_id}" has begun for #{issue:d} at station "{station}"'))
-def run_begun(core, run_id, issue, station):
-    core.begin_run(RunStart(run_id=run_id, tenant=TENANT, issue=issue, station=station))
+@given(parsers.parse('run "{run_id}" has begun for #{issue:d} at stage "{stage}"'))
+def run_begun(core, run_id, issue, stage):
+    core.begin_run(RunStart(run_id=run_id, tenant=TENANT, issue=issue, stage=stage))
 
 
 @given(parsers.parse('run "{run_id}" has begun and not ended'))
 def run_open(core, seen, run_id):
-    core.begin_run(RunStart(run_id=run_id, tenant=TENANT, issue=5, station="pr"))
+    core.begin_run(RunStart(run_id=run_id, tenant=TENANT, issue=5, stage="pr"))
     core.set_phase(run_id, "push")
     core.set_phase(run_id, "open_pr")
     seen["last_phase"] = "open_pr"
@@ -57,11 +57,11 @@ def run_open(core, seen, run_id):
     )
 )
 def checks_recorded(core, issue, good, bad):
-    core.begin_run(RunStart(run_id="r1", tenant=TENANT, issue=issue, station="gate", round=1))
+    core.begin_run(RunStart(run_id="r1", tenant=TENANT, issue=issue, stage="gate", round=1))
     core.record_check("r1", good, "lint", True)
     core.record_check("r1", good, "tests", True)
     core.end_run("r1", "passed", "")
-    core.begin_run(RunStart(run_id="r1", tenant=TENANT, issue=issue, station="gate", round=2))
+    core.begin_run(RunStart(run_id="r1", tenant=TENANT, issue=issue, stage="gate", round=2))
     core.record_check("r1", bad, "lint", True)
     core.record_check("r1", bad, "tests", False)
     core.end_run("r1", "parked", "gate command 2 exited 1")
