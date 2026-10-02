@@ -19,7 +19,7 @@ Cyclix does not pick one source of truth. Each fact has one owner.
 | The loop's own working state: claims, the phase inside a station, round counts, the best verified commit SHA, budget spent | A local SQLite file, one per install |
 | What happened, in order | The event log: append-only, never read to make a decision |
 
-- **Cyclix speaks its own work states**: Ready, Active, In review, Parked, Needs decision, Done. Each tracker adapter maps them to that tracker's fields. Nothing in the engine names a tracker's own fields.
+- **Cyclix speaks its own work states**: Next, Ready, In progress, In review, Parked, Needs decision, Done. A human moves work to Next to say it should be done soon, and admission promotes it to Ready once it is safe to start. In review holds an item while its PR waits for a human. Each tracker adapter maps them to that tracker's fields. Nothing in the engine names a tracker's own fields.
 - **The tracker wins.** When SQLite and the tracker disagree about a work item, the tracker is right and the sweep corrects SQLite. People act in the tracker, so a second copy of their decisions would drift. SQLite holds only facts no tracker has a field for and no human edits.
 
 ## The event log
