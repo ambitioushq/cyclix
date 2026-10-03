@@ -219,7 +219,9 @@ One JSON object per line in `events/<tenant>.jsonl` under the state directory. E
 - `cyclix.stage` is one of `admission`, `plan`, `build`, `gate`, `adversarial_review`, `pr`, `reconciler`, one for each stage in the table at the top.
 - `cyclix.outcome` is one of `passed`, `parked`, `stopped`, `failed`, `crashed`, `skipped`.
 - One trace per stage run: `trace_id` is new for each run, and `span_id` names the stage's span.
-- A field with no value is written as `null`, so every line has the same keys for its kind.
+- A field with no value is written as `null`, so every line has the same keys for its kind. `cyclix.gate.checks` is on every stage-run line, and is `null` for stages other than the gate (settled in #12).
+- The writer refuses a key that is not in the list above, and writes nothing (settled in #12). A new key is added here first, then to `events/schema.py`.
+- The writer refuses any string attribute over 500 characters, including strings inside `cyclix.gate.checks`. A string that long is most likely prompt or code text, which belongs in the run folder.
 - The engine version is `resource.service.version`. The config version is a hash of the config file.
 
 The earlier loop starts writing stage-run events in this same schema before Iteration 0 exists, so the record starts early. Any change to schema 0 is made here first.
