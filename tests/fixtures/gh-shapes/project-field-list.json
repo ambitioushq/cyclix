@@ -1,0 +1,22 @@
+{
+  "gh": "2.102.0",
+  "command": [
+    "project",
+    "field-list",
+    "{project}",
+    "--owner",
+    "{owner}",
+    "--format",
+    "json"
+  ],
+  "keys": [
+    "fields",
+    "fields[].id",
+    "fields[].name",
+    "fields[].options",
+    "fields[].options[].id",
+    "fields[].options[].name",
+    "fields[].type",
+    "totalCount"
+  ]
+}

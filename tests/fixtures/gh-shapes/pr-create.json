@@ -1,0 +1,20 @@
+{
+  "gh": "2.102.0",
+  "command": [
+    "pr",
+    "create",
+    "-R",
+    "{repo}",
+    "--head",
+    "{branch}",
+    "--base",
+    "{base}",
+    "--title",
+    "{title}",
+    "--body-file",
+    "{body_file}"
+  ],
+  "lines": [
+    "https://github.com/{repo}/pull/{pr}"
+  ]
+}

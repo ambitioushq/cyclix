@@ -20,6 +20,7 @@ dev = ["pytest", "pytest-bdd", "ruff", "coverage"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["scripts"]
 bdd_features_base_dir = "tests/features"
 
 [tool.ruff]

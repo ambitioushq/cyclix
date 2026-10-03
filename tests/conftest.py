@@ -1,6 +1,7 @@
 """Fixtures and the steps every feature can use. tests/README.md lists the step phrases."""
 
 import json
+import os
 import re
 import shlex
 from pathlib import Path
@@ -20,15 +21,24 @@ def pytest_configure(config):
         tags.update(re.findall(r"@issue-(\d+)\b", feature.read_text()))
     for n in sorted(tags, key=int):
         config.addinivalue_line("markers", f"issue_{n}: scenarios introduced by #{n}")
+    config.addinivalue_line("markers", "sandbox: runs against the real sandbox repo and board")
 
 
 def pytest_bdd_apply_tag(tag, function):
     """Turn the tag @issue-4 into the marker issue_4, and @xfail-until-9 into a strict xfail.
 
+    @sandbox skips a scenario unless CYCLIX_SANDBOX=1, because it runs against real GitHub.
+
     Other tags keep the default handling.
     """
     if match := re.fullmatch(r"issue-(\d+)", tag):
         getattr(pytest.mark, f"issue_{match[1]}")(function)
+        return True
+    if tag == "sandbox":
+        pytest.mark.sandbox(function)
+        pytest.mark.skipif(
+            os.environ.get("CYCLIX_SANDBOX") != "1", reason="sandbox runs need CYCLIX_SANDBOX=1"
+        )(function)
         return True
     if match := re.fullmatch(r"xfail-until-(\d+)", tag):
         pytest.mark.xfail(strict=True, reason=f"needs #{match[1]}")(function)

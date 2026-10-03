@@ -339,7 +339,14 @@ The fake GitHub is a world model, not replayed recordings (settled in #4). The w
 - **The fake `gh`** is an executable placed first on `PATH`. It supports the `gh` commands listed under "The adapters", reads and changes the world, prints output in the same JSON shape as real `gh`, and appends each call to a calls file. A scenario can inject a fault for one call (an exit code, a stderr message, a stale read).
 - **The fake agent** is an executable named in the test config's `agent.command`. A scenario gives it a script: files to write, commits to make, the text to answer, the exit code, the token and cost numbers to report.
 - **The git remote** is a local bare repository, so pushes are real.
-- **Keeping the fake honest.** The sandbox run (a real repo and board) records the real JSON shapes of each `gh` command used. A unit test checks that the fake's output has the same keys.
+- **Keeping the fake honest.** The sandbox run (a real repo and board) records the real JSON shapes of each `gh` command used. A scenario checks that the fake's output has the same keys.
+
+**The sandbox** (settled in #15) is the private repo `ambitioushq/cyclix-sandbox` and the private board `ambitioushq` project 2, whose Status field holds the six option names. Its tenant config is `docs/examples/sandbox.toml`. Scenarios tagged `@sandbox` run against it with the real `gh` and the real agent, and only when `CYCLIX_SANDBOX=1`. The workflow `sandbox.yml` runs them by hand and weekly, never on a PR.
+
+- **The sandbox scenario merges the PR itself.** Where the spine waits for a person to merge, the scenario runs `gh pr merge --squash`, so the weekly run needs nobody.
+- **The real agent runs with `--permission-mode bypassPermissions`.** Print mode cannot ask before it edits a file or runs `git`. The run is on a throwaway CI machine, against a throwaway repo.
+- **The shapes.** `scripts/record_gh_shapes.py` runs each command the adapters read against the sandbox, and writes `tests/fixtures/gh-shapes/<command>.json`. For a JSON command the file holds the sorted key paths of the output, with a list's elements under `<list>[]`. `pr create` prints a URL that the code host parses, so its file holds that line with the repo and number masked. Nothing reads the output of `project item-edit` or `issue comment`, so neither is recorded. The workflow records the shapes again after the scenarios, and fails if they changed.
+- **The sandbox is throwaway.** Each scenario first closes every open issue and PR in the sandbox and empties the board, in case an earlier run died. At the end it closes and deletes what it made.
 
 ## The names check
 

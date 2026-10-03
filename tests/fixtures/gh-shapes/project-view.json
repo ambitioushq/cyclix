@@ -1,0 +1,29 @@
+{
+  "gh": "2.102.0",
+  "command": [
+    "project",
+    "view",
+    "{project}",
+    "--owner",
+    "{owner}",
+    "--format",
+    "json"
+  ],
+  "keys": [
+    "closed",
+    "fields",
+    "fields.totalCount",
+    "id",
+    "items",
+    "items.totalCount",
+    "number",
+    "owner",
+    "owner.login",
+    "owner.type",
+    "public",
+    "readme",
+    "shortDescription",
+    "title",
+    "url"
+  ]
+}
