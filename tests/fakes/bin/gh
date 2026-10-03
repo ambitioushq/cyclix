@@ -42,6 +42,7 @@ COMMANDS = {
     ("pr", "list"): (0, {"-R", "--repo", "--head", "--state", "--json"}),
     ("pr", "view"): (1, {"-R", "--repo", "--json"}),
     ("auth", "status"): (0, set()),
+    ("repo", "clone"): (2, set()),
 }
 
 
@@ -309,6 +310,21 @@ def pr_view(world, data, positional, flags):
     return select(pr_record(world, data, pr), flags, PR_FIELDS)
 
 
+def repo_clone(world, data, positional, flags):
+    """Clone the bare remote, so the clone's fetches and pushes reach it for real."""
+    repo, directory = positional
+    if repo != data["repo"]:
+        raise Exit(1, f"GraphQL: Could not resolve to a Repository with the name '{repo}'.\n")
+    done = subprocess.run(
+        ["git", "clone", "-q", str(world.remote), directory],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if done.returncode != 0:
+        raise Exit(done.returncode, done.stderr)
+
+
 def auth_status(world, data, positional, flags):
     if not data.get("logged_in", True):
         raise Exit(1, "You are not logged into any GitHub hosts. To log in, run: gh auth login\n")
@@ -325,6 +341,7 @@ HANDLERS = {
     ("pr", "list"): pr_list,
     ("pr", "view"): pr_view,
     ("auth", "status"): auth_status,
+    ("repo", "clone"): repo_clone,
 }
 
 

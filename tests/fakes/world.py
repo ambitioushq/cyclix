@@ -229,11 +229,11 @@ class World:
 
     # Pull requests
 
-    def add_pr(self, issue, state="OPEN"):
+    def add_pr(self, issue, state="OPEN", number=None, merged_at=None):
         """Add a PR for an issue on the branch cyclix/<issue>-<slug of its title>."""
         data = self.load()
         title = next(i["title"] for i in data["issues"] if i["number"] == issue)
-        number = next_number(data)
+        number = number or next_number(data)
         data["prs"].append(
             {
                 "number": number,
@@ -243,8 +243,8 @@ class World:
                 "base": "main",
                 "state": state,
                 "headRefOid": "0" * 40,
-                "mergedAt": None,
-                "closedAt": None,
+                "mergedAt": merged_at,
+                "closedAt": merged_at,
             }
         )
         self.save(data)
