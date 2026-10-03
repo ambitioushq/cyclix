@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import pytest
 from fakes.runner import environment
@@ -60,7 +61,7 @@ def adapter_runs(world, fake_env):
 # Then
 
 
-@then(parsers.parse("the result's answer is \"{answer}\""))
+@then(parsers.parse('the result\'s answer is "{answer}"'))
 def answer_is(result, answer):
     assert not result.is_error, result.reason
     assert result.answer == answer
@@ -90,7 +91,17 @@ def error_with_reason(result, reason):
 @then("no agent process is left running")
 def nothing_left_running(world):
     pids = world.agent_pids()
-    assert pids, "the fake agent recorded no process IDs"
-    for pid in pids:
-        with pytest.raises(ProcessLookupError):
-            os.kill(pid, 0)
+    assert len(pids) == 2, "the fake agent and its child should both be recorded"
+    # A killed grandchild is reaped by init, not by us, so give that a moment.
+    deadline = time.monotonic() + 2
+    while (running := [pid for pid in pids if alive(pid)]) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert running == []
+
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
