@@ -168,7 +168,7 @@ All GitHub calls go through `adapters/gh.py`, which runs `gh` with `--json` outp
 - `gh pr list -R <repo> --head <branch> --state all --json number,state,url`
 - `gh pr view <n> -R <repo> --json state,mergedAt,closedAt,headRefOid,url`
 
-**Agent** (`Agent` protocol): `run(prompt, cwd, model) -> AgentResult`, where the result holds the text answer, exit code, model, input and output tokens, cost, duration and turns. The Claude Code implementation runs the configured command (by default `claude -p --output-format json`) with the prompt on stdin and the worktree as its working directory, and parses the JSON result. That JSON has no top-level `model` key: the model's name is the one key of `modelUsage`. The prompt and the full answer are saved in the run folder. Only numbers reach the event.
+**Agent** (`Agent` protocol): `run(prompt, cwd, model) -> AgentResult`, where the result holds the text answer, exit code, model, input and output tokens, cost, duration and turns. The Claude Code implementation runs the configured command (by default `claude -p --output-format json`) with the prompt on stdin and the worktree as its working directory, and parses the JSON result. That JSON has no top-level `model` key: the model's name is the one key of `modelUsage`. When `modelUsage` names more than one model, because Claude Code used a helper model for small tasks, the result records the model Cyclix asked for with `--model` (settled in #11). The prompt and the full answer are saved in the run folder. Only numbers reach the event.
 
 ## The state directory
 
