@@ -8,7 +8,7 @@ import shutil
 import sys
 import tempfile
 
-from cyclix import __version__, config, runner
+from cyclix import __version__, config, install, runner
 from cyclix.adapters import gh
 
 OK, FAILED, USAGE, NOT_BUILT = 0, 1, 2, 3
@@ -39,6 +39,17 @@ def build_parser():
     run.add_argument("--once", action="store_true", required=True, help="make one sweep")
     run.add_argument("--tenant", metavar="NAME")
     run.set_defaults(handler=run_command)
+
+    install_ = commands.add_parser("install", help="run the loop on a systemd user timer")
+    install_.add_argument("--tenant", metavar="NAME", required=True)
+    install_.add_argument("--every", metavar="SPAN", default="10min", help="default 10min")
+    install_.add_argument("--dry-run", action="store_true", help="print and change nothing")
+    install_.add_argument("--force", action="store_true", help="replace units that differ")
+    install_.set_defaults(handler=install_command)
+
+    uninstall = commands.add_parser("uninstall", help="stop the timer and remove its units")
+    uninstall.add_argument("--tenant", metavar="NAME", required=True)
+    uninstall.set_defaults(handler=uninstall_command)
     return parser
 
 
@@ -49,6 +60,24 @@ def run_command(args):
         print(error, file=sys.stderr)
         return FAILED
     return runner.sweep(cfg)
+
+
+def install_command(args):
+    try:
+        install.install(args.tenant, every=args.every, dry_run=args.dry_run, force=args.force)
+    except install.InstallError as error:
+        print(f"install: {error}", file=sys.stderr)
+        return FAILED
+    return OK
+
+
+def uninstall_command(args):
+    try:
+        install.uninstall(args.tenant)
+    except install.InstallError as error:
+        print(f"uninstall: {error}", file=sys.stderr)
+        return FAILED
+    return OK
 
 
 def check_command(args):

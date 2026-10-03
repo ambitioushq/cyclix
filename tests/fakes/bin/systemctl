@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+"""A fake systemctl that records its calls and changes nothing.
+
+It accepts only the user-unit commands `cyclix install` and `cyclix uninstall` use.
+Anything else exits 2, so the installer cannot come to depend on a call no scenario covers.
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+
+# Each supported command, and how many unit names follow it.
+SUPPORTED = {
+    ("--user", "daemon-reload"): 0,
+    ("--user", "enable", "--now"): 1,
+    ("--user", "disable", "--now"): 1,
+}
+
+
+def main(argv):
+    with (Path(os.environ["CYCLIX_FAKES_DIR"]) / "systemctl.jsonl").open("a") as calls:
+        calls.write(json.dumps({"argv": argv}) + "\n")
+    for command, units in SUPPORTED.items():
+        if tuple(argv[: len(command)]) == command and len(argv) == len(command) + units:
+            return 0
+    print("fake systemctl: unsupported command", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

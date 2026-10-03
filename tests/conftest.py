@@ -2,12 +2,13 @@
 
 import json
 import re
+import shlex
 from pathlib import Path
 
 import pytest
-from fakes.runner import environment
+from fakes.runner import environment, run_cyclix
 from fakes.world import World
-from pytest_bdd import given, parsers, then
+from pytest_bdd import given, parsers, then, when
 
 FEATURES = Path(__file__).resolve().parent / "features"
 
@@ -82,6 +83,16 @@ def gh_call_fails_once(world, command, code, stderr):
 @given(parsers.parse('the agent answers "{answer}"'))
 def agent_answers(world, answer):
     world.add_agent_step(answer=answer)
+
+
+# When
+
+
+@when(parsers.parse('I run "{command}"'), target_fixture="result")
+def run_command(world, command):
+    program, *args = shlex.split(command)
+    assert program == "cyclix", command
+    return run_cyclix(world, *args)
 
 
 # Then
