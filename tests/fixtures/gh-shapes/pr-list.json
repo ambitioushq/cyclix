@@ -1,0 +1,20 @@
+{
+  "gh": "2.102.0",
+  "command": [
+    "pr",
+    "list",
+    "-R",
+    "{repo}",
+    "--head",
+    "{branch}",
+    "--state",
+    "all",
+    "--json",
+    "number,state,url"
+  ],
+  "keys": [
+    "[].number",
+    "[].state",
+    "[].url"
+  ]
+}

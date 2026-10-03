@@ -179,7 +179,7 @@ class World:
 
     # Issues and the board
 
-    def add_issue(self, number, title=None, state=None, body=""):
+    def add_issue(self, number, title=None, state=None, body="", labels=()):
         data = self.load()
         data["issues"].append(
             {
@@ -188,7 +188,7 @@ class World:
                 "body": body,
                 "state": "OPEN",
                 "author": {"login": "maintainer"},
-                "labels": [],
+                "labels": list(labels),
                 "comments": [],
             }
         )

@@ -1,0 +1,19 @@
+{
+  "gh": "2.102.0",
+  "command": [
+    "pr",
+    "view",
+    "{pr}",
+    "-R",
+    "{repo}",
+    "--json",
+    "state,mergedAt,closedAt,headRefOid,url"
+  ],
+  "keys": [
+    "closedAt",
+    "headRefOid",
+    "mergedAt",
+    "state",
+    "url"
+  ]
+}

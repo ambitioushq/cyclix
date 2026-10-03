@@ -5,8 +5,10 @@ It reads and changes the world in $CYCLIX_FAKES_DIR, prints JSON with the same k
 as real gh, and records every call. A command or flag it does not know exits 2,
 so an adapter cannot come to depend on something no scenario covers.
 
-The output of `project item-edit` and `pr create` has not yet been checked
-against real gh, because both write to GitHub. The sandbox run in #15 checks them.
+tests/fixtures/gh-shapes/ holds the shape of real gh output for each command the
+adapters read, recorded from the sandbox by scripts/record_gh_shapes.py. The shape
+scenario fails when this fake's output has another shape. Nothing reads the output
+of `project item-edit` or `issue comment`, so neither is recorded.
 """
 
 import json
@@ -170,6 +172,8 @@ def project_item_list(world, data, positional, flags):
                 "repository": f"https://github.com/{repo}",
                 "title": issue["title"],
             }
+            if issue.get("labels"):  # real gh leaves the key out when the issue has no labels
+                entry["labels"] = issue["labels"]
         if item["status"] is not None:  # real gh leaves the key out when no status is set
             entry["status"] = item["status"]
         items.append(entry)

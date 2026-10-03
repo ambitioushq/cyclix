@@ -1,0 +1,28 @@
+{
+  "gh": "2.102.0",
+  "command": [
+    "issue",
+    "view",
+    "{issue}",
+    "-R",
+    "{repo}",
+    "--json",
+    "number,title,body,state,author,labels"
+  ],
+  "keys": [
+    "author",
+    "author.id",
+    "author.is_bot",
+    "author.login",
+    "author.name",
+    "body",
+    "labels",
+    "labels[].color",
+    "labels[].description",
+    "labels[].id",
+    "labels[].name",
+    "number",
+    "state",
+    "title"
+  ]
+}

@@ -40,3 +40,15 @@ These steps are defined in `conftest.py`, so any feature can use them.
 | `the S event's outcome is "O"` | Then | Checks that the event log holds exactly one event at stage S, with outcome O. |
 | `it exits N` | Then | Checks the exit code of `result`. |
 | `it prints "T"` | Then | Checks that T is a whole line of `result`'s stdout. Write a quote inside T as `\"`. |
+
+## The sandbox
+
+`features/sandbox.feature` runs against real GitHub: the private repo `ambitioushq/cyclix-sandbox` and the board `ambitioushq` project 2, with the tenant config `docs/examples/sandbox.toml`. Its steps are in `sandbox/test_sandbox.py`. Scenarios tagged `@sandbox` are skipped unless `CYCLIX_SANDBOX=1`. They use the real `gh` and the real `claude`, so they need a `gh` login (or `GH_TOKEN`) with access to the sandbox repo and board, and a signed-in `claude`. Each one clears what an earlier run left, and closes and deletes what it made.
+
+```
+CYCLIX_SANDBOX=1 uv run pytest -m sandbox
+```
+
+`scripts/record_gh_shapes.py` records the shape of each `gh` command's output from the sandbox into `fixtures/gh-shapes/`. `features/gh_shapes.feature` runs the fake gh on the same commands and fails if its output has another shape. When real `gh` changes, run the script, commit the new recordings, and change the fake until the scenario passes.
+
+The workflow `.github/workflows/sandbox.yml` does both, by hand and weekly. It needs the Actions secrets `CYCLIX_SANDBOX_TOKEN` (a token that can read and write the sandbox repo's contents, issues and PRs, and the organization's projects) and `CLAUDE_CODE_OAUTH_TOKEN` (made with `claude setup-token`, so the agent runs on a Claude subscription, not the API).
