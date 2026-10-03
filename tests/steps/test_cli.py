@@ -1,8 +1,6 @@
 import re
-import shlex
 
-from fakes.runner import run_cyclix
-from pytest_bdd import given, parsers, scenarios, then, when
+from pytest_bdd import given, parsers, scenarios, then
 
 scenarios("cli.feature")
 
@@ -38,13 +36,6 @@ def board_has_every_option(world):
 @given(parsers.parse('the board has no "{option}" option'))
 def board_lacks_option(world, option):
     world.remove_option(option)
-
-
-@when(parsers.parse('I run "{command}"'), target_fixture="result")
-def run_command(world, command):
-    program, *args = shlex.split(command)
-    assert program == "cyclix", command
-    return run_cyclix(world, *args)
 
 
 @then(parsers.parse('every line ends in "{text}"'))

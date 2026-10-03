@@ -16,7 +16,8 @@ Each scenario gets a `world` fixture (`fakes/world.py`): a temporary directory h
 
 - `fakes/bin/gh` supports only the `gh` commands listed in `docs/design/iteration-0.md`, "The adapters". Anything else exits 2 with "fake gh: unsupported command". Every call is appended to `calls.jsonl`.
 - `fakes/bin/fake-agent` follows `agent-script.json`, one entry per call, and prints the JSON shape of `claude -p --output-format json`.
-- `fakes/runner.py` runs `cyclix` with `run_cyclix(world, *args)`. `PATH` finds the fakes first. `CYCLIX_CONFIG` and `CYCLIX_STATE_DIR` point into the world.
+- `fakes/bin/systemctl` accepts only `--user daemon-reload`, `--user enable --now <unit>` and `--user disable --now <unit>`, and changes nothing. Every call is appended to `systemctl.jsonl`.
+- `fakes/runner.py` runs `cyclix` with `run_cyclix(world, *args)`. `PATH` finds the fakes first. `CYCLIX_CONFIG`, `CYCLIX_STATE_DIR` and `XDG_CONFIG_HOME` point into the world, so systemd units land in `xdg-config/systemd/user/`.
 
 ## Shared steps
 
@@ -33,6 +34,7 @@ These steps are defined in `conftest.py`, so any feature can use them.
 | `the agent answers "A"` | Given | Adds a fake agent step that answers A and exits 0. |
 | `the agent writes a plan, then commits a change` | Given | Adds a plan answer, then a build step that commits `change.txt`. |
 | `one pass runs` | When | Runs `cyclix run --once` and keeps it as `result`. |
+| `I run "cyclix ARGS"` | When | Runs `cyclix` with ARGS as a subprocess against the world. Its result is `result`. |
 | `the board shows #N in "S"` | Then | Checks the item's state on the board. |
 | `the event log holds a stage_run event for #N at stage "S" with outcome "O"` | Then | Reads `events/test.jsonl` in the state directory. |
 | `the S event's outcome is "O"` | Then | Checks that the event log holds exactly one event at stage S, with outcome O. |

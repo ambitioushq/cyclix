@@ -11,6 +11,8 @@ A world lives in one directory per scenario:
     state/             the state directory Cyclix runs against
     remote.git         a bare git repository that stands in for the GitHub remote
     config.toml        the tenant config Cyclix runs with
+    xdg-config/        XDG_CONFIG_HOME, so systemd user units land in the world
+    systemctl.jsonl    one line per fake systemctl call: {"argv": [...]}
 
 The fakes find the directory through the environment variable CYCLIX_FAKES_DIR.
 """
@@ -128,6 +130,9 @@ class World:
         self.state_dir = self.root / "state"
         self.remote = self.root / "remote.git"
         self.config = self.root / "config.toml"
+        self.xdg_config = self.root / "xdg-config"
+        self.units_dir = self.xdg_config / "systemd" / "user"
+        self.systemctl_path = self.root / "systemctl.jsonl"
 
     @classmethod
     def from_env(cls):

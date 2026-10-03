@@ -140,9 +140,13 @@ def find(path, tenant):
     if env := os.environ.get("CYCLIX_CONFIG"):
         return Path(env)
     if tenant is not None:
-        base = os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config"
-        return Path(base) / "cyclix" / f"{tenant}.toml"
+        return config_home() / "cyclix" / f"{tenant}.toml"
     raise ConfigError("no config file given: set CYCLIX_CONFIG or pass --tenant")
+
+
+def config_home():
+    """$XDG_CONFIG_HOME, else ~/.config."""
+    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
 
 
 def state_dir():

@@ -2,6 +2,7 @@
 
 import json
 import re
+import shlex
 from pathlib import Path
 
 import pytest
@@ -95,6 +96,13 @@ def agent_plans_and_builds(world):
 @when("one pass runs", target_fixture="result")
 def one_pass(world):
     return run_cyclix(world, "run", "--once")
+
+
+@when(parsers.parse('I run "{command}"'), target_fixture="result")
+def run_command(world, command):
+    program, *args = shlex.split(command)
+    assert program == "cyclix", command
+    return run_cyclix(world, *args)
 
 
 # Then
