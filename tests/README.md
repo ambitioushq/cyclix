@@ -32,4 +32,4 @@ These steps are defined in `conftest.py`, so any feature can use them.
 | `the board shows #N in "S"` | Then | Checks the item's state on the board. |
 | `the event log holds a stage_run event for #N at stage "S" with outcome "O"` | Then | Reads `events/test.jsonl` in the state directory. |
 | `it exits N` | Then | Checks the exit code of `result`. |
-| `it prints "T"` | Then | Checks that T is a whole line of `result`'s stdout. |
+| `it prints "T"` | Then | Checks that T is a whole line of `result`'s stdout. Write a quote inside T as `\"`. |
