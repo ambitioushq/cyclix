@@ -6,6 +6,7 @@ A world lives in one directory per scenario:
     calls.jsonl        one line per fake gh call: {"argv": [...], "exit": n}
     faults.json        faults to inject into fake gh calls
     agent-script.json  one entry per fake agent call
+    agent-pids.txt     the process IDs the fake agent ran as or started, one per line
     prompts/<n>.txt    the prompt the fake agent got on call n
     state/             the state directory Cyclix runs against
     remote.git         a bare git repository that stands in for the GitHub remote
@@ -47,6 +48,8 @@ AGENT_DEFAULTS = {
     "duration_ms": 1000,
     "num_turns": 1,
     "model": "claude-sonnet-5-5",
+    "sleep_seconds": 0,
+    "stdout": None,
 }
 
 CONFIG = f"""\
@@ -121,6 +124,7 @@ class World:
         self.faults_path = self.root / "faults.json"
         self.agent_script_path = self.root / "agent-script.json"
         self.prompts_dir = self.root / "prompts"
+        self.agent_pids_path = self.root / "agent-pids.txt"
         self.state_dir = self.root / "state"
         self.remote = self.root / "remote.git"
         self.config = self.root / "config.toml"
@@ -294,6 +298,16 @@ class World:
         script = self.agent_script()
         script.append({**AGENT_DEFAULTS, **step})
         self.agent_script_path.write_text(json.dumps(script, indent=2) + "\n")
+
+    def record_agent_pid(self, pid):
+        with self.agent_pids_path.open("a") as pids:
+            pids.write(f"{pid}\n")
+
+    def agent_pids(self):
+        """The process IDs of every fake agent call and the processes it started."""
+        if not self.agent_pids_path.exists():
+            return []
+        return [int(line) for line in self.agent_pids_path.read_text().split()]
 
     def prompts(self):
         return [p.read_text() for p in sorted(self.prompts_dir.glob("*.txt"), key=_call_number)]
