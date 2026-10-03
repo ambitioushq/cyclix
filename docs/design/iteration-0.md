@@ -152,15 +152,19 @@ The file opens in WAL mode with a busy timeout of five seconds, and every write 
 
 ## The adapters
 
-All GitHub calls go through `adapters/gh.py`, which runs `gh` with `--json` output where the command supports it, parses the JSON, and raises `GhError` with the exit code and stderr on failure. Nothing else in the engine calls `gh`.
+All GitHub calls go through `adapters/gh.py`, which runs `gh` with `--json` output where the command supports it, parses the JSON, and raises `GhError` with the exit code and stderr on failure. Nothing else in the engine calls `gh`. One call may take 60 seconds. A call that runs longer is a `GhError` with exit code 124 (settled in #9). There are no retries: the next timer tick runs the pass again.
 
-**Tracker** (`Tracker` protocol): `ready_items()`, `item_state(issue)`, `set_state(issue, state)`, `issue(issue)`. The GitHub implementation uses:
+**Tracker** (`Tracker` protocol): `ready_items()`, `items()`, `item_state(issue)`, `set_state(issue, state)`, `issue(issue)`. The GitHub implementation uses:
 
 - `gh project view <n> --owner <o> --format json` for the project ID
 - `gh project field-list <n> --owner <o> --format json` for the Status field and its option IDs, cached for the pass
 - `gh project item-list <n> --owner <o> --format json --limit <k>` for the items and their status
 - `gh project item-edit --id <item> --project-id <p> --field-id <f> --single-select-option-id <opt>` to move an item
 - `gh issue view <n> -R <repo> --json number,title,body,state,author,labels` to read an issue
+
+The tracker keeps only items whose issue belongs to `[codehost] repo`. A draft, a PR or another repo's issue is ignored, and so is an item whose option is not mapped in `[tracker.states]`. One tracker object serves one pass, and it reads the project ID and the Status field once. `gh project item-list` has no cursor, because `gh` pages through the board itself up to `--limit`. The tracker asks for 100 items, and when `totalCount` is larger it asks again with that count as the limit.
+
+**Ready items are taken oldest first, by issue number** (settled in #9). `gh project item-list` does not return an issue's creation time, and GitHub numbers a repo's issues in the order they are created. The one exception is an issue moved in from another repo, which gets a new, higher number when it is transferred. That issue waits behind the ones numbered before it, which is acceptable.
 
 **Code host** (`CodeHost` protocol): `push(worktree, branch)`, `open_pr(branch, title, body)`, `find_pr(branch)`, `pr_state(pr)`. The GitHub implementation uses `git push` and:
 
