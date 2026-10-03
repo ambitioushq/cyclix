@@ -162,11 +162,14 @@ All GitHub calls go through `adapters/gh.py`, which runs `gh` with `--json` outp
 - `gh project item-edit --id <item> --project-id <p> --field-id <f> --single-select-option-id <opt>` to move an item
 - `gh issue view <n> -R <repo> --json number,title,body,state,author,labels` to read an issue
 
-**Code host** (`CodeHost` protocol): `push(worktree, branch)`, `open_pr(branch, title, body)`, `find_pr(branch)`, `pr_state(pr)`. The GitHub implementation uses `git push` and:
+**Code host** (`CodeHost` protocol): `ensure_clone()`, `new_worktree(issue, slug, run_dir) -> Worktree`, `remove_worktree(worktree)`, `head_sha(worktree)`, `push(worktree)`, `find_pr(branch) -> PR | None`, `open_pr(branch, title, body) -> PR`, `pr_state(number) -> PRState`. Every failure raises `CodeHostError`. The GitHub implementation runs `git` for the clone's fetches, the worktrees and the push, and uses:
 
+- `gh repo clone <repo> <dir>` for the one clone, so `gh` picks the protocol and the credentials (settled in #10)
 - `gh pr create -R <repo> --head <branch> --base <base> --title <t> --body-file <f>`
 - `gh pr list -R <repo> --head <branch> --state all --json number,state,url`
 - `gh pr view <n> -R <repo> --json state,mergedAt,closedAt,headRefOid,url`
+
+`push` sets the upstream and never forces, so a push that would drop a commit on the remote branch fails. `find_pr` returns the newest PR on the branch in any state. `open_pr` first looks for an open PR on the branch and returns it, so a run that crashed after opening its PR never opens a second one. A closed or merged PR on the branch is not reused: a new one is opened (settled in #10). `pr_state` returns `open`, `merged` or `closed`, with the head SHA and the merge and close times.
 
 **Agent** (`Agent` protocol): `run(prompt, cwd, model) -> AgentResult`, where the result holds the text answer, exit code, model, input and output tokens, cost, duration and turns. The Claude Code implementation runs the configured command (by default `claude -p --output-format json`) with the prompt on stdin and the worktree as its working directory, and parses the JSON result. That JSON has no top-level `model` key: the model's name is the one key of `modelUsage`. The prompt and the full answer are saved in the run folder. Only numbers reach the event.
 
@@ -182,7 +185,9 @@ This follows the XDG convention, where a program keeps its settings under `~/.co
 
 ## Run folders and worktrees
 
-Each run gets `runs/<tenant>/<issue>/<run_id>/` under the state directory, holding the prompts, answers, `plan.md` and gate output. The tenant's repo is cloned once into `repos/<tenant>/`. Each run adds a git worktree on the branch `cyclix/<issue>-<slug>`, removed when the item reaches Done or Parked.
+Each run gets `runs/<tenant>/<issue>/<run_id>/` under the state directory, holding the prompts, answers, `plan.md` and gate output. The tenant's repo is cloned once into `repos/<tenant>/`. Each run adds a git worktree at `worktree/` inside its run folder, removed when the item reaches Done or Parked. The runner passes the run folder to `new_worktree`, because the code host does not know the run ID.
+
+The worktree is on the branch `cyclix/<issue>-<slug>`, made from the remote base right after a fetch, so it starts from the base as it is now. The slug is the issue title lower-cased, with each run of characters other than `a-z` and `0-9` turned into one hyphen, hyphens trimmed from both ends, and cut to 40 characters. A hyphen left at the end by the cut is dropped. "Add the state core" on #12 gives `cyclix/12-add-the-state-core`. Branch names were settled in #10: the `cyclix/` prefix marks every branch Cyclix made, and the earlier loop's `<type>/` prefix would need a type the issue does not carry.
 
 ## The event log, schema version 0
 
@@ -318,5 +323,5 @@ CI fails if any tracked file or commit message in a PR contains a name from a pr
 1. **The fake GitHub.** Settled in #4: the world model. See "The test footing".
 2. **One item at a time.** Is one In progress item per tenant right for Iteration 0? It keeps the sweep simple and is all a single maintainer needs at first.
 3. **Run limits.** A daily run count stands in for the budget cap until the operations area. Is six a day right for Cyclix's own tenant?
-4. **Branch names.** `cyclix/<issue>-<slug>`, or the earlier loop's `<type>/<issue>-<slug>`?
+4. **Branch names.** Settled in #10: `cyclix/<issue>-<slug>`. See "Run folders and worktrees".
 5. **The models.** Which models the plan and build stages use by default.
