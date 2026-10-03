@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 import pytest
+from fakes.runner import environment
 from fakes.world import World
 from pytest_bdd import given, parsers, then
 
@@ -35,9 +36,15 @@ def pytest_bdd_apply_tag(tag, function):
 
 
 @pytest.fixture
-def world(tmp_path):
-    """A fresh fake world for each scenario: issues, board, PRs, state dir and a bare remote."""
-    return World(tmp_path).create()
+def world(tmp_path, monkeypatch):
+    """A fresh fake world for each scenario: issues, board, PRs, state dir and a bare remote.
+
+    The environment points at the fakes too, so code called in-process runs the fake gh.
+    """
+    world = World(tmp_path).create()
+    for key, value in environment(world).items():
+        monkeypatch.setenv(key, value)
+    return world
 
 
 # Given
