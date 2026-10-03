@@ -240,6 +240,18 @@ class SqliteStateCore:
             for run_id, t, issue, stage, phase, round_, started, fields in rows
         ]
 
+    def runs_today(self, tenant):
+        """How many runs began on today's UTC date. A run counts once, however many stages it ran."""
+        today = self.clock().astimezone(UTC).date()
+        rows = self.db.execute(
+            "SELECT run_id, MIN(started_at) FROM runs WHERE tenant = ? GROUP BY run_id", (tenant,)
+        )
+        return sum(
+            1
+            for _, started in rows
+            if datetime.fromisoformat(started).astimezone(UTC).date() == today
+        )
+
     # Checks
 
     def record_check(self, run_id, sha, check, passed):

@@ -48,3 +48,6 @@ class Tracker(Protocol):
 
     def issue(self, issue: int) -> Issue:
         """Read the issue itself."""
+
+    def comment(self, issue: int, body: str) -> None:
+        """Post a comment on the issue."""

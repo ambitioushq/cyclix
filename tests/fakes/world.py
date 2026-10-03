@@ -184,6 +184,7 @@ class World:
                 "state": "OPEN",
                 "author": {"login": "maintainer"},
                 "labels": [],
+                "comments": [],
             }
         )
         if state is not None:
@@ -206,6 +207,11 @@ class World:
         items = data["board"]["items"]
         items.append({"id": f"PVTI_draft{len(items)}", "draft": title, "status": state})
         self.save(data)
+
+    def comments(self, number):
+        """The bodies of the comments on an issue, oldest first."""
+        issue = next(i for i in self.load()["issues"] if i["number"] == number)
+        return [comment["body"] for comment in issue.get("comments", [])]
 
     def board_state(self, number):
         return self._local_item(number)["status"]

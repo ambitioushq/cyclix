@@ -73,6 +73,9 @@ class GitHubTracker:
             labels=tuple(label["name"] for label in raw["labels"]),
         )
 
+    def comment(self, issue, body):
+        gh.run("issue", "comment", str(issue), "-R", self.repo, "--body", body)
+
     def board(self):
         """The project ID, the Status field ID and its option IDs by name, read once."""
         if self._board is None:
