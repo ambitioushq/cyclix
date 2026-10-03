@@ -20,6 +20,7 @@ def environment(world):
             ENV: str(world.root),
             "CYCLIX_CONFIG": str(world.config),
             "CYCLIX_STATE_DIR": str(world.state_dir),
+            "XDG_CONFIG_HOME": str(world.xdg_config),
         }
     )
     return env
