@@ -87,15 +87,15 @@ def pr_is_open_now(world, number):
 
 @then(
     parsers.parse(
-        'the event log holds a station_run event for #{number:d} at station "{station}" '
+        'the event log holds a stage_run event for #{number:d} at stage "{stage}" '
         'with outcome "{outcome}"'
     )
 )
-def event_logged(world, number, station, outcome):
-    wanted = {"cyclix.issue.id": number, "cyclix.station": station, "cyclix.outcome": outcome}
+def event_logged(world, number, stage, outcome):
+    wanted = {"cyclix.issue.id": number, "cyclix.stage": stage, "cyclix.outcome": outcome}
     events = world.events()
     assert any(
-        e["body"] == "station_run" and all(e["attributes"].get(k) == v for k, v in wanted.items())
+        e["body"] == "stage_run" and all(e["attributes"].get(k) == v for k, v in wanted.items())
         for e in events
     ), json.dumps(events, indent=2)
 

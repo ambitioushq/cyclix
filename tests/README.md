@@ -12,7 +12,7 @@ Every scenario carries the tag of the issue that introduced it, such as `@issue-
 
 Each scenario gets a `world` fixture (`fakes/world.py`): a temporary directory holding the fake GitHub world, a state directory, a bare git remote with one commit on `main`, and a test config. Steps read and change it through methods such as `world.add_issue(...)`, `world.board_state(n)` and `world.add_fault(...)`.
 
-- `fakes/bin/gh` supports only the `gh` commands listed in `docs/design/spine.md`, "The adapters". Anything else exits 2 with "fake gh: unsupported command". Every call is appended to `calls.jsonl`.
+- `fakes/bin/gh` supports only the `gh` commands listed in `docs/design/iteration-0.md`, "The adapters". Anything else exits 2 with "fake gh: unsupported command". Every call is appended to `calls.jsonl`.
 - `fakes/bin/fake-agent` follows `agent-script.json`, one entry per call, and prints the JSON shape of `claude -p --output-format json`.
 - `fakes/runner.py` runs `cyclix` with `run_cyclix(world, *args)`. `PATH` finds the fakes first. `CYCLIX_CONFIG` and `CYCLIX_STATE_DIR` point into the world.
 
@@ -30,6 +30,6 @@ These steps are defined in `conftest.py`, so any feature can use them.
 | `"C" fails with exit E and stderr "M" once` | Given | The same, and prints M on stderr. |
 | `the agent answers "A"` | Given | Adds a fake agent step that answers A and exits 0. |
 | `the board shows #N in "S"` | Then | Checks the item's state on the board. |
-| `the event log holds a station_run event for #N at station "S" with outcome "O"` | Then | Reads `events/test.jsonl` in the state directory. |
+| `the event log holds a stage_run event for #N at stage "S" with outcome "O"` | Then | Reads `events/test.jsonl` in the state directory. |
 | `it exits N` | Then | Checks the exit code of `result`. |
 | `it prints "T"` | Then | Checks that T is a whole line of `result`'s stdout. |
