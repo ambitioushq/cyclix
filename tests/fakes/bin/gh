@@ -38,6 +38,7 @@ COMMANDS = {
         {"--id", "--project-id", "--field-id", "--single-select-option-id", "--format"},
     ),
     ("issue", "view"): (1, {"-R", "--repo", "--json"}),
+    ("issue", "comment"): (1, {"-R", "--repo", "--body"}),
     ("pr", "create"): (0, {"-R", "--repo", "--head", "--base", "--title", "--body-file"}),
     ("pr", "list"): (0, {"-R", "--repo", "--head", "--state", "--json"}),
     ("pr", "view"): (1, {"-R", "--repo", "--json"}),
@@ -197,6 +198,24 @@ def project_item_edit(world, data, positional, flags):
 ISSUE_FIELDS = {"number", "title", "body", "state", "author", "labels", "url"}
 
 
+def issue_comment(world, data, positional, flags):
+    check_repo(data, flags)
+    if "--body" not in flags:
+        raise unsupported()
+    number = int(positional[0])
+    issue = issue_by_number(data, number)
+    if issue is None:
+        raise Exit(
+            1,
+            f"GraphQL: Could not resolve to an issue or pull request with the number of "
+            f"{number}. (repository.issue)\n",
+        )
+    comments = issue.setdefault("comments", [])
+    comments.append({"author": "cyclix", "body": flags["--body"]})
+    world.save(data)
+    return f"{repo_url(data)}/issues/{number}#issuecomment-{len(comments)}\n"
+
+
 def issue_view(world, data, positional, flags):
     check_repo(data, flags)
     number = int(positional[0])
@@ -337,6 +356,7 @@ HANDLERS = {
     ("project", "item-list"): project_item_list,
     ("project", "item-edit"): project_item_edit,
     ("issue", "view"): issue_view,
+    ("issue", "comment"): issue_comment,
     ("pr", "create"): pr_create,
     ("pr", "list"): pr_list,
     ("pr", "view"): pr_view,

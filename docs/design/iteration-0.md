@@ -95,6 +95,7 @@ class StateCore(Protocol):
     def add_fields(self, run_id: str, fields: dict[str, object]) -> None: ...
     def end_run(self, run_id: str, outcome: str, reason: str) -> dict: ...
     def open_runs(self, tenant: str) -> list[RunState]: ...
+    def runs_today(self, tenant: str) -> int: ...
     def record_check(self, run_id: str, sha: str, check: str, passed: bool) -> None: ...
     def best_verified(self, tenant: str, issue: int) -> str | None: ...
     def add_spend(self, tenant: str, usd: float, tokens: int) -> None: ...
@@ -136,6 +137,8 @@ The three are kept apart because each is filled by a different side at a differe
 
 **The fields build up into the event.** `begin_run` seeds the fields with `cyclix.tenant`, `cyclix.issue.id`, `cyclix.run.id`, `cyclix.stage` and `cyclix.round`. `add_fields` merges more in, and adding `cyclix.round` also moves the `round` column, so the two can't disagree. `end_run` adds `cyclix.outcome` and `cyclix.outcome.reason`, and returns the whole dict for the event writer.
 
+**`runs_today`** counts the tenant's runs that began on the current UTC date. A run counts once, however many stages it ran, and a run that crashed still counts. The sweep compares it with `limits.runs_per_day` (settled in #13).
+
 **The best verified commit** is the last commit whose checks all passed, counting only checks in a stage row that ended with an outcome other than `crashed`. A row that is still open, or that crashed, may have stopped partway through its checks.
 
 Tables in schema version 1:
@@ -154,13 +157,14 @@ The file opens in WAL mode with a busy timeout of five seconds, and every write 
 
 All GitHub calls go through `adapters/gh.py`, which runs `gh` with `--json` output where the command supports it, parses the JSON, and raises `GhError` with the exit code and stderr on failure. Nothing else in the engine calls `gh`. One call may take 60 seconds. A call that runs longer is a `GhError` with exit code 124 (settled in #9). There are no retries: the next timer tick runs the pass again.
 
-**Tracker** (`Tracker` protocol): `ready_items()`, `items()`, `item_state(issue)`, `set_state(issue, state)`, `issue(issue)`. The GitHub implementation uses:
+**Tracker** (`Tracker` protocol): `ready_items()`, `items()`, `item_state(issue)`, `set_state(issue, state)`, `issue(issue)`, `comment(issue, body)`. The GitHub implementation uses:
 
 - `gh project view <n> --owner <o> --format json` for the project ID
 - `gh project field-list <n> --owner <o> --format json` for the Status field and its option IDs, cached for the pass
 - `gh project item-list <n> --owner <o> --format json --limit <k>` for the items and their status
 - `gh project item-edit --id <item> --project-id <p> --field-id <f> --single-select-option-id <opt>` to move an item
 - `gh issue view <n> -R <repo> --json number,title,body,state,author,labels` to read an issue
+- `gh issue comment <n> -R <repo> --body <text>` to say why an item moved
 
 The tracker keeps only items whose issue belongs to `[codehost] repo`. A draft, a PR or another repo's issue is ignored, and so is an item whose option is not mapped in `[tracker.states]`. One tracker object serves one pass, and it reads the project ID and the Status field once. `gh project item-list` has no cursor, because `gh` pages through the board itself up to `--limit`. The tracker asks for 100 items, and when `totalCount` is larger it asks again with that count as the limit.
 
@@ -189,7 +193,7 @@ This follows the XDG convention, where a program keeps its settings under `~/.co
 
 ## Run folders and worktrees
 
-Each run gets `runs/<tenant>/<issue>/<run_id>/` under the state directory, holding the prompts, answers, `plan.md` and gate output. The tenant's repo is cloned once into `repos/<tenant>/`. Each run adds a git worktree at `worktree/` inside its run folder, removed when the item reaches Done or Parked. The runner passes the run folder to `new_worktree`, because the code host does not know the run ID.
+Each run gets `runs/<tenant>/<issue>/<run_id>/` under the state directory, holding the prompts, answers, `plan.md` and gate output. The tenant's repo is cloned once into `repos/<tenant>/`. Each run adds a git worktree at `worktree/` inside its run folder. The worktree is removed when the run's claim is released. The runner passes the run folder to `new_worktree`, because the code host does not know the run ID.
 
 The worktree is on the branch `cyclix/<issue>-<slug>`, made from the remote base right after a fetch, so it starts from the base as it is now. The slug is the issue title lower-cased, with each run of characters other than `a-z` and `0-9` turned into one hyphen, hyphens trimmed from both ends, and cut to 40 characters. A hyphen left at the end by the cut is dropped. "Add the state core" on #12 gives `cyclix/12-add-the-state-core`. Branch names were settled in #10: the `cyclix/` prefix marks every branch Cyclix made, and the earlier loop's `<type>/` prefix would need a type the issue does not carry.
 
@@ -300,11 +304,23 @@ A check that needs an earlier one is left out when that one fails: no config mea
 `cyclix run --once` makes one pass for one tenant, under a file lock so two passes never overlap:
 
 1. Read the board's items and their states.
-2. Correct SQLite to match the board. A claim on an item a human moved out of In progress is released. An open run with no live process is ended with outcome `crashed`, its event is written, and its item is parked with the reason.
+2. Correct SQLite to match the board. An open run with no live process is ended with outcome `crashed`, its event is written, and its item is parked with the reason "run crashed in phase <phase>". Then a claim on an item that is in neither In progress nor In review is released.
 3. Run the reconciler on every item In review.
 4. If no item is In progress and the day's run limit is not reached, admit the oldest Ready item and run plan, build, gate, adversarial review and PR in order. Stop at the first stage that does not pass.
 
-One item at a time per tenant in Iteration 0.
+One item at a time per tenant in Iteration 0. `src/cyclix/runner.py` holds the sweep and the order of the stages.
+
+**The lock decides which runs crashed** (settled in #13). The lock is a `flock` on `<state_dir>/<tenant>.lock`. A pass that finds it held prints "another pass is running" and exits 0. Only the pass holding the lock runs stages for the tenant. So any run still open when a pass takes the lock was left by a pass that died, and the sweep ends it as `crashed`. The state core keeps no process ID. A pass that is alive but hung keeps the lock, and later passes wait behind it.
+
+**A claim lasts while the engine holds the item** (settled in #13). The engine holds an item while it is In progress or In review. A claim on an item in any other state is released, with the run's worktree. This covers a human's move, and the engine's own move to Parked or Needs decision. The reconciler releases the claim when it moves an item from In review.
+
+**Each move out of In progress says why in a comment on the issue** (settled in #13). The comment reads `<state>: <reason>`, such as "Parked: gate command 2 exited 1". A human sees the reason where they act on the item. The same reason is in the stage-run event.
+
+**A stage run.** The runner begins the stage's row, calls the stage, and adds the config version, the duration and the branch to the stage's fields. A stage that raises an error ends as `failed`, with the error as the reason. Each stage returns a `StageResult`: an outcome, a reason, fields for its event, and the state to move to if it stops the run. The default is Parked. When a stage stops the run, the runner first moves the item if it is still In progress, then ends the row and writes the event. A failed move leaves the row open, so the next pass finds it as crashed. A reason longer than 500 characters is cut to fit the event.
+
+**Admission writes its own event.** The runner claims the item, begins an `admission` row, moves the item to In progress, reads the issue and makes the worktree. Each step after the claim sets a phase first: `move`, then `worktree`.
+
+`cyclix run --once` exits 0 when the pass completes, whatever the run's outcome. It exits 1 when the pass stops on an error outside a stage, such as a failed board read.
 
 ## The test footing
 

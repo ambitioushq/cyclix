@@ -13,10 +13,11 @@ def lines(result):
     return result.stdout.splitlines()
 
 
-def test_run_once_is_not_built_yet(world):
+def test_run_once_with_a_bad_config_fails(world):
+    world.config.write_text("[tenant]\n")
     result = run_cyclix(world, "run", "--once")
-    assert result.returncode == 3
-    assert result.stderr == "cyclix run: not built yet\n"
+    assert result.returncode == 1
+    assert result.stderr == 'config: [tenant] is missing "name"\n'
 
 
 def test_run_without_once_is_a_usage_error(world):

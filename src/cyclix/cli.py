@@ -8,7 +8,7 @@ import shutil
 import sys
 import tempfile
 
-from cyclix import __version__, config
+from cyclix import __version__, config, runner
 from cyclix.adapters import gh
 
 OK, FAILED, USAGE, NOT_BUILT = 0, 1, 2, 3
@@ -43,8 +43,12 @@ def build_parser():
 
 
 def run_command(args):
-    print("cyclix run: not built yet", file=sys.stderr)
-    return NOT_BUILT
+    try:
+        cfg = config.load(tenant=args.tenant)
+    except config.ConfigError as error:
+        print(error, file=sys.stderr)
+        return FAILED
+    return runner.sweep(cfg)
 
 
 def check_command(args):
