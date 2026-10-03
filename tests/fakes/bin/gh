@@ -142,20 +142,32 @@ def project_item_list(world, data, positional, flags):
     limit = int(flags.get("--limit", 30))
     items = []
     for item in board["items"][:limit]:
-        issue = issue_by_number(data, item["issue"])
-        entry = {
-            "content": {
-                "body": issue["body"],
-                "number": issue["number"],
-                "repository": data["repo"],
+        if "draft" in item:
+            title = item["draft"]
+            entry = {
+                "content": {"body": "", "title": title, "type": "DraftIssue"},
+                "id": item["id"],
+                "title": title,
+            }
+        else:
+            repo = item.get("repo", data["repo"])
+            if repo == data["repo"]:
+                issue = issue_by_number(data, item["issue"])
+            else:
+                issue = {"number": item["issue"], "title": f"Issue {item['issue']}", "body": ""}
+            entry = {
+                "content": {
+                    "body": issue["body"],
+                    "number": issue["number"],
+                    "repository": repo,
+                    "title": issue["title"],
+                    "type": "Issue",
+                    "url": f"https://github.com/{repo}/issues/{issue['number']}",
+                },
+                "id": item["id"],
+                "repository": f"https://github.com/{repo}",
                 "title": issue["title"],
-                "type": "Issue",
-                "url": f"{repo_url(data)}/issues/{issue['number']}",
-            },
-            "id": item["id"],
-            "repository": repo_url(data),
-            "title": issue["title"],
-        }
+            }
         if item["status"] is not None:  # real gh leaves the key out when no status is set
             entry["status"] = item["status"]
         items.append(entry)
