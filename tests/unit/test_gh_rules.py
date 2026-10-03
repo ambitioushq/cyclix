@@ -1,6 +1,7 @@
 """Rules of the gh runner: every failure becomes a GhError."""
 
 import pytest
+
 from cyclix.adapters import gh
 
 
@@ -29,3 +30,14 @@ def test_output_that_is_not_json_is_a_gh_error(world):
 def test_json_output_is_parsed(world):
     fields = gh.json("project", "field-list", "1", "--owner", "o", "--format", "json")["fields"]
     assert "Status" in [field["name"] for field in fields]
+
+
+def test_a_call_that_hangs_is_a_gh_error(monkeypatch, tmp_path):
+    hang = tmp_path / "gh"
+    hang.write_text("#!/bin/sh\nexec /bin/sleep 5\n")
+    hang.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.setattr(gh, "TIMEOUT", 0.1)
+    with pytest.raises(gh.GhError) as error:
+        gh.run("auth", "status")
+    assert (error.value.code, error.value.stderr) == (124, "no answer after 0.1 seconds")
