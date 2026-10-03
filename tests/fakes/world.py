@@ -188,11 +188,23 @@ class World:
             )
         self.save(data)
 
+    def add_foreign_item(self, repo, number, state):
+        """Put an issue of another repository on the board."""
+        data = self.load()
+        data["board"]["items"].append(
+            {"id": f"PVTI_{slug(repo)}_{number}", "issue": number, "repo": repo, "status": state}
+        )
+        self.save(data)
+
+    def add_draft_item(self, title, state):
+        """Put a draft item, which has no issue, on the board."""
+        data = self.load()
+        items = data["board"]["items"]
+        items.append({"id": f"PVTI_draft{len(items)}", "draft": title, "status": state})
+        self.save(data)
+
     def board_state(self, number):
-        for item in self.load()["board"]["items"]:
-            if item["issue"] == number:
-                return item["status"]
-        raise LookupError(f"#{number} is not on the board")
+        return self._local_item(number)["status"]
 
     def remove_option(self, name):
         """Take a Status option off the board."""
@@ -202,9 +214,13 @@ class World:
         self.save(data)
 
     def item_id(self, number):
+        return self._local_item(number)["id"]
+
+    def _local_item(self, number):
+        """The board item for an issue of this world's repo."""
         for item in self.load()["board"]["items"]:
-            if item["issue"] == number:
-                return item["id"]
+            if "draft" not in item and "repo" not in item and item["issue"] == number:
+                return item
         raise LookupError(f"#{number} is not on the board")
 
     # Pull requests
