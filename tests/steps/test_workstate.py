@@ -1,6 +1,7 @@
 import pytest
 from pytest_bdd import parsers, scenarios, then, when
 
+from cyclix import config
 from cyclix.workstate import IllegalMove, State, Writer, allowed, move
 
 scenarios("workstate.feature")
@@ -19,7 +20,6 @@ def seen():
 
 @when(parsers.parse('the PR station tries to move #{number:d} to "{state}"'))
 def pr_station_moves(world, seen, number, state):
-    from cyclix import config
     from cyclix.adapters.github_tracker import GitHubTracker  # built by #9
 
     tracker = GitHubTracker(config.load(world.config))
