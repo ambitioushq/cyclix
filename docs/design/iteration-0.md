@@ -15,7 +15,7 @@ A minimal stage does real work in the simplest way that carries a real issue. A 
 | Stage | Minimal behaviour | Replaced by |
 | --- | --- | --- |
 | Admission | Takes the oldest open issue in Ready on the configured board, from the configured repo. Ignores everything not on the board. | The admission area (the Ready contract, and promotion from Next) |
-| Plan | One agent call that reads the issue and writes `plan.md` in the run folder. If the agent's answer starts with `STOP:`, the item is parked with that sentence as the reason. | The plan area |
+| Plan | One agent call that reads the issue. The stage saves the answer as `plan.md` in the run folder. If the agent's answer starts with `STOP:`, the item is parked with that sentence as the reason. | The plan area |
 | Build | One agent call in the run's worktree, given the issue and the plan, that leaves its work committed on the run's branch. | The build area |
 | Gate | Runs the tenant's gate commands in the worktree. Records each command's exit code against the head SHA. Any failure parks the item: no fix rounds in Iteration 0. | The gate area |
 | Adversarial review | Records itself as `skipped`. | The adversarial review area |
@@ -49,6 +49,7 @@ src/cyclix/
   stages/
     base.py          the Stage protocol and the run context
     admission.py plan.py build.py gate.py adversarial_review.py pr.py reconciler.py
+    prompts/         plan.txt build.txt: the agent prompts, so a prompt changes without code
   install.py         writes the systemd user units
 tests/
   features/          Gherkin feature files, the spec
@@ -195,7 +196,9 @@ This follows the XDG convention, where a program keeps its settings under `~/.co
 
 Each run gets `runs/<tenant>/<issue>/<run_id>/` under the state directory, holding the prompts, answers, `plan.md` and gate output. The tenant's repo is cloned once into `repos/<tenant>/`. Each run adds a git worktree at `worktree/` inside its run folder. The worktree is removed when the run's claim is released. The runner passes the run folder to `new_worktree`, because the code host does not know the run ID.
 
-The worktree is on the branch `cyclix/<issue>-<slug>`, made from the remote base right after a fetch, so it starts from the base as it is now. The slug is the issue title lower-cased, with each run of characters other than `a-z` and `0-9` turned into one hyphen, hyphens trimmed from both ends, and cut to 40 characters. A hyphen left at the end by the cut is dropped. "Add the state core" on #12 gives `cyclix/12-add-the-state-core`. Branch names were settled in #10: the `cyclix/` prefix marks every branch Cyclix made, and the earlier loop's `<type>/` prefix would need a type the issue does not carry.
+The worktree is on the branch `cyclix/<issue>-<slug>`, made from the remote base right after a fetch, so it starts from the base as it is now.
+
+**A later run on the same issue reuses its branch** (settled in #14). When a human moves an item back to Ready after an earlier run, that run's local branch is still in the clone, because removing a worktree keeps its branch. `new_worktree` checks out the existing branch when there is one, and makes it from `origin/<base>` only when there is none. The new run goes on from the earlier run's commits. Its PR stage finds the PR already open on the branch through `open_pr`, so a run that crashed after opening its PR never leads to a second PR, and nothing is force-pushed. The slug is the issue title lower-cased, with each run of characters other than `a-z` and `0-9` turned into one hyphen, hyphens trimmed from both ends, and cut to 40 characters. A hyphen left at the end by the cut is dropped. "Add the state core" on #12 gives `cyclix/12-add-the-state-core`. Branch names were settled in #10: the `cyclix/` prefix marks every branch Cyclix made, and the earlier loop's `<type>/` prefix would need a type the issue does not carry.
 
 ## The event log, schema version 0
 
@@ -307,6 +310,10 @@ A check that needs an earlier one is left out when that one fails: no config mea
 2. Correct SQLite to match the board. An open run with no live process is ended with outcome `crashed`, its event is written, and its item is parked with the reason "run crashed in phase <phase>". Then a claim on an item that is in neither In progress nor In review is released.
 3. Run the reconciler on every item In review.
 4. If no item is In progress and the day's run limit is not reached, admit the oldest Ready item and run plan, build, gate, adversarial review and PR in order. Stop at the first stage that does not pass.
+
+**The reconciler writes an event only when it acts** (settled in #14). The sweep runs on every timer tick, so an open PR is seen many times. An item whose PR is still open, or has no PR on its branch, stays In review and writes nothing. When the PR has merged or closed, the reconciler moves the item and writes one `reconciler` event. The event goes under the run ID of the item's claim. An item with no claim, such as one a human moved to In review, gets a new run ID, and that run counts toward `limits.runs_per_day`. The claim is released after the reconciler's row, whether it passed or failed, so a failed reconciler tries again on the next pass under a new run.
+
+**A park from In review says why in a comment too** (settled in #14). A PR closed without merging parks its item with the comment "Parked: PR closed without merge". A move to Done posts nothing, because the merged PR already says so.
 
 One item at a time per tenant in Iteration 0. `src/cyclix/runner.py` holds the sweep and the order of the stages.
 

@@ -310,6 +310,11 @@ class World:
         script.append({**AGENT_DEFAULTS, **step})
         self.agent_script_path.write_text(json.dumps(script, indent=2) + "\n")
 
+    def add_plan_and_commit(self):
+        """Script a plan answer, then a build that commits one file."""
+        self.add_agent_step(answer="## Approach\nChange one file.\n")
+        self.add_agent_step(files={"change.txt": "a change\n"}, commit=True, answer="done")
+
     def record_agent_pid(self, pid):
         with self.agent_pids_path.open("a") as pids:
             pids.write(f"{pid}\n")

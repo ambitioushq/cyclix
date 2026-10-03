@@ -1,6 +1,6 @@
 Feature: One pass of the loop
 
-  @issue-13 @xfail-until-14
+  @issue-13
   Scenario: A Ready issue runs through every stage to a PR
     Given an issue #12 in state "Ready" on the board
     And the agent writes a plan, then commits a change
@@ -10,7 +10,7 @@ Feature: One pass of the loop
     And the board shows #12 in "In review"
     And the event log holds stage_run events for #12 at admission, plan, build, gate, adversarial_review and pr
 
-  @issue-13 @xfail-until-14
+  @issue-13
   Scenario: A failing stage stops the run and parks the item
     Given an issue #12 in state "Ready" on the board
     And the gate's second command fails

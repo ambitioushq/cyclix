@@ -85,7 +85,17 @@ def agent_answers(world, answer):
     world.add_agent_step(answer=answer)
 
 
+@given("the agent writes a plan, then commits a change")
+def agent_plans_and_builds(world):
+    world.add_plan_and_commit()
+
+
 # When
+
+
+@when("one pass runs", target_fixture="result")
+def one_pass(world):
+    return run_cyclix(world, "run", "--once")
 
 
 @when(parsers.parse('I run "{command}"'), target_fixture="result")
@@ -121,6 +131,16 @@ def event_logged(world, number, stage, outcome):
         e["body"] == "stage_run" and all(e["attributes"].get(k) == v for k, v in wanted.items())
         for e in events
     ), json.dumps(events, indent=2)
+
+
+@then(parsers.parse('the {stage} event\'s outcome is "{outcome}"'))
+def stage_outcome(world, result, stage, outcome):
+    outcomes = [
+        e["attributes"]["cyclix.outcome"]
+        for e in world.events()
+        if e["attributes"]["cyclix.stage"] == stage
+    ]
+    assert outcomes == [outcome], result.stdout + result.stderr
 
 
 @then(parsers.parse("it exits {code:d}"))

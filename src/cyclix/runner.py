@@ -2,7 +2,7 @@
 
 1. Read the board.
 2. Correct the state core to match it. The tracker wins every disagreement.
-3. Run the reconciler on every item In review. The reconciler comes with #14.
+3. Run the reconciler on every item In review.
 4. If no item is In progress and the day's run limit is not reached, admit the
    oldest Ready item and run it through STAGES. Stop at the first stage whose
    outcome is not passed or skipped.
@@ -21,20 +21,26 @@ from datetime import UTC, datetime
 from cyclix.adapters import gh
 from cyclix.adapters.claude_code import ClaudeCode
 from cyclix.adapters.codehost import CodeHostError, Worktree
-from cyclix.adapters.github_codehost import GitHubCodeHost, slug
+from cyclix.adapters.github_codehost import GitHubCodeHost
 from cyclix.adapters.github_tracker import GitHubTracker
 from cyclix.adapters.tracker import TrackerError
 from cyclix.events import log, schema
 from cyclix.events.log import EventError
-from cyclix.stages.base import GO_ON, RunContext, StageResult
+from cyclix.stages import admission, reconciler
+from cyclix.stages.adversarial_review import AdversarialReview
+from cyclix.stages.base import GO_ON, StageResult
+from cyclix.stages.build import Build
+from cyclix.stages.gate import Gate
+from cyclix.stages.plan import Plan
+from cyclix.stages.pr import PR
 from cyclix.state.core import RunStart, StateError
 from cyclix.state.sqlite import SqliteStateCore
 from cyclix.workstate import IllegalMove, State, Writer, move
 
 OK, FAILED = 0, 1
 
-# The stages after admission, in order. #14 adds plan, build, gate, adversarial_review and pr.
-STAGES = ()
+# The stages after admission, in order.
+STAGES = (Plan(), Build(), Gate(), AdversarialReview(), PR())
 
 # While an item is in one of these states the engine holds it, so its claim stays.
 HELD = frozenset({State.IN_PROGRESS, State.IN_REVIEW})
@@ -87,10 +93,12 @@ class Sweep:
         self.agent = agent
 
     def run(self):
+        items = self.tracker.items()
         # Issue number -> state, oldest issue first. Kept up to date with the pass's own moves.
-        board = {item.issue: item.state for item in self.tracker.items()}
+        board = {item.issue: item.state for item in items}
         self.end_crashed_runs(board)
         self.release_claims(board)
+        self.reconcile([item for item in items if board[item.issue] is State.IN_REVIEW], board)
         self.admit_and_run(board)
 
     # Correcting the state core
@@ -111,6 +119,28 @@ class Sweep:
             if board.get(claim.issue) not in HELD:
                 self.release(claim.issue, claim.run_id)
 
+    # Reconciling
+
+    def reconcile(self, items, board):
+        """Carry each item In review to where its PR ended up. An open PR writes no event.
+
+        The reconciler's row goes under the claim's run, or a new run when the item
+        has no claim. Either way the claim is released after it, so a reconciler
+        that failed tries again on the next pass under a new run.
+        """
+        claims = {claim.issue: claim.run_id for claim in self.state.claims(self.tenant)}
+        for item in items:
+            pr = reconciler.ended_pr(self.codehost, item)
+            if pr is None:
+                continue
+            run_id = claims.get(item.issue) or new_run_id(item.issue)
+            work = functools.partial(
+                reconciler.reconcile, self.state, self.tracker, run_id, item, pr
+            )
+            if self.run_stage(item.issue, run_id, reconciler.name, work):
+                board[item.issue] = State.DONE if pr.state == "merged" else State.PARKED
+            self.release(item.issue, run_id)
+
     # Running
 
     def admit_and_run(self, board):
@@ -124,26 +154,19 @@ class Sweep:
         if not ready:
             return
         issue = ready[0]
-        run_id = f"r-{datetime.now(UTC):%Y%m%d-%H%M%S}-{issue}"
+        run_id = new_run_id(issue)
         if not self.state.claim(self.tenant, issue, run_id):
             return
         admitted = {}
 
         def admit():
-            self.state.set_phase(run_id, "move")
-            move(self.tracker, issue, State.READY, State.IN_PROGRESS, Writer.ADMISSION)
-            details = self.tracker.issue(issue)
-            self.state.set_phase(run_id, "worktree")
-            run_dir = self.run_dir(issue, run_id)
-            worktree = self.codehost.new_worktree(issue, slug(details.title), run_dir)
-            admitted["ctx"] = RunContext(
-                config=self.config, state=self.state, tracker=self.tracker,
-                codehost=self.codehost, agent=self.agent, run_id=run_id, issue=details,
-                worktree=worktree, run_dir=run_dir,
+            result, admitted["ctx"] = admission.admit(
+                self.config, self.state, self.tracker, self.codehost, self.agent, issue, run_id,
+                self.run_dir(issue, run_id),
             )  # fmt: skip
-            return StageResult("passed", fields={schema.HEAD_NAME: worktree.branch})
+            return result
 
-        if not self.run_stage(issue, run_id, "admission", admit):
+        if not self.run_stage(issue, run_id, admission.name, admit):
             return
         ctx = admitted["ctx"]
         for stage in STAGES:
@@ -198,6 +221,10 @@ class Sweep:
 
     def run_dir(self, issue, run_id):
         return self.config.state_dir / "runs" / self.tenant / str(issue) / run_id
+
+
+def new_run_id(issue):
+    return f"r-{datetime.now(UTC):%Y%m%d-%H%M%S}-{issue}"
 
 
 def writer_for(stage):
