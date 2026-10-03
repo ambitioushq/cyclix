@@ -107,4 +107,5 @@ def exits_with(result, code):
 
 @then(parsers.parse('it prints "{text}"'))
 def prints(result, text):
+    text = text.replace('\\"', '"')  # a quote inside the quoted text is written \"
     assert text in result.stdout.splitlines(), result.stdout

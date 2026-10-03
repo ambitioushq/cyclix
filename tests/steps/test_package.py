@@ -6,16 +6,12 @@ import sys
 from importlib.metadata import distribution
 from pathlib import Path
 
-import pytest
-from pytest_bdd import given, parsers, scenario, when
+from pytest_bdd import given, parsers, scenarios, when
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-@pytest.mark.xfail(reason="the CLI is built in #5", strict=True)
-@scenario("package.feature", "The CLI prints the version")
-def test_the_cli_prints_the_version():
-    pass
+scenarios("package.feature")
 
 
 @given("Cyclix is installed from the working tree")

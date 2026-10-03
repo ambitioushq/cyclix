@@ -2,7 +2,7 @@
 
 A world lives in one directory per scenario:
 
-    world.json         issues, the board and PRs
+    world.json         issues, the board, PRs, and whether gh is signed in
     calls.jsonl        one line per fake gh call: {"argv": [...], "exit": n}
     faults.json        faults to inject into fake gh calls
     agent-script.json  one entry per fake agent call
@@ -194,6 +194,13 @@ class World:
                 return item["status"]
         raise LookupError(f"#{number} is not on the board")
 
+    def remove_option(self, name):
+        """Take a Status option off the board."""
+        data = self.load()
+        field = data["board"]["status_field"]
+        field["options"] = [o for o in field["options"] if o["name"] != name]
+        self.save(data)
+
     def item_id(self, number):
         for item in self.load()["board"]["items"]:
             if item["issue"] == number:
@@ -225,6 +232,14 @@ class World:
 
     def prs_for(self, issue):
         return [pr for pr in self.load()["prs"] if pr["head"].startswith(f"cyclix/{issue}-")]
+
+    # gh itself
+
+    def set_logged_in(self, logged_in):
+        """Whether `gh auth status` reports a signed-in account."""
+        data = self.load()
+        data["logged_in"] = logged_in
+        self.save(data)
 
     # Calls and faults
 

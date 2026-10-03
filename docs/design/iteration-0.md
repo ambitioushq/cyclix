@@ -266,6 +266,20 @@ runs_per_day = 6
 
 `cyclix check` fails on a missing key, an unknown key, or a board option name that is not on the board.
 
+## The command
+
+`cyclix` has three subcommands in Iteration 0: `--version`, `check` and `run --once`. It exits 0 on success, 1 when a check or a run fails, 2 on bad usage, and 3 for a subcommand that is not built yet. Errors go to stderr.
+
+`cyclix check [--tenant NAME]` prints one line per check to stdout. A check that passes prints `<what was checked>: ok`. A check that fails prints `FAIL: <reason>`, so a failure starts with the same word wherever it is. It checks, in order:
+
+1. The config loads.
+2. `gh` is on `PATH` and `gh auth status` succeeds.
+3. The state directory exists or can be made, and a file can be written in it.
+4. The first word of `agent.command` is on `PATH`.
+5. The board's Status field has an option for every name in `[tracker.states]`, one line per state.
+
+A check that needs an earlier one is left out when that one fails: no config means no agent or board check, and no signed-in `gh` means no board check. `check` reads the board with `gh project field-list` through `adapters/gh.py`, before the tracker adapter exists.
+
 ## The sweep
 
 `cyclix run --once` makes one pass for one tenant, under a file lock so two passes never overlap:
