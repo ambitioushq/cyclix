@@ -2,7 +2,8 @@
 
 The tenant's repo is cloned once into <state_dir>/repos/<tenant>/. Each run gets
 a worktree on the branch cyclix/<issue>-<slug>, made from the remote base after
-a fetch. Pushes never force. Every failure is a CodeHostError.
+a fetch. A later run on the same issue checks out the branch the earlier run left.
+Pushes never force. Every failure is a CodeHostError.
 """
 
 import re
@@ -62,8 +63,12 @@ class GitHubCodeHost:
         branch = branch_name(issue, slug)
         path = Path(run_dir) / "worktree"
         path.parent.mkdir(parents=True, exist_ok=True)
-        git(self.clone, "worktree", "add", "-q", "--no-track", "-b", branch, str(path),
-            f"origin/{self.base}")  # fmt: skip
+        if git(self.clone, "branch", "--list", branch):
+            # An earlier run on this issue left its branch, so this run goes on from its commits.
+            git(self.clone, "worktree", "add", "-q", str(path), branch)
+        else:
+            git(self.clone, "worktree", "add", "-q", "--no-track", "-b", branch, str(path),
+                f"origin/{self.base}")  # fmt: skip
         return Worktree(issue=issue, branch=branch, path=path)
 
     def remove_worktree(self, worktree):

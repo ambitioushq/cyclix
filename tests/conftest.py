@@ -5,9 +5,9 @@ import re
 from pathlib import Path
 
 import pytest
-from fakes.runner import environment
+from fakes.runner import environment, run_cyclix
 from fakes.world import World
-from pytest_bdd import given, parsers, then
+from pytest_bdd import given, parsers, then, when
 
 FEATURES = Path(__file__).resolve().parent / "features"
 
@@ -84,6 +84,19 @@ def agent_answers(world, answer):
     world.add_agent_step(answer=answer)
 
 
+@given("the agent writes a plan, then commits a change")
+def agent_plans_and_builds(world):
+    world.add_plan_and_commit()
+
+
+# When
+
+
+@when("one pass runs", target_fixture="result")
+def one_pass(world):
+    return run_cyclix(world, "run", "--once")
+
+
 # Then
 
 
@@ -110,6 +123,16 @@ def event_logged(world, number, stage, outcome):
         e["body"] == "stage_run" and all(e["attributes"].get(k) == v for k, v in wanted.items())
         for e in events
     ), json.dumps(events, indent=2)
+
+
+@then(parsers.parse('the {stage} event\'s outcome is "{outcome}"'))
+def stage_outcome(world, result, stage, outcome):
+    outcomes = [
+        e["attributes"]["cyclix.outcome"]
+        for e in world.events()
+        if e["attributes"]["cyclix.stage"] == stage
+    ]
+    assert outcomes == [outcome], result.stdout + result.stderr
 
 
 @then(parsers.parse("it exits {code:d}"))

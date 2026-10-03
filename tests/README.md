@@ -31,7 +31,10 @@ These steps are defined in `conftest.py`, so any feature can use them.
 | `gh call "C" fails with exit E once` | Given | Makes the next call whose arguments start with C exit E. The leading `gh call` is optional. |
 | `"C" fails with exit E and stderr "M" once` | Given | The same, and prints M on stderr. |
 | `the agent answers "A"` | Given | Adds a fake agent step that answers A and exits 0. |
+| `the agent writes a plan, then commits a change` | Given | Adds a plan answer, then a build step that commits `change.txt`. |
+| `one pass runs` | When | Runs `cyclix run --once` and keeps it as `result`. |
 | `the board shows #N in "S"` | Then | Checks the item's state on the board. |
 | `the event log holds a stage_run event for #N at stage "S" with outcome "O"` | Then | Reads `events/test.jsonl` in the state directory. |
+| `the S event's outcome is "O"` | Then | Checks that the event log holds exactly one event at stage S, with outcome O. |
 | `it exits N` | Then | Checks the exit code of `result`. |
 | `it prints "T"` | Then | Checks that T is a whole line of `result`'s stdout. Write a quote inside T as `\"`. |

@@ -33,12 +33,6 @@ def set_gate(world, commands):
 # Given
 
 
-@given("the agent writes a plan, then commits a change")
-def agent_plans_and_builds(world):
-    world.add_agent_step(answer="## Approach\nChange one file.\n")
-    world.add_agent_step(files={"change.txt": "a change\n"}, commit=True, answer="done")
-
-
 @given("the gate commands pass")
 def gate_passes(world):
     set_gate(world, [["true"], ["true"]])
@@ -47,7 +41,7 @@ def gate_passes(world):
 @given("the gate's second command fails")
 def gate_fails_second(world):
     # The run has to reach the gate, so the plan and the build succeed first.
-    agent_plans_and_builds(world)
+    world.add_plan_and_commit()
     set_gate(world, [["true"], ["false"]])
 
 
@@ -94,9 +88,8 @@ def one_in_progress(world, busy, ready):
 # When
 
 
-@when("one pass runs", target_fixture="result")
 @when("a second pass starts", target_fixture="result")
-def one_pass(world):
+def second_pass(world):
     return run_cyclix(world, "run", "--once")
 
 
@@ -121,16 +114,6 @@ def events_at_stages(world, result, issue, first, middle, last):
 @then(parsers.parse("no PR for #{issue:d} exists"))
 def no_pr(world, issue):
     assert world.prs_for(issue) == []
-
-
-@then(parsers.parse('the {stage} event\'s outcome is "{outcome}"'))
-def stage_outcome(world, stage, outcome):
-    outcomes = [
-        e["attributes"]["cyclix.outcome"]
-        for e in world.events()
-        if e["attributes"]["cyclix.stage"] == stage
-    ]
-    assert outcomes == [outcome]
 
 
 @then(parsers.parse("the claim on #{issue:d} is released"))

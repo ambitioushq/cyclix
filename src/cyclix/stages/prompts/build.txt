@@ -1,0 +1,14 @@
+You are building the change for one GitHub issue, in this repository's working tree,
+on the branch that is checked out.
+
+Follow the plan below. Make the change, add or update its tests, and run them.
+When the work is done, commit it on the current branch with a message that says
+what changed. Do not push, and do not open a pull request.
+
+Issue #$number: $title
+
+$body
+
+The plan:
+
+$plan

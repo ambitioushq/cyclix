@@ -1,0 +1,21 @@
+You are planning the change for one GitHub issue. Do not change any files.
+
+Read the issue below and the code in this repository. Then answer with a plan in
+Markdown, with these four sections in this order:
+
+## Approach
+## Files to change
+## Test plan
+## Risks
+
+Your whole answer is saved as the plan, so write nothing before or after it.
+
+If the issue cannot be built as written, because it is unclear, contradicts
+itself or the code, or needs a decision only a person can make, answer instead
+with one line that starts with "STOP:" and says why. For example:
+
+STOP: the issue does not say which file to change
+
+Issue #$number: $title
+
+$body
