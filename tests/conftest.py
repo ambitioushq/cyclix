@@ -21,12 +21,17 @@ def pytest_configure(config):
 
 
 def pytest_bdd_apply_tag(tag, function):
-    """Turn the tag @issue-4 into the marker issue_4. Other tags keep the default handling."""
-    match = re.fullmatch(r"issue-(\d+)", tag)
-    if not match:
-        return None
-    getattr(pytest.mark, f"issue_{match[1]}")(function)
-    return True
+    """Turn the tag @issue-4 into the marker issue_4, and @xfail-until-9 into a strict xfail.
+
+    Other tags keep the default handling.
+    """
+    if match := re.fullmatch(r"issue-(\d+)", tag):
+        getattr(pytest.mark, f"issue_{match[1]}")(function)
+        return True
+    if match := re.fullmatch(r"xfail-until-(\d+)", tag):
+        pytest.mark.xfail(strict=True, reason=f"needs #{match[1]}")(function)
+        return True
+    return None
 
 
 @pytest.fixture

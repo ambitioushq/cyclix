@@ -66,7 +66,7 @@ scripts/names_check.py
 | --- | --- | --- | --- |
 | Ready | In progress | Runner (admission) | The item is claimed for a run |
 | In progress | In review | PR stage | The PR is open |
-| In progress | Parked | Any stage | A STOP, a failed gate, an error, or a crashed run found by the sweep |
+| In progress | Parked | Any stage, or the sweep | A STOP, a failed gate, an error, or a crashed run found by the sweep |
 | In progress | Needs decision | Plan stage | The plan needs a human call (not produced by the minimal plan) |
 | In review | Done | Reconciler | The PR merged |
 | In review | Parked | Reconciler | The PR closed without merging |
@@ -74,6 +74,10 @@ scripts/names_check.py
 | Any | Done | A human, or GitHub closing the issue | The reconciler observes it and releases any claim |
 
 The engine never makes a move that is not in this table. A human can make any move. The sweep reads the board each pass and adjusts SQLite to match it.
+
+`src/cyclix/workstate.py` holds the same table as data, and `move` refuses any move that is not in it. A unit test reads the table above and fails if the two differ, so a change to one needs the same change to the other. Rows written only by a human are left out of the code, because the engine never makes them.
+
+"Any stage" means any writer that is a stage: admission, plan, PR, the reconciler, or a stage with no writer of its own (build, gate, adversarial review), which moves as "any stage". The sweep is not a stage. It may park an item in progress whose run crashed, and it makes no other move.
 
 **Next comes with the admission area.** Next is a staging state between Backlog and Ready. A human moves an issue there to say the work should be done soon. The full admission stage then promotes it to Ready once it is safe to start: it is not a parent issue, it has no open blockers, it touches no files that work in flight touches, the review queue is under its cap, and it meets the Ready contract. An issue that fails the Ready contract goes to Needs decision. So a human decides what gets done, and the engine decides when it starts. Iteration 0 leaves this out: a human moves items straight to Ready, and its config does not map the board's Next option, so the engine ignores it.
 
