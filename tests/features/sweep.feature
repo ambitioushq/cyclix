@@ -53,3 +53,10 @@ Feature: One pass of the loop
     And the agent writes a plan, then commits a change
     When one pass runs
     Then every stage_run event for #7 has "vcs.repository.url.full" set to the tenant's repository URL
+
+  @issue-40
+  Scenario: An agent's cost is written rounded
+    Given the agent reports a cost of 0.36616580000000004
+    And an issue #7 in state "Ready" on the board
+    When one pass runs
+    Then the plan event's "cyclix.cost.usd" is written with no more than the settled number of decimal places

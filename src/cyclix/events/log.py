@@ -32,6 +32,8 @@ def write_stage_run(state_dir: Path, tenant: str, fields: dict[str, object]) -> 
         raise EventError(f"event stage {attributes[schema.STAGE]!r} is not a stage")
     if attributes[schema.OUTCOME] not in schema.OUTCOMES:
         raise EventError(f"event outcome {attributes[schema.OUTCOME]!r} is not an outcome")
+    if attributes[schema.COST_USD] is not None:
+        attributes[schema.COST_USD] = round(attributes[schema.COST_USD], schema.COST_PLACES)
     event = {
         "schema": schema.SCHEMA,
         "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
