@@ -110,3 +110,19 @@ Narrow board reads (#47):
 - `board_reads.feature`
   - One pass reads the board once
   - A board larger than one page is read in full
+
+The repository URL on every stage-run event (#39):
+
+- `sweep.feature`
+  - Every stage-run event carries the repository URL
+
+Rounded costs in the event log (#40):
+
+- `sweep.feature`
+  - An agent's cost is written rounded
+
+PRs that follow the template (#50):
+
+- `stages.feature`
+  - The PR title is the issue title
+  - The PR body follows the PR template

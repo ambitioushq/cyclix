@@ -24,6 +24,36 @@ import subprocess
 from pathlib import Path
 
 ENV = "CYCLIX_FAKES_DIR"
+TEMPLATE_PATH = ".github/pull_request_template.md"
+PR_TEMPLATE = """\
+Closes #
+
+## What changed
+
+<!-- Plain sentences. -->
+
+## Scenarios
+
+- Added:
+- Changed:
+- Removed:
+
+## Changed from the issue
+
+<!-- Write "None" if there is none. -->
+
+## Decisions
+
+<!-- Write "None" if there is none. -->
+
+## Follow-ups
+
+<!-- Write "None" if there is none. -->
+"""
+PLAN_ANSWER = "## Approach\nChange one file.\n"
+PR_BODY_ANSWER = "".join(
+    f"{heading}\nNone.\n\n" for heading in re.findall(r"(?m)^## .*$", PR_TEMPLATE)
+)
 REPO = "o/r"
 OWNER = "o"
 PROJECT = 1
@@ -166,7 +196,9 @@ class World:
         seed = self.root / "seed"
         git(self.root, "clone", "-q", str(self.remote), str(seed))
         (seed / "README.md").write_text("A test repository.\n")
-        git(seed, "add", "README.md")
+        (seed / TEMPLATE_PATH).parent.mkdir()
+        (seed / TEMPLATE_PATH).write_text(PR_TEMPLATE)
+        git(seed, "add", "README.md", TEMPLATE_PATH)
         git(seed, "commit", "-q", "-m", "Start")
         git(seed, "push", "-q", "origin", "HEAD:main")
         return self
@@ -321,9 +353,16 @@ class World:
         self.agent_script_path.write_text(json.dumps(script, indent=2) + "\n")
 
     def add_plan_and_commit(self):
-        """Script a plan answer, then a build that commits one file."""
-        self.add_agent_step(answer="## Approach\nChange one file.\n")
-        self.add_agent_step(files={"change.txt": "a change\n"}, commit=True, answer="done")
+        """Script a plan answer, then a build that commits one file and answers with a PR body.
+
+        The body has the template's sections and no `Closes` line, so the PR stage must add it.
+        """
+        self.add_agent_step(answer=PLAN_ANSWER)
+        self.add_agent_step(files={"change.txt": "a change\n"}, commit=True, answer=PR_BODY_ANSWER)
+
+    def pr_template_headings(self):
+        """The `## ` headings of the PR template seeded into the remote."""
+        return re.findall(r"(?m)^## .*$", PR_TEMPLATE)
 
     def record_agent_pid(self, pid):
         with self.agent_pids_path.open("a") as pids:

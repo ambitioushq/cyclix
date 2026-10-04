@@ -6,8 +6,10 @@ The sweep runs in-process against the fake world, with the real stages.
 import re
 
 import pytest
+from fakes.world import PR_BODY_ANSWER, PR_TEMPLATE, TEMPLATE_PATH, git
 
 from cyclix import config, runner
+from cyclix.stages.pr import ensure_closes
 from cyclix.state.core import RunStart
 from cyclix.state.sqlite import SqliteStateCore
 
@@ -40,14 +42,16 @@ def run_dir(world, issue):
     return run
 
 
-def test_the_pr_has_the_issue_title_and_closes_the_issue_with_the_plan(world):
+def test_the_pr_has_the_issue_title_and_the_build_answer_as_its_body(world):
     world.add_issue(12, title="Add the gate", state="Ready")
     world.add_plan_and_commit()
     assert sweep(world) == 0
     [pr] = world.prs_for(12)
-    assert pr["title"] == "Add the gate (#12)"
+    assert pr["title"] == "Add the gate"
     assert pr["head"] == "cyclix/12-add-the-gate"
-    assert pr["body"] == "Closes #12\n\n## Approach\nChange one file.\n"
+    assert pr["body"] == "Closes #12\n\n" + PR_BODY_ANSWER.strip() + "\n"
+    assert "## Approach" not in pr["body"]
+    assert (run_dir(world, 12) / "pr.md").read_text() == PR_BODY_ANSWER.strip() + "\n"
     assert (run_dir(world, 12) / "plan.md").read_text() == "## Approach\nChange one file.\n"
     assert world.comments(12) == [f"In review: https://github.com/o/r/pull/{pr['number']}"]
     by_stage = {e["cyclix.stage"]: e for e in events(world, 12)}
@@ -64,6 +68,48 @@ def test_the_plan_prompt_holds_the_issue_and_the_build_prompt_holds_the_plan(wor
     plan_prompt, build_prompt = world.prompts()
     assert "Issue #12: Add the gate\n\nRun each command." in plan_prompt
     assert "## Approach\nChange one file." in build_prompt
+
+
+def test_the_build_prompt_holds_the_template_of_the_tenant_repository(world):
+    world.add_issue(12, state="Ready")
+    world.add_plan_and_commit()
+    sweep(world)
+    _, build_prompt = world.prompts()
+    assert PR_TEMPLATE in build_prompt
+    assert "Closes #12` on its first line" in build_prompt
+    assert "word for word" in build_prompt
+
+
+def test_without_a_template_the_build_prompt_asks_for_closes_and_a_summary(world, tmp_path):
+    clone = tmp_path / "clone"
+    git(tmp_path, "clone", "-q", str(world.remote), str(clone))
+    git(clone, "rm", "-q", TEMPLATE_PATH)
+    git(clone, "commit", "-q", "-m", "Drop the template")
+    git(clone, "push", "-q", "origin", "HEAD:main")
+    world.add_issue(12, state="Ready")
+    world.add_plan_and_commit()
+    sweep(world)
+    _, build_prompt = world.prompts()
+    assert "## What changed" not in build_prompt
+    assert "Start it with `Closes #12` on its first line" in build_prompt
+    assert "short plain summary" in build_prompt
+
+
+def test_a_body_that_starts_with_closes_is_not_given_a_second_line():
+    assert ensure_closes("Closes #12\n\n## What changed\nA gate.\n", 12) == (
+        "Closes #12\n\n## What changed\nA gate.\n"
+    )
+    assert ensure_closes("\n\nCloses #12\nMore.", 12) == "Closes #12\nMore.\n"
+    assert ensure_closes("Closes #120\n", 12) == "Closes #12\n\nCloses #120\n"
+
+
+def test_an_empty_build_answer_gives_a_body_of_closes_alone(world):
+    world.add_issue(12, state="Ready")
+    world.add_agent_step(answer="## Approach\nChange one file.\n")
+    world.add_agent_step(files={"change.txt": "a change\n"}, commit=True, answer="")
+    sweep(world)
+    [pr] = world.prs_for(12)
+    assert pr["body"] == "Closes #12\n"
 
 
 def test_the_gate_records_each_check_against_the_head_and_saves_its_output(world, core):
