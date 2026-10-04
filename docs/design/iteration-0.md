@@ -16,11 +16,13 @@ A minimal stage does real work in the simplest way that carries a real issue. A 
 | --- | --- | --- |
 | Admission | Takes the oldest open issue in Ready on the configured board, from the configured repo. Ignores everything not on the board. | The admission area (the Ready contract, and promotion from Next) |
 | Plan | One agent call that reads the issue. The stage saves the answer as `plan.md` in the run folder. If the agent's answer starts with `STOP:`, the item is parked with that sentence as the reason. | The plan area |
-| Build | One agent call in the run's worktree, given the issue and the plan, that leaves its work committed on the run's branch. | The build area |
+| Build | One agent call in the run's worktree, given the issue and the plan, that leaves its work committed on the run's branch. The stage saves the agent's answer as `pr.md` in the run folder. | The build area |
 | Gate | Runs the tenant's gate commands in the worktree. Records each command's exit code against the head SHA. Any failure parks the item: no fix rounds in Iteration 0. | The gate area |
 | Adversarial review | Records itself as `skipped`. | The adversarial review area |
-| PR | Pushes the branch and opens a PR whose body says `Closes #<issue>`. Moves the item to In review. | The PR area |
+| PR | Pushes the branch and opens a PR titled with the issue's title, with `pr.md` as its body. Moves the item to In review. | The PR area |
 | Reconciler | For each item In review: merged moves it to Done; closed without merge moves it to Parked. | The reconciler area |
+
+**The build agent writes the PR body** (settled for #50). The build prompt includes the tenant repository's `.github/pull_request_template.md`, read from the worktree, and asks the agent to end with that template filled in as its answer. A repository without the template gets `Closes #<issue>` and a short plain summary of what changed. The PR stage makes sure the body's first line is `Closes #<issue>`, and adds it when it is missing. The plan stays in the run folder and does not go into the PR. The PR title is the issue's title alone: `Closes #<issue>` already links the issue, and GitHub adds the PR number when it squashes. A separate agent call in the PR stage was considered and left out, because it costs one more call per run.
 
 ## Package layout
 
