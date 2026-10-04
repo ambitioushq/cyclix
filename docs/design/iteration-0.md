@@ -2,7 +2,7 @@
 
 Iteration 0 is the smallest engine that takes a real issue to a merged PR. It has the state core, the GitHub adapters, the event log, the stage runner, and a minimal version of every stage. When it is done, Cyclix becomes a tenant of its own loop, and each later area replaces one minimal stage through that loop.
 
-This document is the starting design. Each section marked **Open** is settled with the maintainer at the start of the issue that needs it, and this file is updated in that issue's PR.
+This document started as the design and now records what was built. Iteration 0 closed in #18, with every open question settled. Each later area replaces a minimal stage, and its own design doc records what changed.
 
 ## Done when
 
@@ -57,8 +57,14 @@ tests/
   fakes/bin/gh       the fake gh
   fakes/bin/fake-agent
   fakes/world.py     the fake GitHub world both fakes read and write
+  fakes/bin/systemctl
+  fakes/runner.py    runs cyclix as a subprocess against the fake world
+  fixtures/gh-shapes/  the key paths of real gh output, recorded from the sandbox
+  sandbox/           the steps of the @sandbox scenario
   unit/              unit tests, only where a scenario cannot reach a rule
-scripts/names_check.py
+scripts/
+  names_check.py
+  record_gh_shapes.py
 ```
 
 ## Work states and who moves them
@@ -297,7 +303,7 @@ in_review = 5
 
 ## The command
 
-`cyclix` has three subcommands in Iteration 0: `--version`, `check` and `run --once`. It exits 0 on success, 1 when a check or a run fails, 2 on bad usage, and 3 for a subcommand that is not built yet. Errors go to stderr.
+`cyclix` has `--version` and four subcommands in Iteration 0: `check`, `run --once`, `install` and `uninstall`. It exits 0 on success, 1 when a check or a run fails, 2 on bad usage, and 3 for a subcommand that is not built yet. Errors go to stderr.
 
 `cyclix check [--tenant NAME]` prints one line per check to stdout. A check that passes prints `<what was checked>: ok`. A check that fails prints `FAIL: <reason>`, so a failure starts with the same word wherever it is. It checks, in order:
 
@@ -324,7 +330,7 @@ A check that needs an earlier one is left out when that one fails: no config mea
 
 **A park from In review says why in a comment too** (settled in #14). A PR closed without merging parks its item with the comment "Parked: PR closed without merge". A move to Done posts nothing, because the merged PR already says so.
 
-One item at a time per tenant in Iteration 0. `src/cyclix/runner.py` holds the sweep and the order of the stages.
+**One item at a time per tenant** (settled in #18). A Ready item is admitted only when no item is In progress. Items In review block admission only through a WIP limit on In review, so up to that limit, PRs can wait for the maintainer while the next item builds. `src/cyclix/runner.py` holds the sweep and the order of the stages.
 
 **The lock decides which runs crashed** (settled in #13). The lock is a `flock` on `<state_dir>/<tenant>.lock`. A pass that finds it held prints "another pass is running" and exits 0. Only the pass holding the lock runs stages for the tenant. So any run still open when a pass takes the lock was left by a pass that died, and the sweep ends it as `crashed`. The state core keeps no process ID. A pass that is alive but hung keeps the lock, and later passes wait behind it.
 
@@ -376,7 +382,7 @@ Settled in #17. Cyclix runs its own loop from the tenant config above, which is 
 ## Open questions for the first session
 
 1. **The fake GitHub.** Settled in #4: the world model. See "The test footing".
-2. **One item at a time.** Is one In progress item per tenant right for Iteration 0? It keeps the sweep simple and is all a single maintainer needs at first.
+2. **One item at a time.** Settled in #18: one item In progress per tenant. See "The sweep".
 3. **Run limits.** Settled in #17: six a day. See "Cyclix as its own tenant".
 4. **Branch names.** Settled in #10: `cyclix/<issue>-<slug>`. See "Run folders and worktrees".
 5. **The models.** Settled in #17: Opus plans, Sonnet builds. See "Cyclix as its own tenant".
