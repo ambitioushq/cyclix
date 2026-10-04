@@ -23,6 +23,8 @@ TRUST_LEVEL = "cyclix.trust_level"
 CONFIG_VERSION = "cyclix.config.version"
 DURATION_MS = "cyclix.duration_ms"
 COST_USD = "cyclix.cost.usd"
+# The decimal places kept in COST_USD, as fixed in the design doc under "The event log, schema version 0".
+COST_PLACES = 6
 REPOSITORY_URL = "vcs.repository.url.full"
 HEAD_NAME = "vcs.ref.head.name"
 HEAD_REVISION = "vcs.ref.head.revision"
