@@ -279,6 +279,16 @@ class World:
             return []
         return [json.loads(line) for line in self.calls_path.read_text().splitlines()]
 
+    def graphql_calls(self, operation):
+        """The recorded `gh api graphql` calls of one operation, such as BoardItems."""
+        found = []
+        for call in self.calls():
+            if call["argv"][:2] != ["api", "graphql"]:
+                continue
+            if operation_of(call["argv"]) == operation:
+                found.append(call)
+        return found
+
     def faults(self):
         if not self.faults_path.exists():
             return []
@@ -335,6 +345,15 @@ class World:
         if not path.exists():
             return []
         return [json.loads(line) for line in path.read_text().splitlines()]
+
+
+def operation_of(argv):
+    """The operation name in the `query=` argument of a `gh api graphql` call, or None."""
+    for arg in argv:
+        if arg.startswith("query="):
+            match = re.search(r"\b(?:query|mutation)\s+(\w+)", arg)
+            return match[1] if match else None
+    return None
 
 
 def next_number(data):

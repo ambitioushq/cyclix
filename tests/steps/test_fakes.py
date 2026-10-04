@@ -8,6 +8,8 @@ from fakes.runner import run_agent, run_gh
 from fakes.world import git
 from pytest_bdd import given, parsers, scenarios, then, when
 
+from cyclix.adapters.github_tracker import BOARD_ITEMS
+
 TAG_CHECK = Path(__file__).resolve().parents[1] / "tag_check.py"
 
 scenarios("fakes.feature")
@@ -19,6 +21,16 @@ scenarios("fakes.feature")
 @when(parsers.parse('the fake gh runs "{command}"'), target_fixture="result")
 def fake_gh_runs(world, command):
     return run_gh(world, *shlex.split(command))
+
+
+@when("the fake gh lists the board through the BoardItems query", target_fixture="result")
+def fake_gh_lists_board(world):
+    return run_gh(
+        world,
+        "api", "graphql",
+        "-f", f"query={BOARD_ITEMS}",
+        "-f", "owner=o", "-F", "number=1", "-f", "field=Status",
+    )  # fmt: skip
 
 
 @when(
@@ -53,17 +65,21 @@ def fake_gh_creates_twice(world):
 @then(parsers.parse('the output lists one item for #{number:d} with status "{status}"'))
 def lists_one_item(result, number, status):
     assert result.returncode == 0, result.stderr
-    items = json.loads(result.stdout)["items"]
-    assert [(i["content"]["number"], i["status"]) for i in items] == [(number, status)]
+    nodes = json.loads(result.stdout)["data"]["repositoryOwner"]["projectV2"]["items"]["nodes"]
+    found = [(n["content"]["number"], n["fieldValueByName"]["name"]) for n in nodes]
+    assert found == [(number, status)]
 
 
 @then("the call is recorded")
 def call_recorded(world):
     calls = world.calls()
     assert calls[-1] == {
-        "argv": ["project", "item-list", "1", "--owner", "o", "--format", "json"],
+        "argv": [
+            "api", "graphql", "-f", f"query={BOARD_ITEMS}",
+            "-f", "owner=o", "-F", "number=1", "-f", "field=Status",
+        ],
         "exit": 0,
-    }
+    }  # fmt: skip
 
 
 @then(parsers.parse('the first call exits {code:d} with "{text}"'))

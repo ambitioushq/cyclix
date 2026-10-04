@@ -1,9 +1,9 @@
 Feature: The fakes behave like the real tools for the commands Cyclix uses
 
-  @issue-4
+  @issue-4 @issue-47
   Scenario: The fake gh lists board items from the world
     Given an issue #3 titled "Add a thing" in state "Ready" on the board
-    When the fake gh runs "project item-list 1 --owner o --format json"
+    When the fake gh lists the board through the BoardItems query
     Then the output lists one item for #3 with status "Ready"
     And the call is recorded
 

@@ -9,16 +9,21 @@ tests/fixtures/gh-shapes/ holds the shape of real gh output for each command the
 adapters read, recorded from the sandbox by scripts/record_gh_shapes.py. The shape
 scenario fails when this fake's output has another shape. Nothing reads the output
 of `project item-edit` or `issue comment`, so neither is recorded.
+
+`api graphql` answers only the three board queries, told apart by their operation name
+(BoardFields, BoardItems, BoardItem). It does not read the query text beyond that name,
+so only re-recording the shapes catches a query that asks for a different field.
 """
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from world import World, next_number
+from world import World, next_number, operation_of
 
 
 class Exit(Exception):
@@ -32,9 +37,7 @@ def unsupported():
 
 # Each command: its positional argument count, and the flags it accepts (all take a value).
 COMMANDS = {
-    ("project", "view"): (1, {"--owner", "--format"}),
     ("project", "field-list"): (1, {"--owner", "--format", "--limit"}),
-    ("project", "item-list"): (1, {"--owner", "--format", "--limit"}),
     ("project", "item-edit"): (
         0,
         {"--id", "--project-id", "--field-id", "--single-select-option-id", "--format"},
@@ -49,8 +52,30 @@ COMMANDS = {
 }
 
 
+def parse_graphql(argv):
+    """The query and the variables of `gh api graphql`. -F turns a digit string into an int."""
+    flags = {"variables": {}}
+    rest = argv[2:]
+    while rest:
+        token = rest.pop(0)
+        if token not in ("-f", "-F") or not rest or "=" not in rest[0]:
+            raise unsupported()
+        name, value = rest.pop(0).split("=", 1)
+        if token == "-F" and value.isdigit():
+            value = int(value)
+        if name == "query":
+            flags["query"] = value
+        else:
+            flags["variables"][name] = value
+    if "query" not in flags:
+        raise unsupported()
+    return ("api", "graphql"), [], flags
+
+
 def parse(argv):
     command = tuple(argv[:2])
+    if command == ("api", "graphql"):
+        return parse_graphql(argv)
     if command not in COMMANDS:
         raise unsupported()
     count, allowed = COMMANDS[command]
@@ -109,23 +134,6 @@ def repo_url(data):
 # Commands
 
 
-def project_view(world, data, positional, flags):
-    board = check_project(data, positional[0], flags)
-    return {
-        "closed": False,
-        "fields": {"totalCount": 2},
-        "id": board["id"],
-        "items": {"totalCount": len(board["items"])},
-        "number": board["number"],
-        "owner": {"login": board["owner"], "type": "Organization"},
-        "public": False,
-        "readme": "",
-        "shortDescription": "",
-        "title": board["title"],
-        "url": f"https://github.com/orgs/{board['owner']}/projects/{board['number']}",
-    }
-
-
 def project_field_list(world, data, positional, flags):
     board = check_project(data, positional[0], flags)
     status = board["status_field"]
@@ -141,43 +149,119 @@ def project_field_list(world, data, positional, flags):
     return {"fields": fields, "totalCount": len(fields)}
 
 
-def project_item_list(world, data, positional, flags):
-    board = check_project(data, positional[0], flags)
-    limit = int(flags.get("--limit", 30))
-    items = []
-    for item in board["items"][:limit]:
-        if "draft" in item:
-            title = item["draft"]
-            entry = {
-                "content": {"body": "", "title": title, "type": "DraftIssue"},
-                "id": item["id"],
-                "title": title,
-            }
+# The variables each board query declares, and the ones it may leave out.
+GRAPHQL_VARIABLES = {
+    "BoardFields": ({"owner", "number", "field"}, set()),
+    "BoardItems": ({"owner", "number", "field"}, {"after"}),
+    "BoardItem": ({"item", "field"}, set()),
+}
+
+
+def check_variables(operation, variables):
+    required, optional = GRAPHQL_VARIABLES[operation]
+    if set(variables) - required - optional:
+        raise unsupported()
+    missing = required - set(variables)
+    if missing:
+        raise Exit(1, f"variables are missing: {sorted(missing)}\n")
+    if "number" in variables and not isinstance(variables["number"], int):
+        raise Exit(1, "Variable $number of type Int! was provided invalid value\n")
+
+
+def board_of(data, variables):
+    """The board a query starts from. A wrong owner or number is an error, as on GitHub."""
+    board = data["board"]
+    if variables["number"] != board["number"] or variables["owner"] != board["owner"]:
+        raise Exit(
+            1,
+            f"gh: Could not resolve to a ProjectV2 with the number {variables['number']}. "
+            "(repositoryOwner.projectV2)\n",
+        )
+    return board
+
+
+def status_value(item, variables, board):
+    """fieldValueByName: null when the item has no value or the field is not the Status field."""
+    if variables["field"] != board["status_field"]["name"] or item["status"] is None:
+        return None
+    return {"name": item["status"]}
+
+
+def item_node(data, board, item, variables):
+    if "draft" in item:
+        content = {"__typename": "DraftIssue"}
+    else:
+        repo = item.get("repo", data["repo"])
+        if repo == data["repo"]:
+            issue = issue_by_number(data, item["issue"])
         else:
-            repo = item.get("repo", data["repo"])
-            if repo == data["repo"]:
-                issue = issue_by_number(data, item["issue"])
-            else:
-                issue = {"number": item["issue"], "title": f"Issue {item['issue']}", "body": ""}
-            entry = {
-                "content": {
-                    "body": issue["body"],
-                    "number": issue["number"],
-                    "repository": repo,
-                    "title": issue["title"],
-                    "type": "Issue",
-                    "url": f"https://github.com/{repo}/issues/{issue['number']}",
-                },
-                "id": item["id"],
-                "repository": f"https://github.com/{repo}",
-                "title": issue["title"],
-            }
-            if issue.get("labels"):  # real gh leaves the key out when the issue has no labels
-                entry["labels"] = issue["labels"]
-        if item["status"] is not None:  # real gh leaves the key out when no status is set
-            entry["status"] = item["status"]
-        items.append(entry)
-    return {"items": items, "totalCount": len(board["items"])}
+            issue = {"number": item["issue"], "title": f"Issue {item['issue']}", "state": "OPEN"}
+        content = {
+            "__typename": "Issue",
+            "number": issue["number"],
+            "title": issue["title"],
+            "state": issue["state"],
+            "repository": {"nameWithOwner": repo},
+        }
+    return {
+        "id": item["id"],
+        "fieldValueByName": status_value(item, variables, board),
+        "content": content,
+    }
+
+
+def graphql_board_fields(data, variables):
+    board = board_of(data, variables)
+    status = board["status_field"]
+    field = None
+    if variables["field"] == status["name"]:
+        field = {"id": status["id"], "options": status["options"]}
+    project = {"id": board["id"], "field": field}
+    return {"data": {"repositoryOwner": {"projectV2": project}}}
+
+
+def graphql_board_items(data, variables):
+    board = board_of(data, variables)
+    start = 0
+    if "after" in variables:
+        match = re.fullmatch(r"cursor-(\d+)", str(variables["after"]))
+        if not match:
+            raise Exit(1, "Invalid cursor\n")
+        start = int(match[1]) + 1
+    end = min(start + 100, len(board["items"]))
+    nodes = [item_node(data, board, item, variables) for item in board["items"][start:end]]
+    page = {
+        "pageInfo": {
+            "hasNextPage": end < len(board["items"]),
+            "endCursor": f"cursor-{end - 1}" if end > start else None,
+        },
+        "nodes": nodes,
+    }
+    return {"data": {"repositoryOwner": {"projectV2": {"items": page}}}}
+
+
+def graphql_board_item(data, variables):
+    board = data["board"]
+    item = next((i for i in board["items"] if i["id"] == variables["item"]), None)
+    node = None
+    if item is not None:
+        node = {"fieldValueByName": status_value(item, variables, board)}
+    return {"data": {"node": node}}
+
+
+GRAPHQL = {
+    "BoardFields": graphql_board_fields,
+    "BoardItems": graphql_board_items,
+    "BoardItem": graphql_board_item,
+}
+
+
+def api_graphql(world, data, positional, flags):
+    operation = operation_of(["query=" + flags["query"]])
+    if operation not in GRAPHQL:
+        raise unsupported()
+    check_variables(operation, flags["variables"])
+    return GRAPHQL[operation](data, flags["variables"])
 
 
 def project_item_edit(world, data, positional, flags):
@@ -355,9 +439,8 @@ def auth_status(world, data, positional, flags):
 
 
 HANDLERS = {
-    ("project", "view"): project_view,
     ("project", "field-list"): project_field_list,
-    ("project", "item-list"): project_item_list,
+    ("api", "graphql"): api_graphql,
     ("project", "item-edit"): project_item_edit,
     ("issue", "view"): issue_view,
     ("issue", "comment"): issue_comment,

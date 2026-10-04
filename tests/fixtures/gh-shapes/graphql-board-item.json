@@ -1,0 +1,19 @@
+{
+  "gh": "2.102.0",
+  "command": [
+    "api",
+    "graphql",
+    "-f",
+    "query={item_query}",
+    "-f",
+    "item={item_id}",
+    "-f",
+    "field={field}"
+  ],
+  "keys": [
+    "data",
+    "data.node",
+    "data.node.fieldValueByName",
+    "data.node.fieldValueByName.name"
+  ]
+}

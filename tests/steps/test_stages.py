@@ -1,5 +1,5 @@
 import pytest
-from fakes.world import git
+from fakes.world import git, operation_of
 from pytest_bdd import given, parsers, scenarios, then
 
 from cyclix import config
@@ -142,6 +142,9 @@ def never_read(world, issue):
     assert reads == []
 
 
+BOARD_OPERATIONS = {"BoardFields", "BoardItems", "BoardItem"}
+
+
 @then(parsers.parse("no gh call reads #{issue:d}'s comments"))
 def comments_not_read(world, result, issue):
     calls = [c["argv"] for c in world.calls()]
@@ -149,7 +152,8 @@ def comments_not_read(world, result, issue):
     for argv in calls:
         assert "--comments" not in argv
         assert not any("comments" in arg.split(",") for arg in argv), argv
-        assert argv[0] != "api", argv
+        # The board queries are the only `gh api` calls the engine makes.
+        assert argv[0] != "api" or operation_of(argv) in BOARD_OPERATIONS, argv
 
 
 @then(parsers.parse("the worktree for #{issue:d} is removed"))

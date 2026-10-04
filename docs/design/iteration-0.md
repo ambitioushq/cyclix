@@ -166,16 +166,26 @@ All GitHub calls go through `adapters/gh.py`, which runs `gh` with `--json` outp
 
 **Tracker** (`Tracker` protocol): `ready_items()`, `items()`, `item_state(issue)`, `set_state(issue, state)`, `issue(issue)`, `comment(issue, body)`. The GitHub implementation uses:
 
-- `gh project view <n> --owner <o> --format json` for the project ID
-- `gh project field-list <n> --owner <o> --format json` for the Status field and its option IDs, cached for the pass
-- `gh project item-list <n> --owner <o> --format json --limit <k>` for the items and their status
+- `gh api graphql` with the `BoardFields` query for the project ID, the Status field ID and its option IDs, read once per pass
+- `gh api graphql` with the `BoardItems` query for each item's ID, issue number, title, state, repository and Status value, read once per pass
+- `gh api graphql` with the `BoardItem` query for one item's Status value, read fresh
 - `gh project item-edit --id <item> --project-id <p> --field-id <f> --single-select-option-id <opt>` to move an item
 - `gh issue view <n> -R <repo> --json number,title,body,state,author,labels` to read an issue
 - `gh issue comment <n> -R <repo> --body <text>` to say why an item moved
 
-The tracker keeps only items whose issue belongs to `[codehost] repo`. A draft, a PR or another repo's issue is ignored, and so is an item whose option is not mapped in `[tracker.states]`. One tracker object serves one pass, and it reads the project ID and the Status field once. `gh project item-list` has no cursor, because `gh` pages through the board itself up to `--limit`. The tracker asks for 100 items, and when `totalCount` is larger it asks again with that count as the limit.
+The tracker keeps only items whose issue belongs to `[codehost] repo`. A draft, a PR or another repo's issue is ignored, and so is an item whose option is not mapped in `[tracker.states]`.
 
-**Ready items are taken oldest first, by issue number** (settled in #9). `gh project item-list` does not return an issue's creation time, and GitHub numbers a repo's issues in the order they are created. The one exception is an issue moved in from another repo, which gets a new, higher number when it is transferred. That issue waits behind the ones numbered before it, which is acceptable.
+**The board is read with narrow GraphQL queries** (settled in #47). `gh project item-list` and `gh project field-list` fetch every field of every item. Each costs about 100 points of the 5,000 an hour that the maintainer's account shares across everything that uses it, even on a board of 25 items. A sweep made several of these calls, and the timer ran the sweep every 10 minutes, which used the whole limit in about 20 minutes. A query that asks only for the fields the tracker uses costs 1 point for a page of 100 items.
+
+All three queries start from `repositoryOwner(login: $owner) { ... on ProjectV2Owner { projectV2(number: $number) { ... } } }`, which works for a user or an organization. Each has an operation name, so the fake `gh` can tell them apart. `BoardItems` reads `items(first: 100, after: $after)` and pages while `pageInfo.hasNextPage` is true, passing `endCursor` as `after` for the next page. `BoardFields` reads the project `id` and `field(name: <status_field>)`, as a single-select field with its `options`. It replaces `gh project view` and `gh project field-list`. A Status field that is missing, or is not single-select, is a `TrackerError`.
+
+One tracker object serves one pass. It reads the board's fields and items once, on first use, and `items()`, `ready_items()`, `item_state()` and `set_state()` use that read. `set_state()` writes the new option into the tracker's copy after the move succeeds, so a later `items()` on the same tracker agrees with the board. An item added to the board during a pass is seen on the next pass.
+
+`item_state()` is the one call that must see a change made by someone else during the pass, such as a human who moved an item while a stage ran. It finds the item's ID in the pass's read and reads that one item fresh with `BoardItem`. An issue that was not in the pass's read, or an item removed from the board since, has no state.
+
+Moving an item stays on `gh project item-edit`, which reads nothing. The field and option IDs are not kept across passes, so a board renamed during a pass is seen on the next one.
+
+**Ready items are taken oldest first, by issue number** (settled in #9). The board query does not return an issue's creation time, and GitHub numbers a repo's issues in the order they are created. The one exception is an issue moved in from another repo, which gets a new, higher number when it is transferred. That issue waits behind the ones numbered before it, which is acceptable.
 
 **Code host** (`CodeHost` protocol): `ensure_clone()`, `new_worktree(issue, slug, run_dir) -> Worktree`, `remove_worktree(worktree)`, `head_sha(worktree)`, `push(worktree)`, `find_pr(branch) -> PR | None`, `open_pr(branch, title, body) -> PR`, `pr_state(number) -> PRState`. Every failure raises `CodeHostError`. The GitHub implementation runs `git` for the clone's fetches, the worktrees and the push, and uses:
 
@@ -360,7 +370,7 @@ The fake GitHub is a world model, not replayed recordings (settled in #4). The w
 
 - **The sandbox scenario merges the PR itself.** Where the spine waits for a person to merge, the scenario runs `gh pr merge --squash`, so the weekly run needs nobody.
 - **The real agent runs with `--permission-mode bypassPermissions`.** Print mode cannot ask before it edits a file or runs `git`. The run is on a throwaway CI machine, against a throwaway repo.
-- **The shapes.** `scripts/record_gh_shapes.py` runs each command the adapters read against the sandbox, and writes `tests/fixtures/gh-shapes/<command>.json`. For a JSON command the file holds the sorted key paths of the output, with a list's elements under `<list>[]`. `pr create` prints a URL that the code host parses, so its file holds that line with the repo and number masked. Nothing reads the output of `project item-edit` or `issue comment`, so neither is recorded. The workflow records the shapes again after the scenarios, and fails if they changed.
+- **The shapes.** `scripts/record_gh_shapes.py` runs each command the adapters read against the sandbox, and writes `tests/fixtures/gh-shapes/<command>.json`. For a JSON command the file holds the sorted key paths of the output, with a list's elements under `<list>[]`. `pr create` prints a URL that the code host parses, so its file holds that line with the repo and number masked. Nothing reads the output of `project item-edit` or `issue comment`, so neither is recorded. The three board queries are recorded as `graphql-board-fields`, `graphql-board-items` and `graphql-board-item`. Each file holds a placeholder for the query text, not the text, so a changed query is caught only when the shapes are recorded again. The workflow records the shapes again after the scenarios, and fails if they changed.
 - **The sandbox is throwaway.** Each scenario first closes every open issue and PR in the sandbox and empties the board, in case an earlier run died. At the end it closes and deletes what it made.
 
 ## The names check

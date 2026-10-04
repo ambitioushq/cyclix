@@ -104,3 +104,9 @@ WIP limits for each column (#44):
   - Items a human moved count toward the limit
   - A config without WIP limits admits as before
   - A WIP limit the engine cannot keep is refused
+
+Narrow board reads (#47):
+
+- `board_reads.feature`
+  - One pass reads the board once
+  - A board larger than one page is read in full
