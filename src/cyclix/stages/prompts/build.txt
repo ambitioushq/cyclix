@@ -12,3 +12,5 @@ $body
 The plan:
 
 $plan
+
+$pr_instructions

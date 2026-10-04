@@ -1,5 +1,7 @@
+import re
+
 import pytest
-from fakes.world import git, operation_of
+from fakes.world import PLAN_ANSWER, git, operation_of
 from pytest_bdd import given, parsers, scenarios, then
 
 from cyclix import config
@@ -173,3 +175,39 @@ def one_pr(world, result, issue):
     ]
     # The earlier run's pr row ended as crashed. This pass's pr stage passed.
     assert pr_events == ["crashed", "passed"], result.stdout + result.stderr
+
+
+def only_pr(world, issue):
+    [pr] = world.prs_for(issue)
+    return pr
+
+
+@then(parsers.parse("the PR for #{issue:d} is titled with the issue's title and no issue number"))
+def pr_title(world, result, issue):
+    title = next(i["title"] for i in world.load()["issues"] if i["number"] == issue)
+    pr = only_pr(world, issue)
+    assert pr["title"] == title, result.stderr
+    assert not re.search(r"\(#\d+\)", pr["title"])
+
+
+@then(parsers.parse('the PR body for #{issue:d} starts with "{text}"'))
+def pr_body_starts(world, result, issue, text):
+    assert only_pr(world, issue)["body"].splitlines()[0] == text, result.stderr
+
+
+@then("it has each section of the PR template")
+def body_has_sections(world):
+    [pr] = world.load()["prs"]
+    lines = pr["body"].splitlines()
+    headings = world.pr_template_headings()
+    assert headings
+    for heading in headings:
+        assert heading in lines, heading
+
+
+@then("it does not contain the plan")
+def body_has_no_plan(world):
+    [pr] = world.load()["prs"]
+    body = pr["body"]
+    assert PLAN_ANSWER.strip() not in body
+    assert "## Approach" not in body

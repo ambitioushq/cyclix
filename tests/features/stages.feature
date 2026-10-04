@@ -52,3 +52,19 @@ Feature: The minimal stages
     And the agent writes a plan, then commits a change
     When one pass runs
     Then exactly one PR exists for #12's branch
+
+  @issue-50
+  Scenario: The PR title is the issue title
+    Given an issue #7 in state "Ready" on the board
+    And the agent writes a plan, then commits a change
+    When one pass runs
+    Then the PR for #7 is titled with the issue's title and no issue number
+
+  @issue-50
+  Scenario: The PR body follows the PR template
+    Given an issue #7 in state "Ready" on the board
+    And the agent writes a plan, then commits a change
+    When one pass runs
+    Then the PR body for #7 starts with "Closes #7"
+    And it has each section of the PR template
+    And it does not contain the plan
