@@ -1,5 +1,7 @@
 Closes #
 
+<!-- First line: "Closes #<issue>". A PR that works from a plan in docs/plans/ starts with "Refs #<umbrella issue>" instead, names the plan section it covers, and ticks that section's boxes. -->
+
 ## What changed
 
 <!-- Plain sentences: what the engine does now that it did not before. -->
