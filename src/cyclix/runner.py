@@ -3,8 +3,8 @@
 1. Read the board.
 2. Correct the state core to match it. The tracker wins every disagreement.
 3. Run the reconciler on every item In review.
-4. If no item is In progress and the day's run limit is not reached, admit the
-   oldest Ready item and run it through STAGES. Stop at the first stage whose
+4. If no item is In progress, no column is at its WIP limit, and the day's run
+   limit is not reached, admit the oldest Ready item and run it through STAGES. Stop at the first stage whose
    outcome is not passed or skipped.
 
 A file lock at <state_dir>/<tenant>.lock keeps two passes from overlapping. So a
@@ -15,6 +15,7 @@ import fcntl
 import functools
 import sys
 import time
+from collections import Counter
 from contextlib import contextmanager
 from datetime import UTC, datetime
 
@@ -143,8 +144,20 @@ class Sweep:
 
     # Running
 
+    def full_column(self, board):
+        """Describe the first column at or over its WIP limit, or return None if none is."""
+        counts = Counter(board.values())
+        for state, limit in self.config.limits.wip.items():
+            if counts[State(state)] >= limit:
+                option = getattr(self.config.tracker.states, state)
+                return f"{option} holds {counts[State(state)]} of its WIP limit of {limit}"
+        return None
+
     def admit_and_run(self, board):
         if State.IN_PROGRESS in board.values():
+            return
+        if full := self.full_column(board):
+            print(f"admission waits: {full}")
             return
         limit = self.config.limits.runs_per_day
         if self.state.runs_today(self.tenant) >= limit:

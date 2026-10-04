@@ -292,9 +292,14 @@ commands = [["uv", "run", "ruff", "check"], ["uv", "run", "ruff", "format", "--c
 
 [limits]
 runs_per_day = 6
+
+[limits.wip]               # Cyclix state -> the most items it may hold
+in_review = 5
 ```
 
 `cyclix check` fails on a missing key, an unknown key, or a board option name that is not on the board.
+
+**WIP limits** (settled in #44). The `[limits.wip]` table is the one optional part of the file. It maps a Cyclix state to the most items that column may hold. A state left out has no limit, and a file without the table has no limits. Only `in_progress`, `in_review`, `parked` and `needs_decision` take a limit: nothing in the engine adds items to Ready yet, and Done is the end. Each limit is a whole number of 1 or more. `in_progress` can only be 1, until the engine runs items side by side.
 
 ## The command
 
@@ -317,13 +322,15 @@ A check that needs an earlier one is left out when that one fails: no config mea
 1. Read the board's items and their states.
 2. Correct SQLite to match the board. An open run with no live process is ended with outcome `crashed`, its event is written, and its item is parked with the reason "run crashed in phase <phase>". Then a claim on an item that is in neither In progress nor In review is released.
 3. Run the reconciler on every item In review.
-4. If no item is In progress and the day's run limit is not reached, admit the oldest Ready item and run plan, build, gate, adversarial review and PR in order. Stop at the first stage that does not pass.
+4. If no item is In progress, no column is at its WIP limit, and the day's run limit is not reached, admit the oldest Ready item and run plan, build, gate, adversarial review and PR in order. Stop at the first stage that does not pass.
+
+**A full column stops admission** (settled in #44). This follows flow practice (Reinertsen's flow principles, Kanban): when a column is full, stop starting and finish what is there. A column is full when it holds as many items as its WIP limit, or more. The count takes every item in the column, including items a human moved there. While any column is full, the sweep admits nothing, writes no event, and prints `admission waits: <option> holds <n> of its WIP limit of <limit>`. The reconciler runs before admission, so a PR merged since the last pass frees a place in the same pass.
 
 **The reconciler writes an event only when it acts** (settled in #14). The sweep runs on every timer tick, so an open PR is seen many times. An item whose PR is still open, or has no PR on its branch, stays In review and writes nothing. When the PR has merged or closed, the reconciler moves the item and writes one `reconciler` event. The event goes under the run ID of the item's claim. An item with no claim, such as one a human moved to In review, gets a new run ID, and that run counts toward `limits.runs_per_day`. The claim is released after the reconciler's row, whether it passed or failed, so a failed reconciler tries again on the next pass under a new run.
 
 **A park from In review says why in a comment too** (settled in #14). A PR closed without merging parks its item with the comment "Parked: PR closed without merge". A move to Done posts nothing, because the merged PR already says so.
 
-**One item at a time per tenant** (settled in #18). A Ready item is admitted only when no item is In progress. Items In review do not block admission, so PRs can wait for the maintainer while the next item builds. `src/cyclix/runner.py` holds the sweep and the order of the stages.
+**One item at a time per tenant** (settled in #18). A Ready item is admitted only when no item is In progress. Items In review block admission only through a WIP limit on In review, so up to that limit, PRs can wait for the maintainer while the next item builds. `src/cyclix/runner.py` holds the sweep and the order of the stages.
 
 **The lock decides which runs crashed** (settled in #13). The lock is a `flock` on `<state_dir>/<tenant>.lock`. A pass that finds it held prints "another pass is running" and exits 0. Only the pass holding the lock runs stages for the tenant. So any run still open when a pass takes the lock was left by a pass that died, and the sweep ends it as `crashed`. The state core keeps no process ID. A pass that is alive but hung keeps the lock, and later passes wait behind it.
 

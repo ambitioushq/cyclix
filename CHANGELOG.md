@@ -95,3 +95,12 @@ The README's usage examples (#35), the first change Cyclix built through its own
 
 - `readme.feature`
   - Every subcommand has an example in the README
+
+WIP limits for each column (#44):
+
+- `wip.feature`
+  - A full In review column stops admission
+  - A merge in the same pass frees a place
+  - Items a human moved count toward the limit
+  - A config without WIP limits admits as before
+  - A WIP limit the engine cannot keep is refused
