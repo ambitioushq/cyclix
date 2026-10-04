@@ -1,0 +1,26 @@
+{
+  "gh": "2.102.0",
+  "command": [
+    "api",
+    "graphql",
+    "-f",
+    "query={fields_query}",
+    "-f",
+    "owner={owner}",
+    "-F",
+    "number={project}",
+    "-f",
+    "field={field}"
+  ],
+  "keys": [
+    "data",
+    "data.repositoryOwner",
+    "data.repositoryOwner.projectV2",
+    "data.repositoryOwner.projectV2.field",
+    "data.repositoryOwner.projectV2.field.id",
+    "data.repositoryOwner.projectV2.field.options",
+    "data.repositoryOwner.projectV2.field.options[].id",
+    "data.repositoryOwner.projectV2.field.options[].name",
+    "data.repositoryOwner.projectV2.id"
+  ]
+}

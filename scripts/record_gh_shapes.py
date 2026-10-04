@@ -24,6 +24,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from cyclix.adapters import github_tracker
+
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "docs" / "examples" / "sandbox.toml"
 SHAPES = ROOT / "tests" / "fixtures" / "gh-shapes"
@@ -31,15 +33,29 @@ LABEL = "sandbox"
 # Seconds to wait for a new item to show on the board.
 BOARD_WAIT = 60
 
+# The query text is not in the recorded command, which holds the placeholder. Only the
+# shape of the reply is checked, so re-record after changing a query.
+QUERIES = {
+    "fields_query": github_tracker.BOARD_FIELDS,
+    "items_query": github_tracker.BOARD_ITEMS,
+    "item_query": github_tracker.BOARD_ITEM,
+}
+
 # In the order they run: pr-list and pr-view read the PR that pr-create opens.
 COMMANDS = {
-    "project-view": ["project", "view", "{project}", "--owner", "{owner}", "--format", "json"],
+    "graphql-board-fields": [
+        "api", "graphql", "-f", "query={fields_query}",
+        "-f", "owner={owner}", "-F", "number={project}", "-f", "field={field}",
+    ],
     "project-field-list": [
         "project", "field-list", "{project}", "--owner", "{owner}", "--format", "json",
     ],
-    "project-item-list": [
-        "project", "item-list", "{project}", "--owner", "{owner}", "--format", "json",
-        "--limit", "100",
+    "graphql-board-items": [
+        "api", "graphql", "-f", "query={items_query}",
+        "-f", "owner={owner}", "-F", "number={project}", "-f", "field={field}",
+    ],
+    "graphql-board-item": [
+        "api", "graphql", "-f", "query={item_query}", "-f", "item={item_id}", "-f", "field={field}",
     ],
     "issue-view": [
         "issue", "view", "{issue}", "-R", "{repo}", "--json",
@@ -131,7 +147,10 @@ class Sandbox:
         return cls(configlib.load(CONFIG))
 
     def values(self):
-        return {"owner": self.owner, "project": self.project, "repo": self.repo, "base": self.base}
+        return {
+            "owner": self.owner, "project": self.project, "repo": self.repo, "base": self.base,
+            "field": self.config.tracker.status_field, **QUERIES,
+        }  # fmt: skip
 
     def clear(self):
         """Close every open issue and PR and empty the board, left by an earlier run that died.
@@ -163,23 +182,20 @@ class Sandbox:
 
     def set_state(self, issue, name):
         """Move an issue's board item to the Status option with this name."""
-        from cyclix.adapters.github_tracker import GitHubTracker
-
-        board = GitHubTracker(self.config).board()
+        board = github_tracker.GitHubTracker(self.config).board()
         gh("project", "item-edit", "--id", self.item_id(issue), "--project-id", board["project"],
            "--field-id", board["field"], "--single-select-option-id", board["options"][name])  # fmt: skip
 
     def board_state(self, issue):
         """The Status option name of an issue's board item, or None when it has none."""
-        return self._item(issue).get("status")
+        return self._item(issue)["status"]
 
     def item_id(self, issue):
         return self._item(issue)["id"]
 
     def items(self):
-        listing = gh("project", "item-list", self.project, "--owner", self.owner,
-                     "--format", "json", "--limit", "1000")  # fmt: skip
-        return json.loads(listing)["items"]
+        """The board's items, read fresh in narrow pages."""
+        return github_tracker.GitHubTracker(self.config).board_items()
 
     def push_branch(self, branch, workdir):
         """Push a branch holding one empty commit on the base."""
@@ -232,8 +248,7 @@ class Sandbox:
         deadline = time.monotonic() + BOARD_WAIT
         while True:
             for item in self.items():
-                content = item.get("content", {})
-                if content.get("repository") == self.repo and content.get("number") == issue:
+                if item["repository"] == self.repo and item["number"] == issue:
                     return item
             if time.monotonic() > deadline:
                 raise LookupError(f"#{issue} is not on the sandbox board")
@@ -250,6 +265,7 @@ def record(sandbox, workdir):
     values["issue"] = sandbox.new_issue(title, "Opened by scripts/record_gh_shapes.py.", LABEL)
     sandbox.set_state(values["issue"], sandbox.config.tracker.states.ready)
     values["title"] = title
+    values["item_id"] = sandbox.item_id(values["issue"])
     values["branch"] = f"cyclix/{values['issue']}-record-gh-shapes"
     sandbox.push_branch(values["branch"], workdir)
     body_file = Path(workdir) / "body.md"

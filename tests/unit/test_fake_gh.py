@@ -9,7 +9,16 @@ import json
 import pytest
 from fakes.runner import run_agent, run_gh
 
-PROJECT = ["--owner", "o", "--format", "json"]
+from cyclix.adapters.github_tracker import BOARD_ITEMS
+
+VARIABLES = ["-f", "owner=o", "-F", "number=1", "-f", "field=Status"]
+ITEMS = ["api", "graphql", "-f", f"query={BOARD_ITEMS}", *VARIABLES]
+
+
+def board_items(world, *extra):
+    """The `items` connection of a BoardItems call."""
+    out = gh_json(world, *ITEMS, *extra)
+    return out["data"]["repositoryOwner"]["projectV2"]["items"]
 
 
 @pytest.fixture
@@ -24,13 +33,47 @@ def gh_json(world, *args):
     return json.loads(result.stdout)
 
 
-def test_project_item_list_leaves_out_an_unset_status(world):
+def test_board_items_has_a_null_status_when_unset(world):
     world.add_issue(5, state=None)
     data = world.load()
     data["board"]["items"].append({"id": "PVTI_5", "issue": 5, "status": None})
     world.save(data)
-    out = gh_json(world, "project", "item-list", "1", *PROJECT)
-    assert "status" not in out["items"][0]
+    [node] = board_items(world)["nodes"]
+    assert node["fieldValueByName"] is None
+
+
+def test_board_items_pages_by_cursor(world):
+    for number in range(1, 151):
+        world.add_issue(number, state="Ready")
+    first = board_items(world)
+    assert len(first["nodes"]) == 100
+    assert first["pageInfo"]["hasNextPage"] is True
+    after = first["pageInfo"]["endCursor"]
+    second = board_items(world, "-f", f"after={after}")
+    assert [n["content"]["number"] for n in second["nodes"]] == list(range(101, 151))
+    assert second["pageInfo"]["hasNextPage"] is False
+
+
+def test_an_unknown_graphql_operation_is_unsupported(board):
+    result = run_gh(board, "api", "graphql", "-f", "query=query Other { viewer { login } }")
+    assert result.returncode == 2
+    assert "fake gh: unsupported command" in result.stderr
+
+
+def test_a_graphql_call_for_another_project_fails(board):
+    other = ["-f", f"query={BOARD_ITEMS}", "-f", "owner=o", "-F", "number=2", "-f", "field=Status"]
+    result = run_gh(board, "api", "graphql", *other)
+    assert result.returncode == 1
+    assert "Could not resolve to a ProjectV2" in result.stderr
+
+
+def test_board_item_reads_one_item_and_null_for_a_missing_one(board):
+    query = "query BoardItem($item: ID!, $field: String!) { node(id: $item) { id } }"
+    args = ["api", "graphql", "-f", f"query={query}", "-f", "field=Status"]
+    found = gh_json(board, *args, "-f", "item=PVTI_3")
+    assert found["data"]["node"] == {"fieldValueByName": {"name": "Ready"}}
+    missing = gh_json(board, *args, "-f", "item=PVTI_99")
+    assert missing["data"]["node"] is None
 
 
 def test_issue_view_of_a_missing_issue_fails(board):
@@ -81,10 +124,10 @@ def test_auth_status(board):
 
 
 def test_a_fault_can_return_stale_output(board):
-    board.add_fault("project item-list", exit=0, stdout='{"items": [], "totalCount": 0}\n')
-    out = gh_json(board, "project", "item-list", "1", *PROJECT)
-    assert out == {"items": [], "totalCount": 0}
-    assert len(gh_json(board, "project", "item-list", "1", *PROJECT)["items"]) == 1
+    empty = {"data": {"repositoryOwner": {"projectV2": {"items": {"nodes": []}}}}}
+    board.add_fault("api graphql", exit=0, stdout=json.dumps(empty) + "\n")
+    assert gh_json(board, *ITEMS) == empty
+    assert len(board_items(board)["nodes"]) == 1
 
 
 def test_the_fake_agent_fails_without_a_script_entry(world, tmp_path):

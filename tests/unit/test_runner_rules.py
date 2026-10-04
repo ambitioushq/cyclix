@@ -174,7 +174,7 @@ def test_a_crashed_run_whose_item_a_human_moved_is_ended_but_not_moved(world, co
 
 
 def test_a_failed_board_read_fails_the_pass(world, capsys):
-    world.add_fault("project item-list", exit=1, stderr="HTTP 502")
+    world.add_fault("api graphql", exit=1, stderr="HTTP 502")
     assert sweep(world) == 1
     assert "HTTP 502" in capsys.readouterr().err
 

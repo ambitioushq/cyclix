@@ -34,6 +34,7 @@ def fake_runs_each(world, recordings):
     values = {
         "owner": "o", "project": "1", "repo": "o/r", "base": "main", "issue": 3,
         "title": title, "branch": "cyclix/3-record-gh-shapes", "body_file": str(body_file),
+        "field": "Status", "item_id": world.item_id(3), **recorder.QUERIES,
     }  # fmt: skip
     shapes = {}
     for name in recorder.COMMANDS:

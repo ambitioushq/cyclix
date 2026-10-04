@@ -19,9 +19,9 @@ Feature: The GitHub tracker adapter
     When the tracker sets #3 to In progress
     Then the board shows #3 in the option mapped to "in_progress"
 
-  @issue-9
+  @issue-9 @issue-47
   Scenario: A gh failure surfaces with its details
-    Given "project item-list" fails with exit 1 and stderr "HTTP 502" once
+    Given "api graphql" fails with exit 1 and stderr "HTTP 502" once
     When the tracker lists Ready items
     Then it raises a GhError holding exit 1 and "HTTP 502"
 
