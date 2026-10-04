@@ -3,6 +3,7 @@ import re
 
 import pytest
 from fakes.runner import run_cyclix
+from fakes.world import REPO
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from cyclix.state.core import RunStart
@@ -109,6 +110,17 @@ def events_at_stages(world, result, issue, first, middle, last):
         if e["attributes"]["cyclix.issue.id"] == issue
     ]
     assert stages == wanted, result.stdout + result.stderr
+
+
+@then(
+    parsers.parse(
+        'every stage_run event for #{issue:d} has "{key}" set to the tenant\'s repository URL'
+    )
+)
+def events_carry_repository_url(world, result, issue, key):
+    found = [e["attributes"] for e in world.events() if e["attributes"]["cyclix.issue.id"] == issue]
+    assert found, result.stdout + result.stderr
+    assert [a.get(key) for a in found] == [f"https://github.com/{REPO}"] * len(found)
 
 
 @then(parsers.parse("no PR for #{issue:d} exists"))
