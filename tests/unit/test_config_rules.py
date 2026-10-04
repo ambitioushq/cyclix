@@ -10,6 +10,10 @@ ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = ROOT / "docs" / "examples" / "tenant.toml"
 
 
+# Everything under [limits] in the example, [limits.wip] included, so the table is gone.
+LIMITS_SECTION = EXAMPLE.read_text()[EXAMPLE.read_text().index("[limits]") :]
+
+
 def write(tmp_path, text):
     path = tmp_path / "tenant.toml"
     path.write_text(text)
@@ -60,7 +64,7 @@ def test_the_version_changes_with_the_file(tmp_path):
     ("old", "new", "message"),
     [
         ('owner = "ambitioushq"\n', "", 'config: [tracker] is missing "owner"'),
-        ("[limits]\nruns_per_day = 6\n", "", "config: missing table [limits]"),
+        (LIMITS_SECTION, "", "config: missing table [limits]"),
         ("[limits]", "[limits.extra]\n[limits]", "config: unknown table [limits.extra]"),
         ("[tenant]", "[other]\n[tenant]", "config: unknown table [other]"),
         ('kind = "github"\nowner', 'kind = "jira"\nowner', 'config: [tracker] kind must be "github", not "jira"'),

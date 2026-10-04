@@ -3,7 +3,8 @@
 The file is found in this order: the path given, then CYCLIX_CONFIG, then
 <tenant>.toml in the config folder when a tenant name is given. The config folder
 is $XDG_CONFIG_HOME/cyclix, else ~/.config/cyclix. Every key is required,
-and an unknown key is an error, so a typo never passes silently.
+apart from the [limits.wip] table, and an unknown key is an error, so a typo
+never passes silently.
 """
 
 import hashlib
@@ -13,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 STATES = ("ready", "in_progress", "in_review", "parked", "needs_decision", "done")
+# The states that may carry a WIP limit. The engine adds nothing to Ready, and Done is the end.
+WIP_STATES = ("in_progress", "in_review", "parked", "needs_decision")
 
 
 class ConfigError(Exception):
@@ -71,6 +74,8 @@ class Gate:
 @dataclass(frozen=True)
 class Limits:
     runs_per_day: int
+    # Cyclix state -> the most items it may hold. A state left out has no limit.
+    wip: dict[str, int]
 
 
 @dataclass(frozen=True)
@@ -116,7 +121,9 @@ def load(path=None, tenant=None):
     except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
         raise ConfigError(f"{path} is not valid TOML: {error}") from None
 
+    wip = data.get("limits", {}).pop("wip", {})
     check_table(data, SCHEMA, "")
+    check_wip(wip)
     for table, kind in KINDS.items():
         if data[table]["kind"] != kind:
             raise ConfigError(f'[{table}] kind must be "{kind}", not "{data[table]["kind"]}"')
@@ -128,7 +135,7 @@ def load(path=None, tenant=None):
         codehost=CodeHost(**data["codehost"]),
         agent=Agent(**{**data["agent"], "command": tuple(data["agent"]["command"])}),
         gate=Gate(commands=tuple(tuple(c) for c in data["gate"]["commands"])),
-        limits=Limits(**data["limits"]),
+        limits=Limits(**data["limits"], wip=wip),
         state_dir=state_dir(),
         version="sha256:" + hashlib.sha256(raw).hexdigest(),
     )
@@ -194,6 +201,23 @@ def check_value(value, expected, label):
             raise ConfigError(f"{label} must be a whole number")
     elif not isinstance(value, expected):
         raise ConfigError(f"{label} must be a string")
+
+
+def check_wip(wip):
+    """The optional [limits.wip] table: a whole number of 1 or more for each limited state."""
+    if not isinstance(wip, dict):
+        raise ConfigError("limits.wip must be a table")
+    for key, value in wip.items():
+        if key not in WIP_STATES:
+            raise ConfigError(
+                f'[limits.wip] cannot limit "{key}": only {", ".join(WIP_STATES)} take a limit'
+            )
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise ConfigError(f'[limits.wip] "{key}" must be a whole number of 1 or more')
+    if wip.get("in_progress", 1) != 1:
+        raise ConfigError(
+            '[limits.wip] "in_progress" can only be 1 until the engine runs items side by side'
+        )
 
 
 def is_argv(value):
