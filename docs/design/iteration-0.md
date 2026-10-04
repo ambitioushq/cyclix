@@ -328,6 +328,10 @@ in_review = 5
 
 A check that needs an earlier one is left out when that one fails: no config means no agent or board check, and no signed-in `gh` means no board check. `check` reads the board with `gh project field-list` through `adapters/gh.py`, before the tracker adapter exists.
 
+**What `install` puts in the service** (settled for #41). systemd's user manager does not read the shell's `PATH`, so `cyclix install` writes one into the service unit. It finds each command the service runs on the `PATH` of the shell it runs in: `gh`, `git`, the first word of `agent.command`, and the first word of each command in `gate.commands`. The unit's `PATH` holds the directories of those commands, in that order and without repeats, then `/usr/local/bin:/usr/bin:/bin`. It does not copy the shell's whole `PATH`. If one of the commands is not on `PATH`, `install` writes nothing, exits 1, and names the command. A timer whose every pass fails is worse than no timer. A tool moved later means running `install --force` again.
+
+**Lingering.** A user's timers stop when the user logs out, unless lingering is on. When it is off, `install` prints to stderr that the timer stops at logout, and gives the command `loginctl enable-linger <user>`. It does not run that command, because it needs root. The units are still written and the timer started, and `install` exits 0: the timer runs while the user is logged in.
+
 ## The sweep
 
 `cyclix run --once` makes one pass for one tenant, under a file lock so two passes never overlap:
