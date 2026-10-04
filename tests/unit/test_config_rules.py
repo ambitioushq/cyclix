@@ -38,8 +38,10 @@ def test_the_example_loads_in_full(monkeypatch):
     loaded = config.load(EXAMPLE)
     assert loaded.tracker.project == 1
     assert loaded.tracker.states.needs_decision == "Needs decision"
-    assert loaded.agent.command == ("claude", "-p", "--output-format", "json")
-    assert loaded.gate.commands[1] == ("uv", "run", "pytest", "-q")
+    assert loaded.agent.command == (
+        "claude", "-p", "--output-format", "json", "--permission-mode", "bypassPermissions",
+    )  # fmt: skip
+    assert loaded.gate.commands[2] == ("uv", "run", "pytest", "-q")
     assert loaded.limits.runs_per_day == 6
     assert loaded.state_dir == Path("/state")
 

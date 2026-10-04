@@ -21,13 +21,15 @@ repo = "ambitioushq/cyclix"
 base = "main"
 
 [agent]
-command = ["claude", "-p", "--output-format", "json"]
+# Print mode cannot ask before it edits a file or runs git, so the agent acts
+# without asking. The gate and the maintainer's review are the checks.
+command = ["claude", "-p", "--output-format", "json", "--permission-mode", "bypassPermissions"]
 model_plan = "claude-opus-5-5"
 model_build = "claude-sonnet-5-5"
 timeout_minutes = 60
 
 [gate]
-commands = [["uv", "run", "ruff", "check"], ["uv", "run", "pytest", "-q"]]
+commands = [["uv", "run", "ruff", "check"], ["uv", "run", "ruff", "format", "--check"], ["uv", "run", "pytest", "-q"]]
 
 [limits]
 runs_per_day = 6
