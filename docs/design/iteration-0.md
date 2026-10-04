@@ -249,6 +249,7 @@ One JSON object per line in `events/<tenant>.jsonl` under the state directory. E
 - The writer refuses a key that is not in the list above, and writes nothing (settled in #12). A new key is added here first, then to `events/schema.py`.
 - The writer refuses any string attribute over 500 characters, including strings inside `cyclix.gate.checks`. A string that long is most likely prompt or code text, which belongs in the run folder.
 - The engine version is `resource.service.version`. The config version is a hash of the config file.
+- `cyclix.cost.usd` is rounded to 6 decimal places, a millionth of a dollar, before it is written (settled for #40). The agent reports costs such as `0.36616580000000004`, and the digits past the sixth are float noise. Cents would be too coarse for the cost of one call.
 
 The earlier loop starts writing stage-run events in this same schema before Iteration 0 exists, so the record starts early. Any change to schema 0 is made here first.
 
