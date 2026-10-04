@@ -198,6 +198,7 @@ class Sweep:
             result = StageResult("failed", f"{name} raised {type(error).__name__}: {error}")
         fields = {
             schema.CONFIG_VERSION: self.config.version,
+            schema.REPOSITORY_URL: f"https://github.com/{self.config.codehost.repo}",
             schema.DURATION_MS: round((time.monotonic() - started) * 1000),
         }
         if ctx is not None:

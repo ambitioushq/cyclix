@@ -46,3 +46,10 @@ Feature: One pass of the loop
     Given issue #12 is In progress and issue #13 is Ready
     When one pass runs
     Then issue #13 stays in "Ready"
+
+  @issue-39
+  Scenario: Every stage-run event carries the repository URL
+    Given an issue #7 in state "Ready" on the board
+    And the agent writes a plan, then commits a change
+    When one pass runs
+    Then every stage_run event for #7 has "vcs.repository.url.full" set to the tenant's repository URL
