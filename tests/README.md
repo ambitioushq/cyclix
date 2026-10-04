@@ -8,7 +8,9 @@ Every test file needs a basename unique across `steps/` and `unit/`, because the
 
 Every scenario carries the tag of the issue that introduced it, such as `@issue-4`. A later issue that changes a scenario keeps the old tag and adds its own. `pytest -m issue_4` runs one issue's scenarios.
 
-A scenario that needs code from a later issue carries `@xfail-until-<n>`, such as `@xfail-until-9`. It runs as a strict expected failure, so it fails the suite once it starts passing. The PR for issue n removes the tag. `unit/test_scenario_tags.py` fails if any scenario has no issue tag. To run the same check on its own: `uv run python tests/tag_check.py`.
+A scenario that needs code from a later issue carries `@xfail-until-<n>`, such as `@xfail-until-9`. It runs as a strict expected failure, so it fails the suite once it starts passing. The PR for issue n removes the tag. `unit/test_scenario_tags.py` fails if any scenario has no issue tag.
+
+A feature tagged `@live` is checked by hand against Cyclix's own repo and board, and recorded in the PR that adds it. No steps file binds it, so pytest never runs it. `features/self_tenant.feature` is the one such feature. To run the same check on its own: `uv run python tests/tag_check.py`.
 
 ## The fake world
 

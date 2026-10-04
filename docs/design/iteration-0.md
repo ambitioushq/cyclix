@@ -274,13 +274,15 @@ repo = "ambitioushq/cyclix"
 base = "main"
 
 [agent]
-command = ["claude", "-p", "--output-format", "json"]
+# Print mode cannot ask before it edits a file or runs git, so the agent acts
+# without asking. The gate and the maintainer's review are the checks.
+command = ["claude", "-p", "--output-format", "json", "--permission-mode", "bypassPermissions"]
 model_plan = "claude-opus-5-5"
 model_build = "claude-sonnet-5-5"
 timeout_minutes = 60
 
 [gate]
-commands = [["uv", "run", "ruff", "check"], ["uv", "run", "pytest", "-q"]]
+commands = [["uv", "run", "ruff", "check"], ["uv", "run", "ruff", "format", "--check"], ["uv", "run", "pytest", "-q"]]
 
 [limits]
 runs_per_day = 6
@@ -352,10 +354,22 @@ The fake GitHub is a world model, not replayed recordings (settled in #4). The w
 
 CI fails if any tracked file or commit message in a PR contains a name from a private list. The list is held in the Actions secret `CYCLIX_FORBIDDEN_NAMES`, and locally in the environment variable of the same name. The check matches whole words, ignoring case. It reports the file, the line, and the list position of the name, never the name itself, because the CI log is public. With the secret missing, the check fails.
 
+## Cyclix as its own tenant
+
+Settled in #17. Cyclix runs its own loop from the tenant config above, which is also `docs/examples/tenant.toml`. The maintainer keeps the live copy outside this repository, on the host.
+
+- **The host.** The timer runs on a Linux host the maintainer runs, under `cyclix install --tenant cyclix`. The maintainer runs the host steps.
+- **The agent acts without asking.** Print mode cannot ask before it edits a file or runs `git`, so the agent runs with `--permission-mode bypassPermissions`, as in the sandbox. The gate and the maintainer's review are the checks on what it does.
+- **The models.** The plan stage uses `claude-opus-5-5` and the build stage uses `claude-sonnet-5-5`.
+- **The run limit.** Six runs a day.
+- **The gate matches CI**, apart from the names check, which needs the private list.
+- **Branch protection on `main`.** Changes reach `main` only through a PR. The CI jobs `test` and `names` must pass. Force pushes and deleting `main` are refused. No approving review is required, because the loop opens its PRs under the maintainer's own GitHub identity, and GitHub does not let an author approve their own PR. Admins may bypass the rules, so the maintainer can still push a fix to `main` in an emergency.
+- **The live scenario.** `tests/features/self_tenant.feature` is tagged `@live`. It was checked by hand once, and the PR for #17 records the result. No steps file binds it.
+
 ## Open questions for the first session
 
 1. **The fake GitHub.** Settled in #4: the world model. See "The test footing".
 2. **One item at a time.** Is one In progress item per tenant right for Iteration 0? It keeps the sweep simple and is all a single maintainer needs at first.
-3. **Run limits.** A daily run count stands in for the budget cap until the operations area. Is six a day right for Cyclix's own tenant?
+3. **Run limits.** Settled in #17: six a day. See "Cyclix as its own tenant".
 4. **Branch names.** Settled in #10: `cyclix/<issue>-<slug>`. See "Run folders and worktrees".
-5. **The models.** Which models the plan and build stages use by default.
+5. **The models.** Settled in #17: Opus plans, Sonnet builds. See "Cyclix as its own tenant".
