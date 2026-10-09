@@ -1,0 +1,25 @@
+version: 2
+
+# A release must be two weeks old before Dependabot proposes it. That gives a bad
+# release time to be found and pulled first.
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      python:
+        patterns: ["*"]
