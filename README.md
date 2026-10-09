@@ -1,5 +1,7 @@
 # Cyclix
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ambitioushq/cyclix/badge)](https://scorecard.dev/viewer/?uri=github.com/ambitioushq/cyclix)
+
 Cyclix runs an unattended issue-to-PR loop. It takes a well-formed issue from a board, plans the change, builds it, runs the quality gate, reviews it adversarially, opens a pull request, and carries that PR to a human merge. A person reviews and merges every PR.
 
 **Pre-release. Not ready for use.** The code is written in public from the first commit. Interfaces will change without notice until v0.1.
