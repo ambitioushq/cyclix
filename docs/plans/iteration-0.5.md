@@ -59,12 +59,13 @@ Found in the first read of the whole repository, before the tracing sessions:
 
 Structure and guardrails:
 
-- Only 30 of about 160 functions declare a return type, and many parameters have no type, such as `Agent.run` in `adapters/agent.py:24`. Type every public function, and add the type checker from step 3 in strict mode.
+- Only 30 of about 160 functions declare a return type, and many parameters have no type, such as `Agent.run` in `adapters/agent.py:24`. Type every public function, and add pyright in strict mode (step 3).
 - The package has no `py.typed` marker, so type checkers treat it as untyped. Add `src/cyclix/py.typed`.
 - The engine reports through `print` and writes no logs, as in `runner.py:57` and `runner.py:160`. Use the `logging` module, writing to stderr so journald keeps it, kept apart from the event log.
 - The seven error classes (`ConfigError`, `InstallError`, `StateError`, `GhError`, `TrackerError`, `CodeHostError`, `EventError`) share no base class, so `runner.py:50` lists six of them by hand. Add one `CyclixError` base.
 - Ruff selects only the `I`, `UP` and `B` rule sets (`pyproject.toml`). Widen the set and record why each set is on or off.
 - Stages come in two shapes. Admission and the reconciler are module functions with their own signatures (`stages/admission.py:16`, `stages/reconciler.py:25`). The other stages are classes on the `Stage` protocol. Give them one shape before `decide()` picks between them.
+- Two modules outside `adapters/` import `subprocess`: the gate stage (`stages/gate.py:8`) and `install.py`. The tenet "only adapters import `subprocess`" fails on both, as an import-linter trial run showed. Move each behind an adapter, or name it in the tenet as an exception.
 - Stages import the GitHub adapter directly: `slug` and `branch_name` from `adapters/github_codehost.py`, in `stages/admission.py:8` and `stages/reconciler.py:7`. Branch naming belongs behind the `CodeHost` protocol.
 - The same list of work states is kept twice: `config.STATES` (`config.py:16`) and `workstate.State` (`workstate.py:10`). Derive one from the other.
 - `Writer.ANY_STATION` (`workstate.py:31`) still uses the old word "station". Rename it.
@@ -133,8 +134,6 @@ Structure:
 - Decision tables: use the "Unique" hit policy from DMN, the decision-table standard, where no two rules may match the same case, plus one catch-all rule per table that routes to a person. "First" and "Priority" make overlaps legal, and the overlap check would then find nothing.
 - OpenTelemetry's `gen_ai.*` names moved to their own repository in June 2026, with no tagged release yet, and `gen_ai.provider.name` is now required. Pin a commit of that repository, and keep fields for cost under `cyclix.*`.
 - The step 4 generator for `docs/reference/` and the generated views of the loop model should be one generator.
-- Step 3's type checker: pyright in strict mode is the suggestion. Astral's `ty` is still a 0.0.x beta and behind pyright on the typing spec, so it could run beside pyright as a check that does not fail the build.
-- Step 2's enforcers: import-linter, a stable tool that fails CI when one module imports another it may not, could replace the hand-written import tests. Two tenets fit it as they stand: stages never import `adapters.github`, and only adapters import `subprocess`. It would be the first new dev dependency of the pass.
 - Step 5's coverage and overlap checks can step through every combination of values, one table at a time. Every state variable has a short, fixed list of values, and each column's table tests only a few of them. The interval algorithms in the DMN research (Calvanese and others, 2016) are built for numeric ranges, which the loop model does not have.
 
 ## Step 2: tenets, each with an enforcer
@@ -148,7 +147,7 @@ Structure:
   - Every action that changes the outside world is preceded by `set_phase`.
   - The runtime uses the standard library only.
   - The repository holds no private names, paths or tokens.
-- [ ] Write the enforcers: small import and source tests in `tests/unit/test_tenets.py`.
+- [ ] Write the enforcers: import-linter contracts for the import rules, and small source tests in `tests/unit/test_tenets.py` for the rest.
 - [ ] A test that fails when a tenet names no enforcer, or names one that does not exist.
 - [ ] Add the "by review" tenets to `.github/copilot-instructions.md`.
 
@@ -160,7 +159,7 @@ Coverage shows which lines ran. A test can run a line and still pass when that l
 - [ ] Record the first baseline here: planted faults that survived, for each part of the engine. Set a target for each.
 - [ ] Close the gaps listed under "Weak tests" in step 1.
 - [ ] Patch coverage on each PR, so new code cannot hide behind the overall number.
-- [ ] A type checker (pyright or ty, to decide) as a dev dependency, run in CI.
+- [ ] pyright in strict mode as a dev dependency, run in CI.
 - [ ] Hypothesis stateful tests for the transition table and the state core. They run random sequences of moves and check the rules after each one.
 - [ ] A rule in `tests/README.md`: a scenario's Then steps check an effect outside the engine (the board, the gh calls, git, the event log), never its internal state. Add it to `copilot-instructions.md`.
 
@@ -209,7 +208,7 @@ The loop-model rewrite in step 5 will reshape the runner and the stages. These P
 - [ ] H. Wiring: the adapter factory keyed by `kind`; stages, timeouts and the clock passed in, with no module globals replaced in tests; `logging` in place of `print`; one module per CLI subcommand.
 - [ ] I. Config: the check built from the dataclasses, and a config version that ignores whitespace.
 - [ ] J. Store: migrations as lists of statements, and `STRICT` tables, through a migration from schema 1 to 2.
-- [ ] K. Lint and import rules: ruff `ALL` with each ignored rule written down with its reason, and the import-linter contracts if step 2 picks it.
+- [ ] K. Lint and import rules: ruff `ALL` with each ignored rule written down with its reason, and import-linter in CI with the contracts from step 2.
 
 ## Parked
 
