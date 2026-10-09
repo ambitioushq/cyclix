@@ -97,6 +97,12 @@ Safety:
 - An event can be lost, which the design says cannot happen. `runner.py:224-226` closes the run row in SQLite, then appends the event. A crash between the two leaves a closed row and no event, and the next sweep never sees it. Record on the row whether its event was written, and have each sweep write the missing ones (the outbox pattern).
 - Run ids have one-second precision (`runner.py:241`), so two runs on one issue in the same second collide on the `runs` unique key. Python 3.14's `uuid.uuid7()` is unique and ordered by time.
 
+Found in the research on comparable loops and on Claude Code's print mode:
+
+- The agent timeout kills Claude Code's process group with SIGKILL (`adapters/claude_code.py:67`). Claude Code's docs say a SIGINT ends the session's turn cleanly, while SIGTERM gives exit 143 and no result. Send SIGINT first, wait a short grace period, then SIGKILL.
+- Agent calls run with no `--max-turns` or `--max-budget-usd` cap (`docs/examples/tenant.toml`). The timeout bounds time only. Comparable loops cap turns and cost on every agent call. Set both per stage in the config.
+- The `bypassPermissions` decision has a named alternative: `--permission-mode dontAsk` with `--permission-prompts none` (Claude Code 2.1.259 or later), plus `--allowedTools` limited by prefix rules such as `Bash(git commit *)`. Anything outside the list is then refused instead of allowed.
+
 Structure:
 
 - The wiring always builds the GitHub adapters (`runner.py:59-63`), whatever `kind` the config names. A small factory keyed by `kind` is where a second tracker plugs in.
@@ -129,6 +135,7 @@ Structure:
 - The step 4 generator for `docs/reference/` and the generated views of the loop model should be one generator.
 - Step 3's type checker: pyright in strict mode is the suggestion. Astral's `ty` is still a 0.0.x beta and behind pyright on the typing spec, so it could run beside pyright as a check that does not fail the build.
 - Step 2's enforcers: import-linter, a stable tool that fails CI when one module imports another it may not, could replace the hand-written import tests. Two tenets fit it as they stand: stages never import `adapters.github`, and only adapters import `subprocess`. It would be the first new dev dependency of the pass.
+- Step 5's coverage and overlap checks can step through every combination of values, one table at a time. Every state variable has a short, fixed list of values, and each column's table tests only a few of them. The interval algorithms in the DMN research (Calvanese and others, 2016) are built for numeric ranges, which the loop model does not have.
 
 ## Step 2: tenets, each with an enforcer
 
@@ -192,7 +199,7 @@ The findings above go out as these PRs. The safety PRs come first and do not wai
 
 The loop-model rewrite in step 5 will reshape the runner and the stages. These PRs fix what that rewrite keeps: types, errors, adapter boundaries, wiring and the store. The runner's shape and the two stage shapes wait for step 5.
 
-- [ ] A. Subprocess boundaries: an environment allow-list for the agent and the gate, with no GitHub credentials for the agent; a timeout and `GIT_TERMINAL_PROMPT=0` for git; the gate timeout; `cyclix check` confirms branch protection; the `bypassPermissions` decision recorded.
+- [ ] A. Subprocess boundaries: an environment allow-list for the agent and the gate, with no GitHub credentials for the agent; a timeout and `GIT_TERMINAL_PROMPT=0` for git; the gate timeout; `cyclix check` confirms branch protection; the `bypassPermissions` decision recorded; SIGINT before SIGKILL on the agent timeout; turn and cost caps on every agent call.
 - [ ] B. Install and files: the systemd start timeout and sandboxing, and file modes for the state folder, `state.db`, the event log and run folders.
 - [ ] C. The event outbox, `uuid7` run ids, and claims that expire unless progress renews them (a lease), with a scenario for a crash between closing the row and writing the event.
 - [ ] D. Names and layout: `state/` to `store/`, `adapters/github/`, the PR stage class, `Writer.ANY_STATION`, the version from package metadata. These moves come before typing, so the typing PRs touch the final paths.
