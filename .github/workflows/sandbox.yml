@@ -18,6 +18,8 @@ jobs:
   sandbox:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # The environment holds the sandbox secrets, so only runs from main can read them.
+    environment: sandbox
     permissions:
       contents: read
     env:
@@ -35,7 +37,9 @@ jobs:
       - run: uv python install 3.14
       - run: uv sync --locked
       - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+        # Pinned, because this job holds the sandbox tokens. Dependabot cannot bump a
+        # global npm install, so the version is raised by hand.
+        run: npm install -g @anthropic-ai/claude-code@2.1.282 # zizmor: ignore[adhoc-packages]
       - name: Let git push with the sandbox token, and commit as the sandbox
         run: |
           gh auth setup-git
