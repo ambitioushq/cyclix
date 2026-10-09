@@ -34,3 +34,6 @@ extend-select = ["I", "UP", "B"]
 source = ["cyclix"]
 branch = true
 patch = ["subprocess"]
+
+[tool.coverage.report]
+fail_under = 98
