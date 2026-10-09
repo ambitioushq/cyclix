@@ -16,7 +16,7 @@ requires = ["uv_build>=0.10,<0.11"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = ["pytest", "pytest-bdd", "ruff", "coverage"]
+dev = ["pytest", "pytest-bdd", "ruff", "coverage", "zizmor"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
