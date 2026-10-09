@@ -68,6 +68,8 @@ The engine is built one **area** at a time. An area is one stage (admission and 
 3. **Build.** The scenarios go in first, failing. Then small PRs make them pass. Unit tests are added only where a scenario cannot reach a rule cheaply.
 4. **Learnings.** Notes on what was surprising.
 
+Work done by hand outside the loop, such as a foundations pass, follows a plan in `docs/plans/`.
+
 **The feature files are the functional spec.** They are versioned with the engine. A scenario that changes or is removed is a behaviour change, and the changelog names it.
 
 **Iteration 0 comes first.** It is a minimal version of every stage, so a real issue can travel to a merged PR. Once it works, Cyclix becomes a tenant of its own loop, and later areas are built through it. Design stays supervised, and the maintainer reviews and merges every PR.
