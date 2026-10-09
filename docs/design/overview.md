@@ -51,7 +51,9 @@ Rules:
 ## How it is built
 
 - **Python 3.14**, installed from PyPI with `uv tool install` or `pipx`. The state core sits behind a narrow interface, so it can be reimplemented later without touching the stages.
-- **The standard library by default.** Every runtime dependency needs a written reason in these design docs and is approved by PR. Heavy integrations are optional extras, such as `cyclix[otel]` for OTLP export. Development tools (pytest, pytest-bdd, ruff, coverage) are dev dependencies.
+- **The standard library by default.** Every runtime dependency needs a written reason in these design docs and is approved by PR. Heavy integrations are optional extras, such as `cyclix[otel]` for OTLP export. Development tools (pytest, pytest-bdd, ruff, coverage, pyright, import-linter) are dev dependencies.
+- **Types are checked by pyright in strict mode**, in CI. Strict mode fails on any function that is missing a parameter or return type. Astral's `ty` is not used yet: it is a 0.0.x beta, and behind pyright on the typing spec.
+- **Import rules are checked by import-linter**, in CI. Each rule is a contract in `pyproject.toml`, such as "stages never import `adapters.github`". A rule about direct imports only, such as "only adapters import `subprocess`", sets `allow_indirect_imports`, because the runner reaches `subprocess` through the adapters. Rules that are not about imports are tests in `tests/unit/test_tenets.py`.
 - **Adapters wrap the vendor's own tool.** Cyclix builds no HTTP layer. The GitHub adapters call the `gh` CLI, which is required only when GitHub is the chosen tracker or code host. `cyclix check` confirms it is installed and signed in.
 - **The main host is a Linux VM.** `cyclix install` writes systemd units, so systemd does the scheduling. Containers come later, to isolate each agent session.
 - **Webhooks for speed, a periodic sweep for truth.** GitHub never retries a failed webhook delivery, so the sweep stays the source of truth.
