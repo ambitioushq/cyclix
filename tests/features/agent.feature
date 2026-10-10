@@ -53,9 +53,17 @@ Feature: The Claude Code agent adapter
   @issue-55
   Scenario: The agent's commits carry the engine's git identity
     Given the engine's git config names the user "Ada Lovelace" with email "ada@example.com"
-    And the agent answers "plan written"
-    When the adapter runs a prompt for the plan stage
-    Then the agent's environment sets GIT_AUTHOR_NAME to "Ada Lovelace" and GIT_COMMITTER_EMAIL to "ada@example.com"
+    And the agent commits a file
+    When the adapter runs a prompt for the build stage
+    Then the agent's commit is authored by "Ada Lovelace <ada@example.com>" and committed by "Ada Lovelace <ada@example.com>"
+
+  @issue-55
+  Scenario: A git identity variable in the engine's environment sets only its own role
+    Given the engine's git config names the user "Ada Lovelace" with email "ada@example.com"
+    And the engine's environment sets GIT_AUTHOR_NAME to "Grace Hopper"
+    And the agent commits a file
+    When the adapter runs a prompt for the build stage
+    Then the agent's commit is authored by "Grace Hopper <ada@example.com>" and committed by "Ada Lovelace <ada@example.com>"
 
   @issue-55
   Scenario Outline: A call stopped by a cap says which cap

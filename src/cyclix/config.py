@@ -108,7 +108,8 @@ ARGV = "a list of strings"
 ARGV_LIST = "a list of commands"
 NAMES = "a list of names, possibly empty"
 NUMBER = "a whole or decimal number"
-AGENT_STAGE = {"model": str, "max_turns": int, "max_budget_usd": NUMBER, "tools": ARGV}
+COUNT = "a whole number of 1 or more"
+AGENT_STAGE = {"model": str, "max_turns": COUNT, "max_budget_usd": NUMBER, "tools": ARGV}
 SCHEMA = {
     "tenant": {"name": str},
     "tracker": {
@@ -121,7 +122,7 @@ SCHEMA = {
     "codehost": {"kind": str, "repo": str, "base": str},
     "agent": {
         "command": ARGV,
-        "timeout_minutes": int,
+        "timeout_minutes": COUNT,
         "pass_env": NAMES,
         "plan": AGENT_STAGE,
         "build": AGENT_STAGE,
@@ -276,6 +277,9 @@ def check_value(value, expected, label):
     elif expected is int:
         if not isinstance(value, int) or isinstance(value, bool):
             raise ConfigError(f"{label} must be a whole number")
+    elif expected is COUNT:
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise ConfigError(f"{label} must be a whole number of 1 or more")
     elif expected is NUMBER:
         if not isinstance(value, int | float) or isinstance(value, bool) or value <= 0:
             raise ConfigError(f"{label} must be a number above 0")

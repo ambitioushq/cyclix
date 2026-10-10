@@ -48,6 +48,21 @@ def example_with(config_file, line, table):
     edit_table(config_file, table, lambda lines: [line, *lines])
 
 
+@given(
+    parsers.re(
+        r'the example config with "(?P<key>\w+)" set to (?P<value>\S+) under \[(?P<table>[\w.]+)\]'
+    )
+)
+def example_setting(config_file, key, value, table):
+    edit_table(
+        config_file,
+        table,
+        lambda lines: [
+            f"{key} = {value}" if line.startswith(f"{key} =") else line for line in lines
+        ],
+    )
+
+
 @given(parsers.parse('the example config with the agent command "{command}"'))
 def example_with_command(config_file, command):
     line = f"command = {json.dumps(shlex.split(command))}"

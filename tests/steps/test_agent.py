@@ -6,6 +6,7 @@ import time
 import pytest
 from conftest import name_list
 from fakes.runner import environment
+from fakes.world import git
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from cyclix import config
@@ -59,6 +60,19 @@ def engine_git_identity(world, fake_env, monkeypatch, tmp_path, name, email):
         monkeypatch.delenv(f"GIT_{key}_EMAIL", raising=False)
 
 
+@given(parsers.parse('the engine\'s environment sets {name} to "{value}"'))
+def engine_sets(monkeypatch, name, value):
+    monkeypatch.setenv(name, value)
+
+
+@given("the agent commits a file")
+def agent_commits(world):
+    work = world.root / "work"
+    work.mkdir()
+    git(work, "init", "-q")
+    world.add_agent_step(files={"change.txt": "a change\n"}, commit=True)
+
+
 @given(parsers.parse('the agent prints "{text}" and exits {code:d}'))
 def agent_prints(world, text, code):
     world.add_agent_step(stdout=text + "\n", exit=code)
@@ -81,7 +95,7 @@ def run_stage(world, stage):
     agent_config = config.load(world.config).agent
     agent = claude_code.ClaudeCode(agent_config)
     work = world.root / "work"
-    work.mkdir()
+    work.mkdir(exist_ok=True)
     return agent.run(PROMPT, work, getattr(agent_config, stage), world.root / "run")
 
 
@@ -177,3 +191,10 @@ def gh_config_dir_empty(world):
     folder = last_call(world)["env"]["GH_CONFIG_DIR"]
     assert os.path.isdir(folder)
     assert os.listdir(folder) == []
+
+
+@then(parsers.parse('the agent\'s commit is authored by "{author}" and committed by "{committer}"'))
+def commit_identity(world, result, author, committer):
+    assert not result.is_error, result.reason
+    log = git(world.root / "work", "log", "-1", "--format=%an <%ae>%n%cn <%ce>")
+    assert log.splitlines() == [author, committer]

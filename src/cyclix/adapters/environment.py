@@ -46,15 +46,14 @@ def build(names, run_dir):
 def git_identity():
     """The engine's git author and committer, read before the user's config is hidden.
 
-    A variable the engine already has wins over its git config, as it would for git itself.
+    Each role takes its own variable when the engine has one, and the git config
+    otherwise, as git itself would resolve them.
     """
-    name = os.environ.get("GIT_AUTHOR_NAME") or git_config("user.name")
-    email = os.environ.get("GIT_AUTHOR_EMAIL") or git_config("user.email")
+    configured = {"NAME": git_config("user.name"), "EMAIL": git_config("user.email")}
     identity = {
-        "GIT_AUTHOR_NAME": name,
-        "GIT_AUTHOR_EMAIL": email,
-        "GIT_COMMITTER_NAME": os.environ.get("GIT_COMMITTER_NAME") or name,
-        "GIT_COMMITTER_EMAIL": os.environ.get("GIT_COMMITTER_EMAIL") or email,
+        f"GIT_{role}_{part}": os.environ.get(f"GIT_{role}_{part}") or configured[part]
+        for role in ("AUTHOR", "COMMITTER")
+        for part in ("NAME", "EMAIL")
     }
     return {key: value for key, value in identity.items() if value}
 

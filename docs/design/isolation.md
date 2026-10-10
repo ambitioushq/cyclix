@@ -142,6 +142,8 @@ The caps are there to stop a run that has gone wrong, not to squeeze a normal on
 
 The budget cap also applies to a subscription login. There the amount is what the tokens would cost at API prices, not a charge, but tokens are what use up the subscription's usage limits, so the cap still limits how much of them one run can take. Claude Code checks the budget only when a turn ends, so a run can go past it by the cost of one turn.
 
+The config is refused when `max_turns` is below 1 or `max_budget_usd` is not above 0, because such a cap stops nothing or stops everything. The same holds for the agent's `timeout_minutes`.
+
 A run stopped by a cap ends with the subtype `error_max_turns` or `error_max_budget_usd`. The engine reports each as its own reason, "turn cap reached" or "budget cap reached", not as a general agent error. The event records the turn count beside the cost, so the caps can be checked against real runs.
  On a timeout, the engine sends SIGINT to the agent's process group, waits a short grace period, then sends SIGKILL. Claude Code ends its turn cleanly on SIGINT and still writes its result; SIGKILL leaves no result. The gate and every git call also get a timeout, and every git call sets `GIT_TERMINAL_PROMPT=0` so git never waits for a password.
 
@@ -181,7 +183,7 @@ The design works with a Claude subscription login as well as with an API key. Th
 - the names the tenant lists in `pass_env`, under `[agent]` for the agent and under `[gate]` for the gate (settled on 2026-10-10). A tenant whose tests need, say, `DATABASE_URL` lists it there. It is usually empty;
 - nothing else. `GH_TOKEN`, `GITHUB_TOKEN` and `SSH_AUTH_SOCK` are left out.
 
-**The commits keep the engine's identity** (settled on 2026-10-10). The engine reads `user.name` and `user.email` from its own git config before hiding that config, and passes them in as the `GIT_AUTHOR_*` and `GIT_COMMITTER_*` variables. A variable the engine already has wins over its config, as it does for git itself. Commits are authored as they were before A1.
+**The commits keep the engine's identity** (settled on 2026-10-10). The engine reads `user.name` and `user.email` from its own git config before hiding that config, and passes them in as the `GIT_AUTHOR_*` and `GIT_COMMITTER_*` variables. Each of the four takes the engine's own variable when it has one and the config otherwise, as git itself does, so setting `GIT_AUTHOR_NAME` alone changes the author and leaves the committer as configured. Commits are authored as they were before A1.
 
 This removes every credential the agent could reach through its environment or through git's config. It does not stop Python that the agent runs through `Bash(uv run *)` from reading `~/.config/gh/hosts.yml` by its full path, because the agent still runs as the host user with the real `HOME`. (`--restricted` stops the Read tool from doing so.) For the same reason, the agent can still write files the engine later runs, such as hooks in the tenant clone. A3 closes both. Point 4 waits for A3, because until the agent is contained it adds nothing.
 
