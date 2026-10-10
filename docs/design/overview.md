@@ -55,7 +55,8 @@ Rules:
 - **Types are checked by pyright in strict mode**, in CI. Strict mode fails on any function that is missing a parameter or return type. Astral's `ty` is not used yet: it is a 0.0.x beta, and behind pyright on the typing spec.
 - **Import rules are checked by import-linter**, in CI. Each rule is a contract in `pyproject.toml`, such as "stages never import `adapters.github`". A rule about direct imports only, such as "only adapters import `subprocess`", sets `allow_indirect_imports`, because the runner reaches `subprocess` through the adapters. Rules that are not about imports are tests in `tests/unit/test_tenets.py`.
 - **Adapters wrap the vendor's own tool.** Cyclix builds no HTTP layer. The GitHub adapters call the `gh` CLI, which is required only when GitHub is the chosen tracker or code host. `cyclix check` confirms it is installed and signed in.
-- **The main host is a Linux VM.** `cyclix install` writes systemd units, so systemd does the scheduling. Containers come later, to isolate each agent session.
+- **The main host is a Linux VM.** `cyclix install` writes systemd units, so systemd does the scheduling.
+- **The agent and the gate run in a container, with no GitHub credential.** Each agent call and each gate run gets a fresh rootless Podman container that holds the run's own clone and the Claude login, and nothing else from the host. The engine holds the GitHub credential and does every push itself. Podman is a host requirement, not a Python dependency. [isolation.md](isolation.md) is the design, and says which parts are built.
 - **Webhooks for speed, a periodic sweep for truth.** GitHub never retries a failed webhook delivery, so the sweep stays the source of truth.
 - **Agents.** Claude Code first, others later.
 

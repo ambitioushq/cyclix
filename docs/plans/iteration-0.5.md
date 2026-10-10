@@ -55,6 +55,8 @@ Seven sessions, one per layer, in the order the code runs. Each session does thr
 
 <!-- One line each: what, where (file:line), and what to do. -->
 
+Line numbers in both reads below are against `main` at 46f508a. Check each one against the current code before acting on it.
+
 Found in the first read of the whole repository, before the tracing sessions:
 
 Structure and guardrails:
@@ -198,7 +200,11 @@ The findings above go out as these PRs. The safety PRs come first and do not wai
 
 The loop-model rewrite in step 5 will reshape the runner and the stages. These PRs fix what that rewrite keeps: types, errors, adapter boundaries, wiring and the store. The runner's shape and the two stage shapes wait for step 5.
 
-- [ ] A. Subprocess boundaries: an environment allow-list for the agent and the gate, with no GitHub credentials for the agent; a timeout and `GIT_TERMINAL_PROMPT=0` for git; the gate timeout; `cyclix check` confirms branch protection; the `bypassPermissions` decision recorded; SIGINT before SIGKILL on the agent timeout; turn and cost caps on every agent call.
+- [ ] A. Subprocess boundaries, to the design in `docs/design/isolation.md`. Tick this box when A3 lands.
+  - A1. `--permission-mode dontAsk` with a list of allowed tools for each stage, turn and cost caps on every agent call, and an environment allow-list for the agent and the gate, with no GitHub credentials.
+  - A2. The gate timeout, a timeout and `GIT_TERMINAL_PROMPT=0` for git, SIGINT before SIGKILL on the agent timeout, and `cyclix check` confirming branch protection.
+  - A3. The agent and the gate in a rootless Podman container, with the Claude login as the only credential, a fresh clone for each run, the push through a git bundle, and outgoing traffic only to listed hosts. Several PRs.
+  - The maintainer moves the loop to its own GitHub identity, limits it to `cyclix/*` branches, and requires an approving review on `main`.
 - [ ] B. Install and files: the systemd start timeout and sandboxing, and file modes for the state folder, `state.db`, the event log and run folders.
 - [ ] C. The event outbox, `uuid7` run ids, and claims that expire unless progress renews them (a lease), with a scenario for a crash between closing the row and writing the event.
 - [ ] D. Names and layout: `state/` to `store/`, `adapters/github/`, the PR stage class, `Writer.ANY_STATION`, the version from package metadata. These moves come before typing, so the typing PRs touch the final paths.

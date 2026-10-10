@@ -384,11 +384,11 @@ The fake GitHub is a world model, not replayed recordings (settled in #4). The w
 Settled in #17. Cyclix runs its own loop from the tenant config above, which is also `docs/examples/tenant.toml`. The maintainer keeps the live copy outside this repository, on the host.
 
 - **The host.** The timer runs on a Linux host the maintainer runs, under `cyclix install --tenant cyclix`. The maintainer runs the host steps.
-- **The agent acts without asking.** Print mode cannot ask before it edits a file or runs `git`, so the agent runs with `--permission-mode bypassPermissions`, as in the sandbox. The gate and the maintainer's review are the checks on what it does.
+- **The agent acts without asking.** Print mode cannot ask before it edits a file or runs `git`, so the agent runs with `--permission-mode bypassPermissions`, as in the sandbox. The gate and the maintainer's review are the checks on what it does. Fix A in the Iteration 0.5 pass replaces this with `--permission-mode dontAsk` and a list of allowed tools for each stage. See [isolation.md](isolation.md).
 - **The models.** The plan stage uses `claude-opus-5-5` and the build stage uses `claude-sonnet-5-5`.
 - **The run limit.** Six runs a day.
 - **The gate matches CI.**
-- **Branch protection on `main`.** Changes reach `main` only through a PR. The CI job `test` must pass. Force pushes and deleting `main` are refused. No approving review is required, because the loop opens its PRs under the maintainer's own GitHub identity, and GitHub does not let an author approve their own PR. Admins may bypass the rules, so the maintainer can still push a fix to `main` in an emergency.
+- **Branch protection on `main`.** Changes reach `main` only through a PR. The CI job `test` must pass. Force pushes and deleting `main` are refused. No approving review is required, because the loop opens its PRs under the maintainer's own GitHub identity, and GitHub does not let an author approve their own PR. Admins may bypass the rules, so the maintainer can still push a fix to `main` in an emergency. [isolation.md](isolation.md) moves the loop to its own GitHub identity, so that `main` can require an approving review.
 - **The live scenario.** `tests/features/self_tenant.feature` is tagged `@live`. It was checked by hand once, and the PR for #17 records the result. No steps file binds it.
 
 ## Open questions for the first session
