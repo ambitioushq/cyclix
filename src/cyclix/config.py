@@ -8,6 +8,7 @@ never passes silently.
 """
 
 import hashlib
+import math
 import os
 import tomllib
 from dataclasses import dataclass
@@ -109,7 +110,7 @@ class Config:
 ARGV = "a list of strings"
 ARGV_LIST = "a list of commands"
 NAMES = "a list of names, possibly empty"
-NUMBER = "a whole or decimal number"
+NUMBER = "a finite number above 0"
 COUNT = "a whole number of 1 or more"
 AGENT_STAGE = {"model": str, "max_turns": COUNT, "max_budget_usd": NUMBER, "tools": ARGV}
 SCHEMA = {
@@ -313,8 +314,13 @@ def check_value(value, expected, label):
         if not isinstance(value, int) or isinstance(value, bool) or value < 1:
             raise ConfigError(f"{label} must be a whole number of 1 or more")
     elif expected is NUMBER:
-        if not isinstance(value, int | float) or isinstance(value, bool) or value <= 0:
-            raise ConfigError(f"{label} must be a number above 0")
+        # TOML allows nan and inf, and nan fails every comparison, so test the range directly.
+        if (
+            not isinstance(value, int | float)
+            or isinstance(value, bool)
+            or not 0 < value < math.inf
+        ):
+            raise ConfigError(f"{label} must be a finite number above 0")
     elif not isinstance(value, expected):
         raise ConfigError(f"{label} must be a string")
 

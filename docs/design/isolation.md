@@ -142,7 +142,7 @@ The caps are there to stop a run that has gone wrong, not to squeeze a normal on
 
 The budget cap also applies to a subscription login. There the amount is what the tokens would cost at API prices, not a charge, but tokens are what use up the subscription's usage limits, so the cap still limits how much of them one run can take. Claude Code checks the budget only when a turn ends, so a run can go past it by the cost of one turn.
 
-The config is refused when `max_turns` is below 1 or `max_budget_usd` is not above 0, because such a cap stops nothing or stops everything. The same holds for the agent's `timeout_minutes`.
+The config is refused when `max_turns` is below 1 or `max_budget_usd` is not a finite number above 0 (TOML also allows `nan` and `inf`), because such a cap stops nothing or stops everything. The same holds for the agent's `timeout_minutes`.
 
 A run stopped by a cap ends with the subtype `error_max_turns` or `error_max_budget_usd`. The engine reports each as its own reason, "turn cap reached" or "budget cap reached", not as a general agent error. The event records the turn count beside the cost, so the caps can be checked against real runs.
  On a timeout, the engine sends SIGINT to the agent's process group, waits a short grace period, then sends SIGKILL. Claude Code ends its turn cleanly on SIGINT and still writes its result; SIGKILL leaves no result. The gate and every git call also get a timeout, and every git call sets `GIT_TERMINAL_PROMPT=0` so git never waits for a password.

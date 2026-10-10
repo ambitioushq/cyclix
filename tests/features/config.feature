@@ -32,6 +32,19 @@ Feature: The tenant config
     Then the plan stage uses "claude-opus-5-5" with 30 turns, a budget of 2.0 and the tools "Read Grep Glob"
 
   @issue-55
+  Scenario Outline: A budget cap must be a finite number above 0
+    Given the example config with "max_budget_usd" set to <value> under [agent.build]
+    When the config is loaded
+    Then it fails with 'config: [agent.build] "max_budget_usd" must be a finite number above 0'
+
+    Examples:
+      | value |
+      | 0     |
+      | -1.5  |
+      | nan   |
+      | inf   |
+
+  @issue-55
   Scenario Outline: pass_env cannot let a credential or git's config through
     Given the example config with "pass_env" set to ["<name>"] under [<table>]
     When the config is loaded

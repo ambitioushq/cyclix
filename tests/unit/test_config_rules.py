@@ -158,10 +158,8 @@ def test_the_state_dir_is_found_in_three_steps(monkeypatch, tmp_path):
     [
         ("pass_env = []\n\n[agent.plan]", "pass_env = [1]\n\n[agent.plan]",
          'config: [agent] "pass_env" must be a list of names'),
-        ("max_budget_usd = 2.0", "max_budget_usd = 0",
-         'config: [agent.plan] "max_budget_usd" must be a number above 0'),
         ("max_budget_usd = 2.0", 'max_budget_usd = "2"',
-         'config: [agent.plan] "max_budget_usd" must be a number above 0'),
+         'config: [agent.plan] "max_budget_usd" must be a finite number above 0'),
     ],
 )  # fmt: skip
 def test_agent_stage_values_are_checked(tmp_path, old, new, message):
