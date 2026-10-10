@@ -20,8 +20,8 @@ Anything found during the pass that none of these needs goes to "Parked" at the 
 ## Step 0: small fixes, in one PR
 
 - [x] `fail_under = 98` under `[tool.coverage.report]` in `pyproject.toml`.
-- [ ] Branch protection on `main`: require conversation resolution and linear history. Admins are not bound by the required checks. Each new check (zizmor, `uv audit`, gitleaks, CodeQL) becomes required after a few clean runs.
-- [ ] A ruleset that turns on Copilot code review for every PR.
+- [x] Branch protection on `main`: require conversation resolution and linear history. Admins are not bound by the required checks. Each new check (zizmor, `uv audit`, gitleaks, CodeQL) becomes required after a few clean runs.
+- [x] A ruleset that turns on Copilot code review for every PR.
 - [x] `.github/copilot-instructions.md`: a first version that points Copilot at `CLAUDE.md` and the design overview. Step 2 adds the tenets.
 - [x] Dependabot for GitHub Actions and the `uv` lock file.
 - [x] The OpenSSF Scorecard workflow, with its badge in the README.
@@ -29,9 +29,9 @@ Anything found during the pass that none of these needs goes to "Parked" at the 
 - [x] zizmor, which checks workflow files for security mistakes, run in CI.
 - [x] Workflow permissions: `permissions: {}` at the top of each workflow, granted per job, and `persist-credentials: false` on every checkout.
 - [x] harden-runner, version 2.16 or later, on each job, first in audit mode.
-- [ ] The sandbox secrets move to a protected GitHub environment.
+- [x] The sandbox secrets move to a protected GitHub environment.
 - [x] `uv audit` in CI. It is a preview feature, so it runs with `--preview-features audit`.
-- [ ] gitleaks in CI, and GitHub push protection turned on.
+- [x] gitleaks in CI, and GitHub push protection turned on.
 - [x] `CODEOWNERS` and issue templates.
 
 ## Step 1: understand the code, by tracing a real run
