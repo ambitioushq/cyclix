@@ -13,6 +13,8 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from cyclix.adapters import environment
+
 STATES = ("ready", "in_progress", "in_review", "parked", "needs_decision", "done")
 # The states that may carry a WIP limit. The engine adds nothing to Ready, and Done is the end.
 WIP_STATES = ("in_progress", "in_review", "parked", "needs_decision")
@@ -171,6 +173,9 @@ def load(path=None, tenant=None):
         if data[table]["kind"] != kind:
             raise ConfigError(f'[{table}] kind must be "{kind}", not "{data[table]["kind"]}"')
     check_agent_command(data["agent"]["command"])
+    check_pass_env(data["agent"]["pass_env"], "agent", CREDENTIALS)
+    # The gate gets no Claude login either: it runs the repository's own code.
+    check_pass_env(data["gate"]["pass_env"], "gate", (*CREDENTIALS, *environment.CLAUDE_LOGIN))
 
     tracker = data["tracker"]
     agent = data["agent"]
@@ -204,6 +209,33 @@ def agent_stage(table):
             "tools": tuple(table["tools"]),
         }
     )
+
+
+# Names pass_env may not let through. The GitHub tokens and the SSH agent reach
+# GitHub; the askpass and SSH programs can hand git a credential; a GIT_CONFIG*
+# variable can set a credential helper or undo the engine's own git settings.
+CREDENTIALS = (
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
+    "GH_ENTERPRISE_TOKEN",
+    "GITHUB_ENTERPRISE_TOKEN",
+    "GH_CONFIG_DIR",
+    "SSH_AUTH_SOCK",
+    "GIT_ASKPASS",
+    "SSH_ASKPASS",
+    "GIT_SSH",
+    "GIT_SSH_COMMAND",
+    "GIT_TERMINAL_PROMPT",
+)
+
+
+def check_pass_env(names, table, forbidden):
+    for name in names:
+        if name in forbidden or name.startswith("GIT_CONFIG"):
+            raise ConfigError(
+                f'[{table}] "pass_env" must not hold {name}: '
+                "the engine keeps credentials and git's config out of the agent and the gate"
+            )
 
 
 def check_agent_command(command):

@@ -32,6 +32,22 @@ Feature: The tenant config
     Then the plan stage uses "claude-opus-5-5" with 30 turns, a budget of 2.0 and the tools "Read Grep Glob"
 
   @issue-55
+  Scenario Outline: pass_env cannot let a credential or git's config through
+    Given the example config with "pass_env" set to ["<name>"] under [<table>]
+    When the config is loaded
+    Then it fails with 'config: [<table>] "pass_env" must not hold <name>: the engine keeps credentials and git's config out of the agent and the gate'
+
+    Examples:
+      | table | name                    |
+      | agent | GH_TOKEN                |
+      | gate  | GITHUB_TOKEN            |
+      | agent | SSH_AUTH_SOCK           |
+      | gate  | CLAUDE_CODE_OAUTH_TOKEN |
+      | gate  | ANTHROPIC_API_KEY       |
+      | agent | GIT_CONFIG_PARAMETERS   |
+      | gate  | GIT_CONFIG_KEY_0        |
+
+  @issue-55
   Scenario Outline: A turn cap or timeout below 1 is refused
     Given the example config with "<key>" set to <value> under [<table>]
     When the config is loaded
