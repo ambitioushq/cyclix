@@ -50,17 +50,20 @@ def example_with(config_file, line, table):
 
 @given(
     parsers.re(
-        r'the example config with "(?P<key>\w+)" set to (?P<value>\S+) under \[(?P<table>[\w.]+)\]'
+        r'the example config with "(?P<key>\w+)" set to (?P<value>.+) under \[(?P<table>[\w.]+)\]'
     )
 )
 def example_setting(config_file, key, value, table):
-    edit_table(
-        config_file,
-        table,
-        lambda lines: [
-            f"{key} = {value}" if line.startswith(f"{key} =") else line for line in lines
-        ],
-    )
+    edit_table(config_file, table, lambda lines: set_key(lines, key, value))
+
+
+def set_key(lines, key, value):
+    """Replace one key's value, including the lines a list spread over several lines takes."""
+    start = next(i for i, line in enumerate(lines) if line.startswith(f"{key} ="))
+    end = start + 1
+    while (taken := "".join(lines[start:end])).count("[") > taken.count("]"):
+        end += 1
+    return [*lines[:start], f"{key} = {value}", *lines[end:]]
 
 
 @given(parsers.parse('the example config with the agent command "{command}"'))

@@ -61,6 +61,20 @@ Feature: The tenant config
       | gate  | GIT_CONFIG_KEY_0        |
 
   @issue-55
+  Scenario Outline: A stage's tools must be tool rules, never flags
+    Given the example config with "tools" set to ["Read", "<rule>"] under [agent.build]
+    When the config is loaded
+    Then it fails with 'config: [agent.build] "tools" must hold tool rules such as Read or Bash(git commit *), not "<rule>"'
+
+    Examples:
+      | rule                           |
+      | --dangerously-skip-permissions |
+      | --settings                     |
+      | -p                             |
+      | Bash(git commit *              |
+      | Read, Write                    |
+
+  @issue-55
   Scenario Outline: A turn cap or timeout below 1 is refused
     Given the example config with "<key>" set to <value> under [<table>]
     When the config is loaded

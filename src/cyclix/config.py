@@ -10,6 +10,7 @@ never passes silently.
 import hashlib
 import math
 import os
+import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -174,6 +175,8 @@ def load(path=None, tenant=None):
         if data[table]["kind"] != kind:
             raise ConfigError(f'[{table}] kind must be "{kind}", not "{data[table]["kind"]}"')
     check_agent_command(data["agent"]["command"])
+    for stage in ("plan", "build"):
+        check_tools(data["agent"][stage]["tools"], f"agent.{stage}")
     check_pass_env(data["agent"]["pass_env"], "agent", CREDENTIALS)
     # The gate gets no Claude login either: it runs the repository's own code.
     check_pass_env(data["gate"]["pass_env"], "gate", (*CREDENTIALS, *environment.CLAUDE_LOGIN))
@@ -228,6 +231,20 @@ CREDENTIALS = (
     "GIT_SSH_COMMAND",
     "GIT_TERMINAL_PROMPT",
 )
+
+
+# A tool name, then an optional rule in brackets: Read, Bash(git commit *).
+TOOL_RULE = re.compile(r"[A-Za-z]\w*(\([^()]+\))?")
+
+
+def check_tools(rules, table):
+    """Each rule reaches Claude Code as an argument, so one that is not a rule could be a flag."""
+    for rule in rules:
+        if not TOOL_RULE.fullmatch(rule):
+            raise ConfigError(
+                f'[{table}] "tools" must hold tool rules such as Read or Bash(git commit *), '
+                f'not "{rule}"'
+            )
 
 
 def check_pass_env(names, table, forbidden):
