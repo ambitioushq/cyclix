@@ -119,7 +119,19 @@ The list is not the boundary. `Bash(uv run *)` lets the agent run any Python it 
 
 ### 8. Every agent call has limits on time, turns and cost
 
-Each agent call passes `--max-turns` and `--max-budget-usd`, set for each stage in the tenant config, on top of the existing timeout. On a timeout, the engine sends SIGINT to the agent's process group, waits a short grace period, then sends SIGKILL. Claude Code ends its turn cleanly on SIGINT and still writes its result; SIGKILL leaves no result. The gate and every git call also get a timeout, and every git call sets `GIT_TERMINAL_PROMPT=0` so git never waits for a password.
+Each agent call passes `--max-turns` and `--max-budget-usd`, set for each stage in the tenant config, on top of the existing timeout. The defaults, settled on 2026-10-09:
+
+| Stage | `--max-turns` | `--max-budget-usd` |
+| --- | --- | --- |
+| Plan | 30 | 2 |
+| Build | 100 | 5 |
+
+The caps are there to stop a run that has gone wrong, not to squeeze a normal one. Each is about three times the largest of the self tenant's first five runs: plans took 6 to 10 turns and $0.37 to $0.76, and builds took 6 to 33 turns and $0.23 to $1.82. Five runs is a small sample, so the defaults are looked at again after about 20 more.
+
+The budget cap also applies to a subscription login. There the amount is what the tokens would cost at API prices, not a charge, but tokens are what use up the subscription's usage limits, so the cap still limits how much of them one run can take. Claude Code checks the budget only when a turn ends, so a run can go past it by the cost of one turn.
+
+A run stopped by a cap ends with the subtype `error_max_turns` or `error_max_budget_usd`. The engine reports each as its own reason, "turn cap reached" or "budget cap reached", not as a general agent error. The event records the turn count beside the cost, so the caps can be checked against real runs.
+ On a timeout, the engine sends SIGINT to the agent's process group, waits a short grace period, then sends SIGKILL. Claude Code ends its turn cleanly on SIGINT and still writes its result; SIGKILL leaves no result. The gate and every git call also get a timeout, and every git call sets `GIT_TERMINAL_PROMPT=0` so git never waits for a password.
 
 ## Logging in with a subscription token
 
@@ -165,7 +177,6 @@ After A3, the allow-list stays as a second layer inside the container.
 These are settled with the maintainer when the part that needs them is built.
 
 1. Timeout values for the gate and for git calls (A2).
-2. Default `--max-turns` and `--max-budget-usd` for each stage (A1).
-3. How the agent's container gets no route out except the proxy (A3).
-4. Who builds and updates the container image, and how its versions are pinned (A3).
-5. How a maintainer develops on macOS, where rootless Podman runs inside a VM (A3).
+2. How the agent's container gets no route out except the proxy (A3).
+3. Who builds and updates the container image, and how its versions are pinned (A3).
+4. How a maintainer develops on macOS, where rootless Podman runs inside a VM (A3).
