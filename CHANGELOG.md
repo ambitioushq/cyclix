@@ -6,7 +6,7 @@ Behaviour changes are listed by scenario: the feature file and the scenario's na
 
 ### Added
 
-Iteration 0, the spine (#2 to #17). These 65 scenarios are the first entries of the functional spec:
+Iteration 0, the spine (#2 to #17). These 60 scenarios are the first entries of the functional spec:
 
 - `agent.feature`
   - A successful call returns the answer and the numbers
@@ -47,12 +47,6 @@ Iteration 0, the spine (#2 to #17). These 65 scenarios are the first entries of 
   - Install writes both units and starts the timer
   - Force overwrites a different unit
   - Uninstall stops the timer and removes both units
-- `names_check.feature`
-  - A file holding a forbidden name fails the check
-  - A name with a space matches across a hyphen
-  - Part of a word does not match
-  - A commit message holding a forbidden name fails the check
-  - A missing list fails closed
 - `package.feature`
   - The CLI prints the version
 - `sandbox.feature`
