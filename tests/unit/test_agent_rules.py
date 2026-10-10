@@ -63,5 +63,5 @@ def test_without_git_the_agent_gets_no_identity(monkeypatch, tmp_path):
         monkeypatch.delenv(f"GIT_{key}_NAME", raising=False)
         monkeypatch.delenv(f"GIT_{key}_EMAIL", raising=False)
     monkeypatch.setenv("PATH", str(tmp_path))
-    env = environment.for_agent((), tmp_path / "run")
+    env = environment.for_agent((), tmp_path / "run", tmp_path)
     assert [key for key in env if key.startswith(("GIT_AUTHOR", "GIT_COMMITTER"))] == []

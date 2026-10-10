@@ -73,6 +73,15 @@ def agent_commits(world):
     world.add_agent_step(files={"change.txt": "a change\n"}, commit=True)
 
 
+@given(
+    parsers.parse('the repository\'s own git config names the user "{name}" with email "{email}"')
+)
+def repository_git_identity(world, name, email):
+    work = world.root / "work"
+    git(work, "config", "user.name", name)
+    git(work, "config", "user.email", email)
+
+
 @given(parsers.parse('the agent prints "{text}" and exits {code:d}'))
 def agent_prints(world, text, code):
     world.add_agent_step(stdout=text + "\n", exit=code)

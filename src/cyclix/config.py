@@ -107,23 +107,44 @@ class Config:
     version: str
 
 
+@dataclass(frozen=True)
+class Form:
+    """A string that must match a pattern, because the engine puts it in a command or a path."""
+
+    pattern: re.Pattern
+    description: str
+
+
 # The expected type of each key. A dict is a nested table.
+TENANT_NAME = Form(
+    re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*"),
+    'letters, digits, ".", "_" and "-", starting with a letter or digit',
+)
+GITHUB_OWNER = Form(re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*"), "a GitHub user or organization name")
+GITHUB_REPO = Form(
+    re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+"),
+    "a GitHub repository written as owner/name",
+)
+BRANCH = Form(re.compile(r"(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*"), "a branch name")
+MODEL = Form(re.compile(r"[A-Za-z0-9][A-Za-z0-9._:\[\]-]*"), "a model name or alias")
+ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 ARGV = "a list of strings"
 ARGV_LIST = "a list of commands"
 NAMES = "a list of names, possibly empty"
 NUMBER = "a finite number above 0"
 COUNT = "a whole number of 1 or more"
-AGENT_STAGE = {"model": str, "max_turns": COUNT, "max_budget_usd": NUMBER, "tools": ARGV}
+WHOLE = "a whole number of 0 or more"
+AGENT_STAGE = {"model": MODEL, "max_turns": COUNT, "max_budget_usd": NUMBER, "tools": ARGV}
 SCHEMA = {
-    "tenant": {"name": str},
+    "tenant": {"name": TENANT_NAME},
     "tracker": {
         "kind": str,
-        "owner": str,
-        "project": int,
+        "owner": GITHUB_OWNER,
+        "project": COUNT,
         "status_field": str,
         "states": dict.fromkeys(STATES, str),
     },
-    "codehost": {"kind": str, "repo": str, "base": str},
+    "codehost": {"kind": str, "repo": GITHUB_REPO, "base": BRANCH},
     "agent": {
         "command": ARGV,
         "timeout_minutes": COUNT,
@@ -132,7 +153,7 @@ SCHEMA = {
         "build": AGENT_STAGE,
     },
     "gate": {"commands": ARGV_LIST, "pass_env": NAMES},
-    "limits": {"runs_per_day": int},
+    "limits": {"runs_per_day": WHOLE},
 }
 KINDS = {"tracker": "github", "codehost": "github"}
 # Flags the engine sets on every agent call, and flags that would widen what the agent
@@ -324,9 +345,19 @@ def check_value(value, expected, label):
     elif expected is NAMES:
         if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
             raise ConfigError(f"{label} must be a list of names")
-    elif expected is int:
-        if not isinstance(value, int) or isinstance(value, bool):
-            raise ConfigError(f"{label} must be a whole number")
+        for name in value:
+            if not ENV_NAME.fullmatch(name):
+                raise ConfigError(
+                    f'{label} must be a list of environment variable names, not "{name}"'
+                )
+    elif expected is WHOLE:
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ConfigError(f"{label} must be a whole number of 0 or more")
+    elif isinstance(expected, Form):
+        if not isinstance(value, str):
+            raise ConfigError(f"{label} must be a string")
+        if not expected.pattern.fullmatch(value):
+            raise ConfigError(f'{label} must be {expected.description}, not "{value}"')
     elif expected is COUNT:
         if not isinstance(value, int) or isinstance(value, bool) or value < 1:
             raise ConfigError(f"{label} must be a whole number of 1 or more")

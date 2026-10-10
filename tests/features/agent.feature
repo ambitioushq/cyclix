@@ -66,6 +66,14 @@ Feature: The Claude Code agent adapter
     Then the agent's commit is authored by "Grace Hopper <ada@example.com>" and committed by "Ada Lovelace <ada@example.com>"
 
   @issue-55
+  Scenario: The repository's own git identity wins over the engine's
+    Given the engine's git config names the user "Ada Lovelace" with email "ada@example.com"
+    And the agent commits a file
+    And the repository's own git config names the user "Grace Hopper" with email "grace@example.com"
+    When the adapter runs a prompt for the build stage
+    Then the agent's commit is authored by "Grace Hopper <grace@example.com>" and committed by "Grace Hopper <grace@example.com>"
+
+  @issue-55
   Scenario Outline: A call stopped by a cap says which cap
     Given the agent stops with subtype "<subtype>"
     When the adapter runs a prompt for the build stage

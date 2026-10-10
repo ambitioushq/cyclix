@@ -24,7 +24,7 @@ class Gate:
         sha = ctx.codehost.head_sha(ctx.worktree)
         checks = []
         fields = {schema.HEAD_REVISION: sha, schema.GATE_CHECKS: checks}
-        env = environment.for_gate(ctx.config.gate.pass_env, ctx.run_dir)
+        env = environment.for_gate(ctx.config.gate.pass_env, ctx.run_dir, ctx.worktree.path)
         for n, command in enumerate(ctx.config.gate.commands, 1):
             name = shlex.join(command)[: schema.MAX_STRING]
             started = time.monotonic()

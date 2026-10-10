@@ -46,7 +46,7 @@ class ClaudeCode:
 
         model = stage.model
         argv = [*self.command, *stage_flags(stage)]
-        env = environment.for_agent(self.pass_env, run_dir)
+        env = environment.for_agent(self.pass_env, run_dir, cwd)
         started = time.monotonic()
         try:
             stdout, stderr, code = self._call(argv, prompt, cwd, env)

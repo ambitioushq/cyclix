@@ -61,6 +61,47 @@ Feature: The tenant config
       | gate  | GIT_CONFIG_KEY_0        |
 
   @issue-55
+  Scenario Outline: A value the engine puts in a command or a path must have its expected form
+    Given the example config with "<key>" set to <value> under [<table>]
+    When the config is loaded
+    Then it fails with 'config: [<table>] "<key>" must be <form>, not <value>'
+
+    Examples:
+      | table       | key    | value            | form                                                                   |
+      | tenant      | name   | "../other"       | letters, digits, ".", "_" and "-", starting with a letter or digit     |
+      | tenant      | name   | "-x"             | letters, digits, ".", "_" and "-", starting with a letter or digit     |
+      | tracker     | owner  | "--help"         | a GitHub user or organization name                                     |
+      | codehost    | repo   | "--upload-pack"  | a GitHub repository written as owner/name                              |
+      | codehost    | repo   | "ambitioushq"    | a GitHub repository written as owner/name                              |
+      | codehost    | base   | "-b"             | a branch name                                                          |
+      | codehost    | base   | "main..other"    | a branch name                                                          |
+      | agent.plan  | model  | "--settings"     | a model name or alias                                                  |
+      | agent.build | model  | "sonnet x"       | a model name or alias                                                  |
+
+  @issue-55
+  Scenario Outline: A pass_env entry must be an environment variable name
+    Given the example config with "pass_env" set to ["<name>"] under [<table>]
+    When the config is loaded
+    Then it fails with 'config: [<table>] "pass_env" must be a list of environment variable names, not "<name>"'
+
+    Examples:
+      | table | name     |
+      | agent | -x       |
+      | gate  | A=B      |
+      | gate  | HAS SPACE |
+
+  @issue-55
+  Scenario Outline: A count in the config cannot be negative
+    Given the example config with "<key>" set to <value> under [<table>]
+    When the config is loaded
+    Then it fails with 'config: [<table>] "<key>" must be <form>'
+
+    Examples:
+      | table   | key          | value | form                       |
+      | tracker | project      | 0     | a whole number of 1 or more |
+      | limits  | runs_per_day | -1    | a whole number of 0 or more |
+
+  @issue-55
   Scenario Outline: A stage's tools must be tool rules, never flags
     Given the example config with "tools" set to ["Read", "<rule>"] under [agent.build]
     When the config is loaded
