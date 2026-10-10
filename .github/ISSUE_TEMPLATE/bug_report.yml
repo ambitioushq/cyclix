@@ -1,0 +1,50 @@
+name: Bug report
+description: Something Cyclix did that it should not have, or failed to do.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Leave out secrets, tokens and private repository names. The issue is public.
+        A security problem goes through private vulnerability reporting, not here.
+  - type: input
+    id: version
+    attributes:
+      label: Cyclix version
+      description: The output of `cyclix --version`.
+      placeholder: cyclix 0.0.1
+    validations:
+      required: true
+  - type: textarea
+    id: ran
+    attributes:
+      label: What you ran
+      description: The command, and the parts of the tenant config that matter.
+      render: sh
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: What Cyclix did, and the board or PR state it left behind.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Cyclix's stdout and stderr, and any event log lines for the run.
+      render: text
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, and the versions of Python, `gh`, `git` and the agent (such as `claude --version`).
+      render: text

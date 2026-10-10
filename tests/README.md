@@ -53,4 +53,4 @@ CYCLIX_SANDBOX=1 uv run pytest -m sandbox
 
 `scripts/record_gh_shapes.py` records the shape of each `gh` command's output from the sandbox into `fixtures/gh-shapes/`. `features/gh_shapes.feature` runs the fake gh on the same commands and fails if its output has another shape. When real `gh` changes, run the script, commit the new recordings, and change the fake until the scenario passes.
 
-The workflow `.github/workflows/sandbox.yml` does both, by hand and weekly. It needs the Actions secrets `CYCLIX_SANDBOX_TOKEN` (a token that can read and write the sandbox repo's contents, issues and PRs, and the organization's projects) and `CLAUDE_CODE_OAUTH_TOKEN` (made with `claude setup-token`, so the agent runs on a Claude subscription, not the API).
+The workflow `.github/workflows/sandbox.yml` does both, by hand and weekly. It needs two secrets in the `sandbox` environment, which only runs from `main` can read: `CYCLIX_SANDBOX_TOKEN` (a token that can read and write the sandbox repo's contents, issues and PRs, and the organization's projects) and `CLAUDE_CODE_OAUTH_TOKEN` (made with `claude setup-token`, so the agent runs on a Claude subscription, not the API).
