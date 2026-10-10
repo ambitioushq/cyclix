@@ -10,7 +10,7 @@ Cyclix is built in supervised sessions. The maintainer settles design, and revie
 - **Tag every scenario with the issue that introduced it**, such as `@issue-7`. A later PR that changes a scenario keeps the original tag and adds its own.
 - **Never edit an issue's body after it is filed.** Record any difference from it under "Changed from the issue" in the PR.
 - **A design question goes to the maintainer.** Do not settle it alone. Record the answer in the design doc in the same PR, and list it under "Decisions".
-- **The repository is public.** No private project, client or account names, no private paths, no tokens. The names check in CI enforces part of this; the rest is on you.
+- **The repository is public.** No private project, client or account names, no private paths, no tokens. No CI job checks names or paths, so that is on you.
 - **Standard library only at runtime.** A new runtime dependency needs a written reason in the design docs and the maintainer's approval in the PR.
 - **Never merge, never force-push to `main`.** The maintainer merges, by squash, so `main` has one commit per PR.
 - Python 3.14, `uv` for everything: `uv run ruff check`, `uv run ruff format`, `uv run pytest`.
