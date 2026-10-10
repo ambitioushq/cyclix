@@ -2,10 +2,11 @@
 
 import json
 
-from cyclix.adapters import claude_code
-from cyclix.config import Agent
+from cyclix.adapters import claude_code, environment
+from cyclix.config import Agent, AgentStage
 
 STARTED = 0.0
+STAGE = AgentStage(model="m", max_turns=3, max_budget_usd=1.0, tools=("Read",))
 
 
 def result_json(**fields):
@@ -43,15 +44,24 @@ def test_a_failed_exit_without_json_carries_stderr():
 
 
 def test_a_missing_command_is_an_error_not_an_exception(tmp_path):
-    agent = claude_code.ClaudeCode(Agent(("no-such-agent-cmd",), "a", "b", 1))
-    result = agent.run("hi", cwd=tmp_path, model="m", run_dir=tmp_path / "run")
+    agent = claude_code.ClaudeCode(Agent(("no-such-agent-cmd",), 1, (), STAGE, STAGE))
+    result = agent.run("hi", cwd=tmp_path, stage=STAGE, run_dir=tmp_path / "run")
     assert (result.is_error, result.reason) == (True, "agent command not found: no-such-agent-cmd")
 
 
 def test_calls_in_one_run_folder_are_numbered(tmp_path):
-    agent = claude_code.ClaudeCode(Agent(("true",), "a", "b", 1))
+    agent = claude_code.ClaudeCode(Agent(("true",), 1, (), STAGE, STAGE))
     for _ in range(2):
-        agent.run("hi", cwd=tmp_path, model="m", run_dir=tmp_path / "run")
+        agent.run("hi", cwd=tmp_path, stage=STAGE, run_dir=tmp_path / "run")
     assert sorted(p.name for p in (tmp_path / "run").iterdir()) == [
-        "answer-1.json", "answer-2.json", "prompt-1.txt", "prompt-2.txt",
+        "answer-1.json", "answer-2.json", "gh-config", "prompt-1.txt", "prompt-2.txt",
     ]  # fmt: skip
+
+
+def test_without_git_the_agent_gets_no_identity(monkeypatch, tmp_path):
+    for key in ("AUTHOR", "COMMITTER"):
+        monkeypatch.delenv(f"GIT_{key}_NAME", raising=False)
+        monkeypatch.delenv(f"GIT_{key}_EMAIL", raising=False)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    env = environment.for_agent((), tmp_path / "run")
+    assert [key for key in env if key.startswith(("GIT_AUTHOR", "GIT_COMMITTER"))] == []

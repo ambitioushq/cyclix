@@ -248,6 +248,7 @@ One JSON object per line in `events/<tenant>.jsonl` under the state directory. E
     "gen_ai.request.model": null,
     "gen_ai.usage.input_tokens": null,
     "gen_ai.usage.output_tokens": null,
+    "cyclix.agent.turns": null,
     "cyclix.gate.checks": [{"name": "tests", "passed": false, "duration_ms": 40112}]
   }
 }
@@ -260,6 +261,7 @@ One JSON object per line in `events/<tenant>.jsonl` under the state directory. E
 - The writer refuses a key that is not in the list above, and writes nothing (settled in #12). A new key is added here first, then to `events/schema.py`.
 - The writer refuses any string attribute over 500 characters, including strings inside `cyclix.gate.checks`. A string that long is most likely prompt or code text, which belongs in the run folder.
 - The engine version is `resource.service.version`. The config version is a hash of the config file.
+- `cyclix.agent.turns` is the number of turns the agent took, as Claude Code reports it in `num_turns`, so the turn caps can be checked against real runs. OpenTelemetry's GenAI names have no field for it, so it sits under `cyclix.*`. It is null for stages that make no agent call (added in the Iteration 0.5 pass, fix A1).
 - `cyclix.cost.usd` is rounded to 6 decimal places, a millionth of a dollar, before it is written (settled for #40). The agent reports costs such as `0.36616580000000004`, and the digits past the sixth are float noise. Cents would be too coarse for the cost of one call.
 
 The earlier loop starts writing stage-run events in this same schema before Iteration 0 exists, so the record starts early. Any change to schema 0 is made here first.
@@ -292,15 +294,30 @@ repo = "ambitioushq/cyclix"
 base = "main"
 
 [agent]
-# Print mode cannot ask before it edits a file or runs git, so the agent acts
-# without asking. The gate and the maintainer's review are the checks.
-command = ["claude", "-p", "--output-format", "json", "--permission-mode", "bypassPermissions"]
-model_plan = "claude-opus-5-5"
-model_build = "claude-sonnet-5-5"
+# The engine adds the model, the caps and the permission flags for each stage. The
+# agent runs in dontAsk mode: a tool call outside the stage's list is refused.
+# See docs/design/isolation.md.
+command = ["claude", "-p", "--output-format", "json"]
 timeout_minutes = 60
+pass_env = []
+
+[agent.plan]
+model = "claude-opus-5-5"
+max_turns = 30
+max_budget_usd = 2.0
+tools = ["Read", "Grep", "Glob"]
+
+[agent.build]
+model = "claude-sonnet-5-5"
+max_turns = 100
+max_budget_usd = 5.0
+tools = ["Read", "Grep", "Glob", "Edit", "Write",
+         "Bash(git add *)", "Bash(git commit *)", "Bash(git status*)",
+         "Bash(git diff*)", "Bash(git log*)", "Bash(uv run *)"]
 
 [gate]
 commands = [["uv", "run", "ruff", "check"], ["uv", "run", "ruff", "format", "--check"], ["uv", "run", "pytest", "-q"]]
+pass_env = []
 
 [limits]
 runs_per_day = 6
@@ -310,6 +327,8 @@ in_review = 5
 ```
 
 `cyclix check` fails on a missing key, an unknown key, or a board option name that is not on the board.
+
+**The agent's stages** (settled in the Iteration 0.5 pass, fix A1). Each agent stage has its own table, `[agent.plan]` and `[agent.build]`, with its model, its turn and budget caps, and the tools it may use. The engine adds these to `agent.command` as flags, so the command holds none of them. The config is refused if the command holds a flag the engine sets, or one that would widen what the agent may do, such as `--settings` or `--dangerously-skip-permissions`. `pass_env` under `[agent]` and under `[gate]` names extra environment variables to let through; it is usually empty. [isolation.md](isolation.md), points 7 and 8, has the reasons.
 
 **WIP limits** (settled in #44). The `[limits.wip]` table is the one optional part of the file. It maps a Cyclix state to the most items that column may hold. A state left out has no limit, and a file without the table has no limits. Only `in_progress`, `in_review`, `parked` and `needs_decision` take a limit: nothing in the engine adds items to Ready yet, and Done is the end. Each limit is a whole number of 1 or more. `in_progress` can only be 1, until the engine runs items side by side.
 
@@ -375,7 +394,7 @@ The fake GitHub is a world model, not replayed recordings (settled in #4). The w
 **The sandbox** (settled in #15) is the private repo `ambitioushq/cyclix-sandbox` and the private board `ambitioushq` project 2, whose Status field holds the six option names. Its tenant config is `docs/examples/sandbox.toml`. Scenarios tagged `@sandbox` run against it with the real `gh` and the real agent, and only when `CYCLIX_SANDBOX=1`. The workflow `sandbox.yml` runs them by hand and weekly, never on a PR.
 
 - **The sandbox scenario merges the PR itself.** Where the spine waits for a person to merge, the scenario runs `gh pr merge --squash`, so the weekly run needs nobody.
-- **The real agent runs with `--permission-mode bypassPermissions`.** Print mode cannot ask before it edits a file or runs `git`. The run is on a throwaway CI machine, against a throwaway repo.
+- **The real agent runs as the tenant config says**, in `dontAsk` mode with the stage's tools, as on the self tenant. The sandbox's build stage may run `python3 -m unittest`, its gate. Until the Iteration 0.5 pass (fix A1), the sandbox ran the agent with `--permission-mode bypassPermissions`.
 - **The shapes.** `scripts/record_gh_shapes.py` runs each command the adapters read against the sandbox, and writes `tests/fixtures/gh-shapes/<command>.json`. For a JSON command the file holds the sorted key paths of the output, with a list's elements under `<list>[]`. `pr create` prints a URL that the code host parses, so its file holds that line with the repo and number masked. Nothing reads the output of `project item-edit` or `issue comment`, so neither is recorded. The three board queries are recorded as `graphql-board-fields`, `graphql-board-items` and `graphql-board-item`. Each file holds a placeholder for the query text, not the text, so a changed query is caught only when the shapes are recorded again. The workflow records the shapes again after the scenarios, and fails if they changed.
 - **The sandbox is throwaway.** Each scenario first closes every open issue and PR in the sandbox and empties the board, in case an earlier run died. At the end it closes and deletes what it made.
 
@@ -384,7 +403,7 @@ The fake GitHub is a world model, not replayed recordings (settled in #4). The w
 Settled in #17. Cyclix runs its own loop from the tenant config above, which is also `docs/examples/tenant.toml`. The maintainer keeps the live copy outside this repository, on the host.
 
 - **The host.** The timer runs on a Linux host the maintainer runs, under `cyclix install --tenant cyclix`. The maintainer runs the host steps.
-- **The agent acts without asking.** Print mode cannot ask before it edits a file or runs `git`, so the agent runs with `--permission-mode bypassPermissions`, as in the sandbox. The gate and the maintainer's review are the checks on what it does. Fix A in the Iteration 0.5 pass replaces this with `--permission-mode dontAsk` and a list of allowed tools for each stage. See [isolation.md](isolation.md).
+- **The agent acts without asking, within its stage's tools.** Print mode cannot ask before it edits a file or runs `git`. Until the Iteration 0.5 pass, the agent ran with `--permission-mode bypassPermissions`. Fix A1 replaced that with `--permission-mode dontAsk`, `--restricted` and a list of allowed tools for each stage, so a tool call outside the list is refused. See [isolation.md](isolation.md).
 - **The models.** The plan stage uses `claude-opus-5-5` and the build stage uses `claude-sonnet-5-5`.
 - **The run limit.** Six runs a day.
 - **The gate matches CI.**

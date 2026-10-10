@@ -5,6 +5,13 @@ Follow the plan below. Make the change, add or update its tests, and run them.
 When the work is done, commit it on the current branch with a message that says
 what changed. Do not push, and do not open a pull request.
 
+You may use only these tools and shell commands; any other call is refused:
+$tools
+
+Run each shell command on its own. A command joined with `&&`, `;` or a pipe is
+refused when any part of it is not on the list. Use the Write and Edit tools to
+change files, not the shell.
+
 Issue #$number: $title
 
 $body

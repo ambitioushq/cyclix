@@ -24,3 +24,23 @@ Feature: The tenant config
     Given CYCLIX_CONFIG points at a config for tenant "sandbox"
     When the config is loaded with no path
     Then the tenant is "sandbox"
+
+  @issue-55
+  Scenario: Each agent stage has its own model, caps and tools
+    Given the example tenant config
+    When the config is loaded
+    Then the plan stage uses "claude-opus-5-5" with 30 turns, a budget of 2.0 and the tools "Read Grep Glob"
+
+  @issue-55
+  Scenario Outline: The agent command cannot set what the engine decides
+    Given the example config with the agent command "claude -p <flag>"
+    When the config is loaded
+    Then it fails with 'config: [agent] "command" must not hold <name>: the engine decides the agent's permissions, tools and caps'
+
+    Examples:
+      | flag                                | name                           |
+      | --permission-mode bypassPermissions | --permission-mode              |
+      | --dangerously-skip-permissions      | --dangerously-skip-permissions |
+      | --allowedTools=Bash                 | --allowedTools                 |
+      | --max-turns 500                     | --max-turns                    |
+      | --settings {}                       | --settings                     |

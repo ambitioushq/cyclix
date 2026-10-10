@@ -1,13 +1,15 @@
 """The minimal gate: run each gate command in the worktree, in order, and stop at the first failure.
 
 Each command's result is recorded against the head SHA, and its output is saved
-as gate-<n>.txt in the run folder. There are no fix rounds: a failure parks the item.
+as gate-<n>.txt in the run folder. The commands run code the agent wrote, so they
+get the gate's allowed environment, which holds no credential. There are no fix rounds: a failure parks the item.
 """
 
 import shlex
 import subprocess
 import time
 
+from cyclix.adapters import environment
 from cyclix.events import schema
 from cyclix.stages.base import StageResult
 
@@ -22,10 +24,11 @@ class Gate:
         sha = ctx.codehost.head_sha(ctx.worktree)
         checks = []
         fields = {schema.HEAD_REVISION: sha, schema.GATE_CHECKS: checks}
+        env = environment.for_gate(ctx.config.gate.pass_env, ctx.run_dir)
         for n, command in enumerate(ctx.config.gate.commands, 1):
             name = shlex.join(command)[: schema.MAX_STRING]
             started = time.monotonic()
-            code = run(command, ctx.worktree.path, ctx.run_dir / f"gate-{n}.txt")
+            code = run(command, ctx.worktree.path, env, ctx.run_dir / f"gate-{n}.txt")
             passed = code == 0
             ctx.state.record_check(ctx.run_id, sha, name, passed)
             duration = round((time.monotonic() - started) * 1000)
@@ -35,11 +38,11 @@ class Gate:
         return StageResult("passed", fields=fields)
 
 
-def run(command, cwd, output):
+def run(command, cwd, env, output):
     """Run one command, save its stdout and stderr to output, and return its exit code."""
     try:
         done = subprocess.run(
-            command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+            command, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
             check=False,
         )  # fmt: skip
     except FileNotFoundError:

@@ -1,4 +1,6 @@
+import json
 import re
+import shlex
 from pathlib import Path
 
 import pytest
@@ -46,6 +48,15 @@ def example_with(config_file, line, table):
     edit_table(config_file, table, lambda lines: [line, *lines])
 
 
+@given(parsers.parse('the example config with the agent command "{command}"'))
+def example_with_command(config_file, command):
+    line = f"command = {json.dumps(shlex.split(command))}"
+    edit_table(
+        config_file, "agent",
+        lambda lines: [line if l.startswith("command =") else l for l in lines],
+    )  # fmt: skip
+
+
 @given(parsers.parse('CYCLIX_CONFIG points at a config for tenant "{name}"'))
 def env_points_at(config_file, monkeypatch, name):
     edit_table(config_file, "tenant", lambda lines: [f'name = "{name}"'])
@@ -83,3 +94,15 @@ def version_starts(loaded, prefix):
 def fails_with(loaded, message):
     assert isinstance(loaded, config.ConfigError), loaded
     assert str(loaded) == message
+
+
+@then(
+    parsers.parse(
+        'the plan stage uses "{model}" with {turns:d} turns, a budget of {budget:g} '
+        'and the tools "{tools}"'
+    )
+)
+def plan_stage_uses(loaded, model, turns, budget, tools):
+    plan = loaded.agent.plan
+    assert (plan.model, plan.max_turns, plan.max_budget_usd) == (model, turns, budget)
+    assert plan.tools == tuple(tools.split())

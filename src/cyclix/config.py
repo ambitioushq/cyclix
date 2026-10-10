@@ -59,16 +59,29 @@ class CodeHost:
 
 
 @dataclass(frozen=True)
+class AgentStage:
+    """How the agent runs for one stage: its model, its caps and the tools it may use."""
+
+    model: str
+    max_turns: int
+    max_budget_usd: float
+    tools: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Agent:
     command: tuple[str, ...]
-    model_plan: str
-    model_build: str
     timeout_minutes: int
+    # Environment variable names the agent sees beyond the engine's own allow-list.
+    pass_env: tuple[str, ...]
+    plan: AgentStage
+    build: AgentStage
 
 
 @dataclass(frozen=True)
 class Gate:
     commands: tuple[tuple[str, ...], ...]
+    pass_env: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -93,6 +106,9 @@ class Config:
 # The expected type of each key. A dict is a nested table.
 ARGV = "a list of strings"
 ARGV_LIST = "a list of commands"
+NAMES = "a list of names, possibly empty"
+NUMBER = "a whole or decimal number"
+AGENT_STAGE = {"model": str, "max_turns": int, "max_budget_usd": NUMBER, "tools": ARGV}
 SCHEMA = {
     "tenant": {"name": str},
     "tracker": {
@@ -103,11 +119,37 @@ SCHEMA = {
         "states": dict.fromkeys(STATES, str),
     },
     "codehost": {"kind": str, "repo": str, "base": str},
-    "agent": {"command": ARGV, "model_plan": str, "model_build": str, "timeout_minutes": int},
-    "gate": {"commands": ARGV_LIST},
+    "agent": {
+        "command": ARGV,
+        "timeout_minutes": int,
+        "pass_env": NAMES,
+        "plan": AGENT_STAGE,
+        "build": AGENT_STAGE,
+    },
+    "gate": {"commands": ARGV_LIST, "pass_env": NAMES},
     "limits": {"runs_per_day": int},
 }
 KINDS = {"tracker": "github", "codehost": "github"}
+# Flags the engine sets on every agent call, and flags that would widen what the agent
+# may do. The agent command may hold none of them, so no config can turn the limits off.
+ENGINE_FLAGS = (
+    "--model",
+    "--permission-mode",
+    "--permission-prompts",
+    "--dangerously-skip-permissions",
+    "--allow-dangerously-skip-permissions",
+    "--allowedTools",
+    "--allowed-tools",
+    "--tools",
+    "--restricted",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "--settings",
+    "--setting-sources",
+    "--add-dir",
+    "--max-turns",
+    "--max-budget-usd",
+)
 
 
 def load(path=None, tenant=None):
@@ -127,18 +169,50 @@ def load(path=None, tenant=None):
     for table, kind in KINDS.items():
         if data[table]["kind"] != kind:
             raise ConfigError(f'[{table}] kind must be "{kind}", not "{data[table]["kind"]}"')
+    check_agent_command(data["agent"]["command"])
 
     tracker = data["tracker"]
+    agent = data["agent"]
+    gate = data["gate"]
     return Config(
         tenant=Tenant(**data["tenant"]),
         tracker=Tracker(**{**tracker, "states": States(**tracker["states"])}),
         codehost=CodeHost(**data["codehost"]),
-        agent=Agent(**{**data["agent"], "command": tuple(data["agent"]["command"])}),
-        gate=Gate(commands=tuple(tuple(c) for c in data["gate"]["commands"])),
+        agent=Agent(
+            command=tuple(agent["command"]),
+            timeout_minutes=agent["timeout_minutes"],
+            pass_env=tuple(agent["pass_env"]),
+            plan=agent_stage(agent["plan"]),
+            build=agent_stage(agent["build"]),
+        ),
+        gate=Gate(
+            commands=tuple(tuple(c) for c in gate["commands"]),
+            pass_env=tuple(gate["pass_env"]),
+        ),
         limits=Limits(**data["limits"], wip=wip),
         state_dir=state_dir(),
         version="sha256:" + hashlib.sha256(raw).hexdigest(),
     )
+
+
+def agent_stage(table):
+    return AgentStage(
+        **{
+            **table,
+            "max_budget_usd": float(table["max_budget_usd"]),
+            "tools": tuple(table["tools"]),
+        }
+    )
+
+
+def check_agent_command(command):
+    for arg in command:
+        flag = arg.split("=", 1)[0]
+        if flag in ENGINE_FLAGS:
+            raise ConfigError(
+                f'[agent] "command" must not hold {flag}: '
+                "the engine decides the agent's permissions, tools and caps"
+            )
 
 
 def find(path, tenant):
@@ -196,9 +270,15 @@ def check_value(value, expected, label):
             raise ConfigError(f"{label} must list at least one command")
         if not all(is_argv(command) for command in value):
             raise ConfigError(f"{label} must hold commands, each a non-empty list of strings")
+    elif expected is NAMES:
+        if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+            raise ConfigError(f"{label} must be a list of names")
     elif expected is int:
         if not isinstance(value, int) or isinstance(value, bool):
             raise ConfigError(f"{label} must be a whole number")
+    elif expected is NUMBER:
+        if not isinstance(value, int | float) or isinstance(value, bool) or value <= 0:
+            raise ConfigError(f"{label} must be a number above 0")
     elif not isinstance(value, expected):
         raise ConfigError(f"{label} must be a string")
 

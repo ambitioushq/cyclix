@@ -21,6 +21,9 @@ class AgentResult:
 
 
 class Agent(Protocol):
-    def run(self, prompt, cwd, model, run_dir) -> AgentResult:
-        """Run one prompt in cwd with the given model. The prompt and answer go in run_dir."""
+    def run(self, prompt, cwd, stage, run_dir) -> AgentResult:
+        """Run one prompt in cwd as the given stage. The prompt and answer go in run_dir.
+
+        stage is the stage's config.AgentStage: its model, its caps and its tools.
+        """
         ...

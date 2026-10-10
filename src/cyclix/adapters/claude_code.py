@@ -1,8 +1,10 @@
 """Run Claude Code in print mode and read its JSON result.
 
 The configured command (by default `claude -p --output-format json`) runs with
-`--model <model>` added, the prompt on stdin and the worktree as its working
-directory. Call n in a run folder saves prompt-<n>.txt and the raw output as
+the stage's model, caps and tools added, the prompt on stdin, the worktree as its
+working directory, and only the environment that adapters/environment.py allows.
+The agent runs restricted and in dontAsk mode, so a tool call outside the stage's
+list is refused, and the repository's own settings, hooks and MCP servers do not load. Call n in a run folder saves prompt-<n>.txt and the raw output as
 answer-<n>.json, so the prompt and the full answer stay in the run folder and
 only the numbers reach the event log.
 
@@ -17,27 +19,37 @@ import subprocess
 import time
 from pathlib import Path
 
+from cyclix.adapters import environment
 from cyclix.adapters.agent import AgentResult
 
 # A test shortens the minute so the timeout scenario does not take one.
 SECONDS_PER_MINUTE = 60
+
+# The result subtypes Claude Code ends with when a cap stops the session.
+CAP_REASONS = {
+    "error_max_turns": "turn cap reached",
+    "error_max_budget_usd": "budget cap reached",
+}
 
 
 class ClaudeCode:
     def __init__(self, agent_config):
         self.command = agent_config.command
         self.timeout_minutes = agent_config.timeout_minutes
+        self.pass_env = agent_config.pass_env
 
-    def run(self, prompt, cwd, model, run_dir):
+    def run(self, prompt, cwd, stage, run_dir):
         run_dir = Path(run_dir)
         run_dir.mkdir(parents=True, exist_ok=True)
         n = len(list(run_dir.glob("prompt-*.txt"))) + 1
         (run_dir / f"prompt-{n}.txt").write_text(prompt)
 
-        argv = [*self.command, "--model", model]
+        model = stage.model
+        argv = [*self.command, *stage_flags(stage)]
+        env = environment.for_agent(self.pass_env, run_dir)
         started = time.monotonic()
         try:
-            stdout, stderr, code = self._call(argv, prompt, cwd)
+            stdout, stderr, code = self._call(argv, prompt, cwd, env)
         except FileNotFoundError:
             return failed(model, f"agent command not found: {argv[0]}", 127, started)
         (run_dir / f"answer-{n}.json").write_text(stdout)
@@ -45,7 +57,7 @@ class ClaudeCode:
             return failed(model, f"timeout after {self.timeout_minutes} minutes", -9, started)
         return parse(stdout, stderr, code, model, started)
 
-    def _call(self, argv, prompt, cwd):
+    def _call(self, argv, prompt, cwd, env):
         """Run the agent in its own process group, and kill the whole group on a timeout.
 
         The exit code is None after a timeout. The output is whatever came before it.
@@ -53,6 +65,7 @@ class ClaudeCode:
         process = subprocess.Popen(
             argv,
             cwd=cwd,
+            env=env,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -70,6 +83,23 @@ class ClaudeCode:
         return stdout, stderr, process.returncode
 
 
+def stage_flags(stage):
+    """The flags that set the stage's model, caps and tools, and keep the agent to them.
+
+    --tools names the built-in tools the session has at all. Each rule in the stage's
+    list adds its tool, so `Bash(git commit *)` adds Bash, and a stage with no Bash
+    rule has no shell. --allowedTools comes last because it takes every argument after it.
+    """
+    tools = list(dict.fromkeys(rule.split("(", 1)[0] for rule in stage.tools))
+    return [
+        "--model", stage.model,
+        "--restricted", "--strict-mcp-config", "--tools", ",".join(tools),
+        "--permission-mode", "dontAsk", "--permission-prompts", "none",
+        "--max-turns", str(stage.max_turns), "--max-budget-usd", str(stage.max_budget_usd),
+        "--allowedTools", *stage.tools,
+    ]  # fmt: skip
+
+
 def parse(stdout, stderr, code, model, started):
     try:
         out = json.loads(stdout)
@@ -84,7 +114,8 @@ def parse(stdout, stderr, code, model, started):
     is_error = bool(out.get("is_error")) or code != 0
     reason = ""
     if is_error:
-        reason = out.get("result") or out.get("subtype") or f"agent exited {code}"
+        subtype = out.get("subtype")
+        reason = CAP_REASONS.get(subtype) or out.get("result") or subtype or f"agent exited {code}"
     return AgentResult(
         answer=out.get("result") or "",
         is_error=is_error,

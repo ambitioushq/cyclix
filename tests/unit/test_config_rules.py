@@ -42,9 +42,8 @@ def test_the_example_loads_in_full(monkeypatch):
     loaded = config.load(EXAMPLE)
     assert loaded.tracker.project == 1
     assert loaded.tracker.states.needs_decision == "Needs decision"
-    assert loaded.agent.command == (
-        "claude", "-p", "--output-format", "json", "--permission-mode", "bypassPermissions",
-    )  # fmt: skip
+    assert loaded.agent.command == ("claude", "-p", "--output-format", "json")
+    assert loaded.agent.build.tools[-1] == "Bash(uv run *)"
     assert loaded.gate.commands[2] == ("uv", "run", "pytest", "-q")
     assert loaded.limits.runs_per_day == 6
     assert loaded.state_dir == Path("/state")
@@ -152,3 +151,19 @@ def test_the_state_dir_is_found_in_three_steps(monkeypatch, tmp_path):
     assert config.state_dir() == Path("/xdg/cyclix")
     monkeypatch.setenv("CYCLIX_STATE_DIR", "/own")
     assert config.state_dir() == Path("/own")
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ("pass_env = []\n\n[agent.plan]", "pass_env = [1]\n\n[agent.plan]",
+         'config: [agent] "pass_env" must be a list of names'),
+        ("max_budget_usd = 2.0", "max_budget_usd = 0",
+         'config: [agent.plan] "max_budget_usd" must be a number above 0'),
+        ("max_budget_usd = 2.0", 'max_budget_usd = "2"',
+         'config: [agent.plan] "max_budget_usd" must be a number above 0'),
+    ],
+)  # fmt: skip
+def test_agent_stage_values_are_checked(tmp_path, old, new, message):
+    assert old in example()
+    assert fails(tmp_path, example().replace(old, new, 1)) == message

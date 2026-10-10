@@ -110,8 +110,20 @@ Most of this is GitHub settings that the maintainer changes, not code.
 
 Settled on 2026-10-09: the agent runs with `--permission-mode dontAsk --permission-prompts none` (Claude Code 2.1.259 or later), not with `bypassPermissions`. Each stage gets its own `--allowedTools` list, set in the tenant config. A tool call outside the list is refused, not allowed.
 
+Settled on 2026-10-10: the engine also passes three more flags.
+
+- `--restricted`. Claude Code then ignores the user, project and local settings files, so the repository's own `.claude/settings.json` cannot widen the tool list and its hooks do not run. The file tools are confined to the working directory, so the Read tool cannot reach `~/.config/gh`. Writes to settings and git files, such as `.git/hooks`, are refused. `bypassPermissions` is refused too.
+- `--strict-mcp-config`, so the repository's MCP servers do not load.
+- `--tools`, built from the stage's list: each rule adds its tool, so `Bash(git commit *)` adds `Bash`. The plan stage has no `Bash` rule, so it has no shell at all.
+
+A test on 2026-10-10 with a subscription login confirmed this: a build-style call wrote and committed a file, and was refused `ls /` (allowed only by the repository's own settings file), a read of `/etc/hosts`, and a write to `.git/hooks/pre-push`. The agent still reads the repository's `CLAUDE.md`, which is not a settings file. It no longer loads the host user's own `~/.claude` settings, plugins or hooks.
+
+**Where the settings live** (settled on 2026-10-10). Each stage has its own table in the tenant config, `[agent.plan]` and `[agent.build]`, holding `model`, `max_turns`, `max_budget_usd` and `tools`. The engine adds every flag in this point and in point 8 itself, and the config is refused if `agent.command` holds any of them, or a flag that widens what the agent may do (`--settings`, `--setting-sources`, `--mcp-config`, `--add-dir`, `--dangerously-skip-permissions`). So no config can turn these limits off.
+
 - **Plan stage:** `Read`, `Grep`, `Glob`. Its prompt says "Do not change any files", and the list enforces it.
 - **Build stage:** `Read`, `Grep`, `Glob`, `Edit`, `Write`; `Bash(git add *)`, `Bash(git commit *)`, `Bash(git status*)`, `Bash(git diff*)`, `Bash(git log*)`; and the tenant's own test commands, such as `Bash(uv run *)`. `git push` and `gh` are not on the list. The engine pushes and opens the PR itself.
+
+**The build prompt lists the stage's tools** (settled on 2026-10-10). In a test, the agent joined `printf … > b.txt && git add … && git commit …` into one command. The whole command was refused, because `printf` is not on the list, and the agent gave up instead of retrying. The build prompt now lists the tools and commands the agent may use, and tells it to run each shell command on its own and to change files with the Write and Edit tools. With that prompt, the same test committed its change.
 
 The list is not the boundary. `Bash(uv run *)` lets the agent run any Python it writes, and that Python can do anything the process can. The list is a cheaper second layer: it stops the agent from running a command such as `gh pr merge` because a file told it to, and it writes down what each stage is for. The cost is that a useful command missing from the list is refused, and that run fails until someone adds it.
 
@@ -157,18 +169,21 @@ The design works with a Claude subscription login as well as with an API key. Th
 
 | Part | Contents |
 | --- | --- |
-| Fix A1 | The `dontAsk` mode with per-stage tool lists (point 7). Turn and cost caps (point 8). An environment allow-list for the agent and the gate (below). |
+| Fix A1 | The `dontAsk` mode, `--restricted`, `--strict-mcp-config` and per-stage tool lists (point 7). Turn and cost caps, and the turn count in the event (point 8). An environment allow-list for the agent and the gate (below). |
 | Fix A2 | Timeouts on the gate and on git, `GIT_TERMINAL_PROMPT=0`, SIGINT before SIGKILL (point 8), and `cyclix check` confirming branch protection (point 6). |
 | Fix A3 | The container for the agent and the gate (point 1), the Claude login as the only credential (point 2), a fresh clone per run (point 3), the push through a bundle (point 4), and the network rules (point 5). Several PRs. |
 | Maintainer | The narrow GitHub identity, the ruleset and the required review (point 6). |
 
 **The environment allow-list in A1.** Until A3, the agent runs on the host, so its environment is the one boundary A1 can tighten. The agent and the gate get:
 
-- passed through from the engine: `PATH`, `HOME`, `LANG`, `LC_ALL`, `TERM` and `TMPDIR`, and, for the agent only, the Claude login (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`) when it is set;
-- set by the engine: `GH_CONFIG_DIR` pointing at an empty folder, so `gh` finds no login; `GIT_CONFIG_GLOBAL=/dev/null`, so git reads no credential helper from the user's config; `GIT_TERMINAL_PROMPT=0`; and `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME` and `GIT_COMMITTER_EMAIL`, so commits still work without the user's config;
+- passed through from the engine: `PATH`, `HOME`, `USER`, `LOGNAME`, `LANG`, `LC_ALL`, `TERM` and `TMPDIR`, and, for the agent only, the Claude login (`CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY` and `CLAUDE_CONFIG_DIR`) when it is set. Claude Code looks its login up in the macOS Keychain by `USER`, and `CLAUDE_CONFIG_DIR` says where it keeps its login when that is not `~/.claude`. Without either, a test on 2026-10-10 got "Not logged in";
+- set by the engine: `GH_CONFIG_DIR` pointing at an empty folder in the run folder, so `gh` finds no login; `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1`, so git reads no credential helper from the user's or the system's config (git on macOS sets one in its system config); `GIT_TERMINAL_PROMPT=0`; and `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME` and `GIT_COMMITTER_EMAIL`, so commits still work without the user's config;
+- the names the tenant lists in `pass_env`, under `[agent]` for the agent and under `[gate]` for the gate (settled on 2026-10-10). A tenant whose tests need, say, `DATABASE_URL` lists it there. It is usually empty;
 - nothing else. `GH_TOKEN`, `GITHUB_TOKEN` and `SSH_AUTH_SOCK` are left out.
 
-This removes every credential the agent could reach through its environment or through git's config. It does not stop the agent reading `~/.config/gh/hosts.yml` by its full path, because the agent still runs as the host user with the real `HOME`. For the same reason, the agent can still write files the engine later runs, such as hooks in the tenant clone. A3 closes both. Point 4 waits for A3, because until the agent is contained it adds nothing.
+**The commits keep the engine's identity** (settled on 2026-10-10). The engine reads `user.name` and `user.email` from its own git config before hiding that config, and passes them in as the `GIT_AUTHOR_*` and `GIT_COMMITTER_*` variables. A variable the engine already has wins over its config, as it does for git itself. Commits are authored as they were before A1.
+
+This removes every credential the agent could reach through its environment or through git's config. It does not stop Python that the agent runs through `Bash(uv run *)` from reading `~/.config/gh/hosts.yml` by its full path, because the agent still runs as the host user with the real `HOME`. (`--restricted` stops the Read tool from doing so.) For the same reason, the agent can still write files the engine later runs, such as hooks in the tenant clone. A3 closes both. Point 4 waits for A3, because until the agent is contained it adds nothing.
 
 After A3, the allow-list stays as a second layer inside the container.
 

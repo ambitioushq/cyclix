@@ -21,15 +21,30 @@ repo = "ambitioushq/cyclix"
 base = "main"
 
 [agent]
-# Print mode cannot ask before it edits a file or runs git, so the agent acts
-# without asking. The gate and the maintainer's review are the checks.
-command = ["claude", "-p", "--output-format", "json", "--permission-mode", "bypassPermissions"]
-model_plan = "claude-opus-5-5"
-model_build = "claude-sonnet-5-5"
+# The engine adds the model, the caps and the permission flags for each stage. The
+# agent runs in dontAsk mode: a tool call outside the stage's list is refused.
+# See docs/design/isolation.md.
+command = ["claude", "-p", "--output-format", "json"]
 timeout_minutes = 60
+pass_env = []
+
+[agent.plan]
+model = "claude-opus-5-5"
+max_turns = 30
+max_budget_usd = 2.0
+tools = ["Read", "Grep", "Glob"]
+
+[agent.build]
+model = "claude-sonnet-5-5"
+max_turns = 100
+max_budget_usd = 5.0
+tools = ["Read", "Grep", "Glob", "Edit", "Write",
+         "Bash(git add *)", "Bash(git commit *)", "Bash(git status*)",
+         "Bash(git diff*)", "Bash(git log*)", "Bash(uv run *)"]
 
 [gate]
 commands = [["uv", "run", "ruff", "check"], ["uv", "run", "ruff", "format", "--check"], ["uv", "run", "pytest", "-q"]]
+pass_env = []
 
 [limits]
 runs_per_day = 6

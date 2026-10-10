@@ -5,7 +5,8 @@ It reads the prompt from stdin and saves it as prompts/<n>.txt in $CYCLIX_FAKES_
 where n counts the calls. Then it follows entry n of agent-script.json: sleeps if
 asked, writes the files, commits them if asked, and prints the same JSON shape as
 `claude -p --output-format json`. A step with `stdout` prints that text instead.
-Every process it starts is recorded in agent-pids.txt.
+Every process it starts is recorded in agent-pids.txt, and each call's arguments
+and environment in agent-calls.jsonl.
 """
 
 import json
@@ -31,6 +32,7 @@ def main():
         return 2
     step = script[n - 1]
     world.record_agent_pid(os.getpid())
+    world.record_agent_call(sys.argv[1:], dict(os.environ))
 
     if step["sleep_seconds"]:
         # Sleep in a child process, as the real agent's tools do, so a timeout must stop both.
@@ -50,11 +52,11 @@ def main():
         subprocess.run(["git", "add", "--", *step["files"]], check=True)
         subprocess.run(["git", "commit", "-q", "-m", "Work by the fake agent"], check=True)
 
-    failed = step["exit"] != 0
+    failed = step["exit"] != 0 or step["subtype"] is not None
     usage = {"input_tokens": step["input_tokens"], "output_tokens": step["output_tokens"]}
     output = {
         "type": "result",
-        "subtype": "error_during_execution" if failed else "success",
+        "subtype": step["subtype"] or ("error_during_execution" if failed else "success"),
         "is_error": failed,
         "result": step["answer"],
         "session_id": f"fake-session-{n}",

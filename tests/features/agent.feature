@@ -20,3 +20,50 @@ Feature: The Claude Code agent adapter
     Given the agent prints "hello" and exits 0
     When the adapter runs a prompt
     Then the result is an error with reason "agent output was not JSON"
+
+  @issue-55
+  Scenario: The agent runs restricted, with the stage's tools and caps
+    Given the agent answers "plan written"
+    When the adapter runs a prompt for the plan stage
+    Then the agent was started with "--model claude-opus-5-5"
+    And the agent was started with "--restricted --strict-mcp-config --tools Read,Grep,Glob"
+    And the agent was started with "--permission-mode dontAsk --permission-prompts none"
+    And the agent was started with "--max-turns 30 --max-budget-usd 2.0"
+    And the agent was started with "--allowedTools Read Grep Glob"
+
+  @issue-55
+  Scenario: The build stage's shell rules give the agent the shell tool
+    Given the agent answers "built"
+    When the adapter runs a prompt for the build stage
+    Then the agent was started with "--tools Read,Edit,Bash"
+    And the agent was started with "--allowedTools Read Edit 'Bash(git commit *)'"
+
+  @issue-55
+  Scenario: The agent sees only the environment it needs
+    Given the engine's environment holds GH_TOKEN, GITHUB_TOKEN, SSH_AUTH_SOCK and AWS_SECRET_ACCESS_KEY
+    And the engine's environment holds CLAUDE_CODE_OAUTH_TOKEN, CLAUDE_CONFIG_DIR and USER
+    And the agent answers "plan written"
+    When the adapter runs a prompt for the plan stage
+    Then the agent's environment lacks GH_TOKEN, GITHUB_TOKEN, SSH_AUTH_SOCK and AWS_SECRET_ACCESS_KEY
+    And the agent's environment holds CLAUDE_CODE_OAUTH_TOKEN, CLAUDE_CONFIG_DIR, USER, PATH, HOME and CYCLIX_FAKES_DIR
+    And the agent's environment sets GIT_TERMINAL_PROMPT to "0" and GIT_CONFIG_NOSYSTEM to "1"
+    And the agent's environment sets GIT_CONFIG_GLOBAL to the null device
+    And the agent's GH_CONFIG_DIR is an empty folder
+
+  @issue-55
+  Scenario: The agent's commits carry the engine's git identity
+    Given the engine's git config names the user "Ada Lovelace" with email "ada@example.com"
+    And the agent answers "plan written"
+    When the adapter runs a prompt for the plan stage
+    Then the agent's environment sets GIT_AUTHOR_NAME to "Ada Lovelace" and GIT_COMMITTER_EMAIL to "ada@example.com"
+
+  @issue-55
+  Scenario Outline: A call stopped by a cap says which cap
+    Given the agent stops with subtype "<subtype>"
+    When the adapter runs a prompt for the build stage
+    Then the result is an error with reason "<reason>"
+
+    Examples:
+      | subtype              | reason             |
+      | error_max_turns      | turn cap reached   |
+      | error_max_budget_usd | budget cap reached |

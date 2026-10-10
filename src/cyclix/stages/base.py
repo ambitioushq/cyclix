@@ -14,7 +14,7 @@ from typing import Protocol
 from cyclix.adapters.agent import Agent, AgentResult
 from cyclix.adapters.codehost import CodeHost, Worktree
 from cyclix.adapters.tracker import Issue, Tracker
-from cyclix.config import Config
+from cyclix.config import AgentStage, Config
 from cyclix.events import schema
 from cyclix.state.core import StateCore
 from cyclix.workstate import State
@@ -64,10 +64,12 @@ def prompt(name, **values):
     return Template(text).substitute(values)
 
 
-def call_agent(ctx: RunContext, text: str, model: str) -> tuple[AgentResult, dict[str, object]]:
-    """Run the agent in the worktree. Return its result and the numbers for the event."""
+def call_agent(
+    ctx: RunContext, text: str, stage: AgentStage
+) -> tuple[AgentResult, dict[str, object]]:
+    """Run the agent in the worktree as one stage. Return its result and the numbers for the event."""
     ctx.state.set_phase(ctx.run_id, "agent")
-    result = ctx.agent.run(text, ctx.worktree.path, model, ctx.run_dir)
+    result = ctx.agent.run(text, ctx.worktree.path, stage, ctx.run_dir)
     tokens = result.input_tokens + result.output_tokens
     ctx.state.add_spend(ctx.config.tenant.name, result.cost_usd, tokens)
     fields = {
@@ -75,5 +77,6 @@ def call_agent(ctx: RunContext, text: str, model: str) -> tuple[AgentResult, dic
         schema.INPUT_TOKENS: result.input_tokens,
         schema.OUTPUT_TOKENS: result.output_tokens,
         schema.COST_USD: result.cost_usd,
+        schema.AGENT_TURNS: result.turns,
     }
     return result, fields
