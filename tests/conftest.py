@@ -100,6 +100,17 @@ def agent_plans_and_builds(world):
     world.add_plan_and_commit()
 
 
+@given(parsers.parse("the engine's environment holds {names}"))
+def engine_environment_holds(monkeypatch, names):
+    for name in name_list(names):
+        monkeypatch.setenv(name, f"secret-{name.lower()}")
+
+
+def name_list(text):
+    """ "A, B and C" -> ["A", "B", "C"]."""
+    return [name.strip() for name in re.split(r",| and | nor ", text) if name.strip()]
+
+
 # When
 
 

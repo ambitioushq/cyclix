@@ -82,6 +82,7 @@ AGENT_DEFAULTS = {
     "model": "claude-sonnet-5-5",
     "sleep_seconds": 0,
     "stdout": None,
+    "subtype": None,
 }
 
 CONFIG = f"""\
@@ -109,12 +110,24 @@ base = "main"
 
 [agent]
 command = ["fake-agent"]
-model_plan = "claude-opus-5-5"
-model_build = "claude-sonnet-5-5"
 timeout_minutes = 1
+pass_env = ["{ENV}"]
+
+[agent.plan]
+model = "claude-opus-5-5"
+max_turns = 30
+max_budget_usd = 2.0
+tools = ["Read", "Grep", "Glob"]
+
+[agent.build]
+model = "claude-sonnet-5-5"
+max_turns = 100
+max_budget_usd = 5.0
+tools = ["Read", "Edit", "Bash(git commit *)"]
 
 [gate]
 commands = [["true"]]
+pass_env = []
 
 [limits]
 runs_per_day = 6
@@ -157,6 +170,7 @@ class World:
         self.agent_script_path = self.root / "agent-script.json"
         self.prompts_dir = self.root / "prompts"
         self.agent_pids_path = self.root / "agent-pids.txt"
+        self.agent_calls_path = self.root / "agent-calls.jsonl"
         self.state_dir = self.root / "state"
         self.remote = self.root / "remote.git"
         self.config = self.root / "config.toml"
@@ -367,6 +381,22 @@ class World:
     def record_agent_pid(self, pid):
         with self.agent_pids_path.open("a") as pids:
             pids.write(f"{pid}\n")
+
+    def record_agent_call(self, argv, env):
+        with self.agent_calls_path.open("a") as calls:
+            calls.write(json.dumps({"argv": argv, "env": env}) + "\n")
+
+    def agent_calls(self):
+        """The arguments and environment of each fake agent call, in order."""
+        if not self.agent_calls_path.exists():
+            return []
+        return [json.loads(line) for line in self.agent_calls_path.read_text().splitlines()]
+
+    def set_gate_commands(self, *commands):
+        text = self.config.read_text()
+        self.config.write_text(
+            text.replace('commands = [["true"]]', f"commands = {json.dumps(list(commands))}")
+        )
 
     def agent_pids(self):
         """The process IDs of every fake agent call and the processes it started."""
