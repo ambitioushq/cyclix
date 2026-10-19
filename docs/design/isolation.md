@@ -147,6 +147,11 @@ The config is refused when `max_turns` is below 1 or `max_budget_usd` is not a f
 A run stopped by a cap ends with the subtype `error_max_turns` or `error_max_budget_usd`. The engine reports each as its own reason, "turn cap reached" or "budget cap reached", not as a general agent error. The event records the turn count beside the cost, so the caps can be checked against real runs.
  On a timeout, the engine sends SIGINT to the agent's process group, waits a short grace period, then sends SIGKILL. Claude Code ends its turn cleanly on SIGINT and still writes its result; SIGKILL leaves no result. The gate and every git call also get a timeout, and every git call sets `GIT_TERMINAL_PROMPT=0` so git never waits for a password.
 
+**The timeout values** (settled on 2026-10-19). On the host's first five runs the longest gate command, `uv run pytest -q`, took 22 seconds, and the longest build stage took 6 minutes.
+
+- The gate: each gate command gets `[gate] timeout_minutes`, 10 in the examples. The value depends on the tenant's own tests, so it lives in the config and must be a whole number of 1 or more. A command that runs past it is stopped, and counts as a failed check.
+- git: fixed in code, not in the config. A call that uses the network (clone, fetch, push) gets 5 minutes, and a local call gets 1 minute. No tenant is expected to need other values.
+
 ## Logging in with a subscription token
 
 The design works with a Claude subscription login as well as with an API key. The subscription login reaches the container as `CLAUDE_CODE_OAUTH_TOKEN`, made once with `claude setup-token`. Points to know:
@@ -193,7 +198,6 @@ After A3, the allow-list stays as a second layer inside the container.
 
 These are settled with the maintainer when the part that needs them is built.
 
-1. Timeout values for the gate and for git calls (A2).
-2. How the agent's container gets no route out except the proxy (A3).
-3. Who builds and updates the container image, and how its versions are pinned (A3).
-4. How a maintainer develops on macOS, where rootless Podman runs inside a VM (A3).
+1. How the agent's container gets no route out except the proxy (A3).
+2. Who builds and updates the container image, and how its versions are pinned (A3).
+3. How a maintainer develops on macOS, where rootless Podman runs inside a VM (A3).
