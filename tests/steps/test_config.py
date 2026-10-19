@@ -124,3 +124,9 @@ def plan_stage_uses(loaded, model, turns, budget, tools):
     plan = loaded.agent.plan
     assert (plan.model, plan.max_turns, plan.max_budget_usd) == (model, turns, budget)
     assert plan.tools == tuple(tools.split())
+
+
+@then(parsers.parse('the agent command is "{command}"'))
+def agent_command_is(loaded, command):
+    assert not isinstance(loaded, Exception), loaded
+    assert loaded.agent.command == tuple(shlex.split(command))

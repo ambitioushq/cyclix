@@ -128,15 +128,40 @@ Feature: The tenant config
       | agent       | timeout_minutes | 0     |
 
   @issue-55
-  Scenario Outline: The agent command cannot set what the engine decides
-    Given the example config with the agent command "claude -p <flag>"
+  Scenario Outline: The agent command holds only the flags the engine allows
+    Given the example config with the agent command "<command>"
     When the config is loaded
-    Then it fails with 'config: [agent] "command" must not hold <name>: the engine decides the agent's permissions, tools and caps'
+    Then it fails with 'config: [agent] "command" may hold only -p, --print, --verbose, --output-format <format> and --effort <level> after the program, not "<arg>"'
 
     Examples:
-      | flag                                | name                           |
-      | --permission-mode bypassPermissions | --permission-mode              |
-      | --dangerously-skip-permissions      | --dangerously-skip-permissions |
-      | --allowedTools=Bash                 | --allowedTools                 |
-      | --max-turns 500                     | --max-turns                    |
-      | --settings {}                       | --settings                     |
+      | command                                       | arg                            |
+      | claude -p --permission-mode bypassPermissions | --permission-mode              |
+      | claude -p --dangerously-skip-permissions      | --dangerously-skip-permissions |
+      | claude -p --allowedTools=Bash                 | --allowedTools=Bash            |
+      | claude -p --max-turns 500                     | --max-turns                    |
+      | claude -p --settings {}                       | --settings                     |
+      | claude -p --plugin-dir ./plugin               | --plugin-dir                   |
+      | claude -p --                                  | --                             |
+      | claude -p prompt                              | prompt                         |
+
+  @issue-55
+  Scenario Outline: A flag in the agent command must have its value
+    Given the example config with the agent command "<command>"
+    When the config is loaded
+    Then it fails with 'config: [agent] "command" gives <flag> no value'
+
+    Examples:
+      | command                                 | flag            |
+      | claude -p --effort                      | --effort        |
+      | claude -p --output-format --max-turns 1 | --output-format |
+
+  @issue-55
+  Scenario Outline: The allowed flags load in either form
+    Given the example config with the agent command "<command>"
+    When the config is loaded
+    Then the agent command is "<command>"
+
+    Examples:
+      | command                                                   |
+      | claude --print --output-format json --effort high --verbose |
+      | claude -p --output-format=json --effort=low                 |

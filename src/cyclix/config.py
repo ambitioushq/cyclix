@@ -127,6 +127,7 @@ GITHUB_REPO = Form(
 )
 BRANCH = Form(re.compile(r"(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*"), "a branch name")
 MODEL = Form(re.compile(r"[A-Za-z0-9][A-Za-z0-9._:\[\]-]*"), "a model name or alias")
+FLAG_VALUE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 ARGV = "a list of strings"
 ARGV_LIST = "a list of commands"
@@ -156,26 +157,15 @@ SCHEMA = {
     "limits": {"runs_per_day": WHOLE},
 }
 KINDS = {"tracker": "github", "codehost": "github"}
-# Flags the engine sets on every agent call, and flags that would widen what the agent
-# may do. The agent command may hold none of them, so no config can turn the limits off.
-ENGINE_FLAGS = (
-    "--model",
-    "--permission-mode",
-    "--permission-prompts",
-    "--dangerously-skip-permissions",
-    "--allow-dangerously-skip-permissions",
-    "--allowedTools",
-    "--allowed-tools",
-    "--tools",
-    "--restricted",
-    "--strict-mcp-config",
-    "--mcp-config",
-    "--settings",
-    "--setting-sources",
-    "--add-dir",
-    "--max-turns",
-    "--max-budget-usd",
-)
+# The flags the agent command may hold after the program, each with whether it
+# takes a value. Every other flag is refused: the engine sets the agent's
+# permissions, tools and caps itself, appending its flags after the command.
+# Claude Code reads the argument after a flag that takes a value as that value,
+# even when it starts with "-", so a flag missing its value would take the
+# engine's first flag, and "--" would make the engine's flags plain arguments.
+AGENT_FLAGS = {"-p": False, "--print": False, "--verbose": False,
+               "--output-format": True, "--effort": True}  # fmt: skip
+AGENT_FLAGS_TEXT = "-p, --print, --verbose, --output-format <format> and --effort <level>"
 
 
 def load(path=None, tenant=None):
@@ -278,13 +268,19 @@ def check_pass_env(names, table, forbidden):
 
 
 def check_agent_command(command):
-    for arg in command:
-        flag = arg.split("=", 1)[0]
-        if flag in ENGINE_FLAGS:
+    args = iter(command[1:])
+    for arg in args:
+        flag, equals, value = arg.partition("=")
+        takes_value = AGENT_FLAGS.get(flag)
+        if takes_value is None or (equals and not takes_value):
             raise ConfigError(
-                f'[agent] "command" must not hold {flag}: '
-                "the engine decides the agent's permissions, tools and caps"
+                f'[agent] "command" may hold only {AGENT_FLAGS_TEXT} after the program, not "{arg}"'
             )
+        if takes_value:
+            if not equals:
+                value = next(args, "")
+            if not FLAG_VALUE.fullmatch(value):
+                raise ConfigError(f'[agent] "command" gives {flag} no value')
 
 
 def find(path, tenant):
