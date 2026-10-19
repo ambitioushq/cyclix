@@ -14,7 +14,7 @@ class Plan:
     def run(self, ctx):
         issue = ctx.issue
         text = prompt("plan", number=issue.number, title=issue.title, body=issue.body)
-        result, fields = call_agent(ctx, text, ctx.config.agent.model_plan)
+        result, fields = call_agent(ctx, text, ctx.config.agent.plan)
         if result.is_error:
             return StageResult("failed", f"agent: {result.reason}", fields)
         answer = result.answer.strip()

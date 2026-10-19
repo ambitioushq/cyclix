@@ -41,10 +41,11 @@ class Build:
             title=issue.title,
             body=issue.body,
             plan=plan,
+            tools="\n".join(f"- {rule}" for rule in ctx.config.agent.build.tools),
             pr_instructions=pr_instructions(ctx),
         )
         before = ctx.codehost.head_sha(ctx.worktree)
-        result, fields = call_agent(ctx, text, ctx.config.agent.model_build)
+        result, fields = call_agent(ctx, text, ctx.config.agent.build)
         after = ctx.codehost.head_sha(ctx.worktree)
         fields[schema.HEAD_REVISION] = after
         if result.is_error:

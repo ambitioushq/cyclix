@@ -24,15 +24,29 @@ repo = "ambitioushq/cyclix-sandbox"
 base = "main"
 
 [agent]
-# Print mode cannot ask before it edits a file or runs git, so the sandbox run
-# lets the agent act without asking. It runs on a throwaway CI machine.
-command = ["claude", "-p", "--output-format", "json", "--permission-mode", "bypassPermissions"]
-model_plan = "claude-sonnet-5-5"
-model_build = "claude-sonnet-5-5"
+# The engine adds the model, the caps and the permission flags for each stage.
+# See docs/design/isolation.md.
+command = ["claude", "-p", "--output-format", "json"]
 timeout_minutes = 20
+pass_env = []
+
+[agent.plan]
+model = "claude-sonnet-5-5"
+max_turns = 30
+max_budget_usd = 2.0
+tools = ["Read", "Grep", "Glob"]
+
+[agent.build]
+model = "claude-sonnet-5-5"
+max_turns = 100
+max_budget_usd = 5.0
+tools = ["Read", "Grep", "Glob", "Edit", "Write",
+         "Bash(git add *)", "Bash(git commit *)", "Bash(git status*)",
+         "Bash(git diff*)", "Bash(git log*)", "Bash(python3 -m unittest*)"]
 
 [gate]
 commands = [["python3", "-m", "unittest"]]
+pass_env = []
 
 [limits]
 runs_per_day = 6

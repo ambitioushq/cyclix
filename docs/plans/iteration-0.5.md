@@ -225,4 +225,5 @@ The loop-model rewrite in step 5 will reshape the runner and the stages. These P
 - Log the GraphQL rate limit (`rateLimit { cost remaining resetAt }`) on every pass.
 - Record the head SHA each derived fact was computed for, such as a gate result, so a fact about an old commit shows as out of date. Kubernetes records `observedGeneration` for the same reason.
 - `claude -p --resume` reports cost for the whole conversation, earlier runs included. A resumed session's cost must subtract the previous total.
+- Record how many tool calls `dontAsk` refused in each agent call. Claude Code lists them under `permission_denials` in its JSON result. A stage whose tool list is too narrow then shows up in the event log, not only as a failed run.
 - A hard cap on CI fix rounds: Stripe's coding agents stop after two CI rounds and hand the branch to a person.

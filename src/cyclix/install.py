@@ -15,7 +15,7 @@ from pathlib import Path
 
 from cyclix import config
 
-TENANT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
+TENANT_NAME = config.TENANT_NAME.pattern
 # A systemd time span in the units Cyclix accepts, such as "10min" or "1h30min".
 TIME_SPAN = re.compile(r"(\d+(s|min|h|d|w))+")
 

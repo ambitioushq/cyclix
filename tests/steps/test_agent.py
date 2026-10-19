@@ -1,9 +1,12 @@
 import json
 import os
+import shlex
 import time
 
 import pytest
+from conftest import name_list
 from fakes.runner import environment
+from fakes.world import git
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from cyclix import config
@@ -42,6 +45,43 @@ def agent_takes_too_long(world, monkeypatch):
     world.add_agent_step(sleep_seconds=30)
 
 
+@given(parsers.parse('the agent stops with subtype "{subtype}"'))
+def agent_stops(world, subtype):
+    world.add_agent_step(subtype=subtype, exit=1)
+
+
+@given(parsers.parse('the engine\'s git config names the user "{name}" with email "{email}"'))
+def engine_git_identity(world, fake_env, monkeypatch, tmp_path, name, email):
+    gitconfig = tmp_path / "gitconfig"
+    gitconfig.write_text(f"[user]\n\tname = {name}\n\temail = {email}\n")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(gitconfig))
+    for key in ("AUTHOR", "COMMITTER"):
+        monkeypatch.delenv(f"GIT_{key}_NAME", raising=False)
+        monkeypatch.delenv(f"GIT_{key}_EMAIL", raising=False)
+
+
+@given(parsers.parse('the engine\'s environment sets {name} to "{value}"'))
+def engine_sets(monkeypatch, name, value):
+    monkeypatch.setenv(name, value)
+
+
+@given("the agent commits a file")
+def agent_commits(world):
+    work = world.root / "work"
+    work.mkdir()
+    git(work, "init", "-q")
+    world.add_agent_step(files={"change.txt": "a change\n"}, commit=True)
+
+
+@given(
+    parsers.parse('the repository\'s own git config names the user "{name}" with email "{email}"')
+)
+def repository_git_identity(world, name, email):
+    work = world.root / "work"
+    git(work, "config", "user.name", name)
+    git(work, "config", "user.email", email)
+
+
 @given(parsers.parse('the agent prints "{text}" and exits {code:d}'))
 def agent_prints(world, text, code):
     world.add_agent_step(stdout=text + "\n", exit=code)
@@ -52,10 +92,20 @@ def agent_prints(world, text, code):
 
 @when("the adapter runs a prompt", target_fixture="result")
 def adapter_runs(world, fake_env):
-    agent = claude_code.ClaudeCode(config.load(world.config).agent)
+    return run_stage(world, "plan")
+
+
+@when(parsers.parse("the adapter runs a prompt for the {stage} stage"), target_fixture="result")
+def adapter_runs_stage(world, fake_env, stage):
+    return run_stage(world, stage)
+
+
+def run_stage(world, stage):
+    agent_config = config.load(world.config).agent
+    agent = claude_code.ClaudeCode(agent_config)
     work = world.root / "work"
-    work.mkdir()
-    return agent.run(PROMPT, cwd=work, model="claude-opus-5-5", run_dir=world.root / "run")
+    work.mkdir(exist_ok=True)
+    return agent.run(PROMPT, work, getattr(agent_config, stage), world.root / "run")
 
 
 # Then
@@ -105,3 +155,55 @@ def alive(pid):
     except ProcessLookupError:
         return False
     return True
+
+
+def last_call(world):
+    return world.agent_calls()[-1]
+
+
+@then(parsers.parse('the agent was started with "{args}"'))
+def started_with(world, args):
+    argv, want = last_call(world)["argv"], shlex.split(args)
+    starts = range(len(argv) - len(want) + 1)
+    assert any(argv[i : i + len(want)] == want for i in starts), argv
+
+
+@then(parsers.parse("the agent's environment lacks {names}"))
+def environment_lacks(world, names):
+    env = last_call(world)["env"]
+    assert [name for name in name_list(names) if name in env] == []
+
+
+@then(parsers.parse("the agent's environment holds {names}"))
+def environment_holds(world, names):
+    env = last_call(world)["env"]
+    assert [name for name in name_list(names) if name not in env] == []
+
+
+@then(
+    parsers.parse(
+        'the agent\'s environment sets {first} to "{first_value}" and {second} to "{second_value}"'
+    )
+)
+def environment_sets(world, first, first_value, second, second_value):
+    env = last_call(world)["env"]
+    assert (env.get(first), env.get(second)) == (first_value, second_value)
+
+
+@then(parsers.parse("the agent's environment sets {name} to the null device"))
+def environment_sets_null(world, name):
+    assert last_call(world)["env"].get(name) == os.devnull
+
+
+@then("the agent's GH_CONFIG_DIR is an empty folder")
+def gh_config_dir_empty(world):
+    folder = last_call(world)["env"]["GH_CONFIG_DIR"]
+    assert os.path.isdir(folder)
+    assert os.listdir(folder) == []
+
+
+@then(parsers.parse('the agent\'s commit is authored by "{author}" and committed by "{committer}"'))
+def commit_identity(world, result, author, committer):
+    assert not result.is_error, result.reason
+    log = git(world.root / "work", "log", "-1", "--format=%an <%ae>%n%cn <%ce>")
+    assert log.splitlines() == [author, committer]

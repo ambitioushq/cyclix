@@ -32,6 +32,7 @@ CHANGE_ID = "vcs.change.id"
 MODEL = "gen_ai.request.model"
 INPUT_TOKENS = "gen_ai.usage.input_tokens"
 OUTPUT_TOKENS = "gen_ai.usage.output_tokens"
+AGENT_TURNS = "cyclix.agent.turns"
 GATE_CHECKS = "cyclix.gate.checks"
 
 # Every stage-run event has exactly these keys, in this order. A key with no value is null.
@@ -54,6 +55,7 @@ STAGE_RUN_KEYS = (
     MODEL,
     INPUT_TOKENS,
     OUTPUT_TOKENS,
+    AGENT_TURNS,
     GATE_CHECKS,
 )
 

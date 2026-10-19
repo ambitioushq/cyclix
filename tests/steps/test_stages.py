@@ -1,7 +1,8 @@
 import re
 
 import pytest
-from fakes.world import PLAN_ANSWER, git, operation_of
+from conftest import name_list
+from fakes.world import PLAN_ANSWER, PR_BODY_ANSWER, git, operation_of
 from pytest_bdd import given, parsers, scenarios, then
 
 from cyclix import config
@@ -211,3 +212,55 @@ def body_has_no_plan(world):
     body = pr["body"]
     assert PLAN_ANSWER.strip() not in body
     assert "## Approach" not in body
+
+
+@given(parsers.parse('the gate command is "{command}"'))
+def gate_command_is(world, command):
+    world.set_gate_commands(command.split())
+
+
+@given(
+    parsers.parse(
+        "the agent writes a plan in {plan_turns:d} turns, "
+        "then commits a change in {build_turns:d} turns"
+    )
+)
+def plan_and_build_in_turns(world, plan_turns, build_turns):
+    world.add_agent_step(answer=PLAN_ANSWER, num_turns=plan_turns)
+    world.add_agent_step(
+        files={"change.txt": "a change\n"}, commit=True, answer=PR_BODY_ANSWER,
+        num_turns=build_turns,
+    )  # fmt: skip
+
+
+def gate_output(world, issue):
+    [path] = (world.state_dir / "runs" / TENANT / str(issue)).glob("*/gate-1.txt")
+    return path.read_text().splitlines()
+
+
+@then(parsers.parse("the gate output for #{issue:d} holds neither {names}"))
+def gate_output_lacks(world, result, issue, names):
+    lines = gate_output(world, issue)
+    for name in name_list(names):
+        assert not any(line.startswith(f"{name}=") for line in lines), name
+
+
+@then(parsers.parse('the gate output for #{issue:d} holds "{line}"'))
+def gate_output_holds(world, issue, line):
+    assert line in gate_output(world, issue)
+
+
+@then(parsers.parse("the {stage} event records {turns:d} agent turns"))
+def event_records_turns(world, result, stage, turns):
+    [event] = [e for e in world.events() if e["attributes"]["cyclix.stage"] == stage]
+    assert event["attributes"]["cyclix.agent.turns"] == turns
+
+
+@then(parsers.parse('the build prompt lists "{line}"'))
+def build_prompt_lists(world, result, line):
+    assert line in world.prompts()[1].splitlines()
+
+
+@then("the build prompt says to run each shell command on its own")
+def build_prompt_one_command(world):
+    assert "Run each shell command on its own." in world.prompts()[1]

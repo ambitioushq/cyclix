@@ -8,10 +8,14 @@ never passes silently.
 """
 
 import hashlib
+import math
 import os
+import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+
+from cyclix.adapters import environment
 
 STATES = ("ready", "in_progress", "in_review", "parked", "needs_decision", "done")
 # The states that may carry a WIP limit. The engine adds nothing to Ready, and Done is the end.
@@ -59,16 +63,29 @@ class CodeHost:
 
 
 @dataclass(frozen=True)
+class AgentStage:
+    """How the agent runs for one stage: its model, its caps and the tools it may use."""
+
+    model: str
+    max_turns: int
+    max_budget_usd: float
+    tools: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Agent:
     command: tuple[str, ...]
-    model_plan: str
-    model_build: str
     timeout_minutes: int
+    # Environment variable names the agent sees beyond the engine's own allow-list.
+    pass_env: tuple[str, ...]
+    plan: AgentStage
+    build: AgentStage
 
 
 @dataclass(frozen=True)
 class Gate:
     commands: tuple[tuple[str, ...], ...]
+    pass_env: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -90,24 +107,65 @@ class Config:
     version: str
 
 
+@dataclass(frozen=True)
+class Form:
+    """A string that must match a pattern, because the engine puts it in a command or a path."""
+
+    pattern: re.Pattern
+    description: str
+
+
 # The expected type of each key. A dict is a nested table.
+TENANT_NAME = Form(
+    re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*"),
+    'letters, digits, ".", "_" and "-", starting with a letter or digit',
+)
+GITHUB_OWNER = Form(re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*"), "a GitHub user or organization name")
+GITHUB_REPO = Form(
+    re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+"),
+    "a GitHub repository written as owner/name",
+)
+BRANCH = Form(re.compile(r"(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*"), "a branch name")
+MODEL = Form(re.compile(r"[A-Za-z0-9][A-Za-z0-9._:\[\]-]*"), "a model name or alias")
+FLAG_VALUE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
+ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 ARGV = "a list of strings"
 ARGV_LIST = "a list of commands"
+NAMES = "a list of names, possibly empty"
+NUMBER = "a finite number above 0"
+COUNT = "a whole number of 1 or more"
+WHOLE = "a whole number of 0 or more"
+AGENT_STAGE = {"model": MODEL, "max_turns": COUNT, "max_budget_usd": NUMBER, "tools": ARGV}
 SCHEMA = {
-    "tenant": {"name": str},
+    "tenant": {"name": TENANT_NAME},
     "tracker": {
         "kind": str,
-        "owner": str,
-        "project": int,
+        "owner": GITHUB_OWNER,
+        "project": COUNT,
         "status_field": str,
         "states": dict.fromkeys(STATES, str),
     },
-    "codehost": {"kind": str, "repo": str, "base": str},
-    "agent": {"command": ARGV, "model_plan": str, "model_build": str, "timeout_minutes": int},
-    "gate": {"commands": ARGV_LIST},
-    "limits": {"runs_per_day": int},
+    "codehost": {"kind": str, "repo": GITHUB_REPO, "base": BRANCH},
+    "agent": {
+        "command": ARGV,
+        "timeout_minutes": COUNT,
+        "pass_env": NAMES,
+        "plan": AGENT_STAGE,
+        "build": AGENT_STAGE,
+    },
+    "gate": {"commands": ARGV_LIST, "pass_env": NAMES},
+    "limits": {"runs_per_day": WHOLE},
 }
 KINDS = {"tracker": "github", "codehost": "github"}
+# The flags the agent command may hold after the program, each with whether it
+# takes a value. Every other flag is refused: the engine sets the agent's
+# permissions, tools and caps itself, appending its flags after the command.
+# Claude Code reads the argument after a flag that takes a value as that value,
+# even when it starts with "-", so a flag missing its value would take the
+# engine's first flag, and "--" would make the engine's flags plain arguments.
+AGENT_FLAGS = {"-p": False, "--print": False, "--verbose": False,
+               "--output-format": True, "--effort": True}  # fmt: skip
+AGENT_FLAGS_TEXT = "-p, --print, --verbose, --output-format <format> and --effort <level>"
 
 
 def load(path=None, tenant=None):
@@ -127,18 +185,102 @@ def load(path=None, tenant=None):
     for table, kind in KINDS.items():
         if data[table]["kind"] != kind:
             raise ConfigError(f'[{table}] kind must be "{kind}", not "{data[table]["kind"]}"')
+    check_agent_command(data["agent"]["command"])
+    for stage in ("plan", "build"):
+        check_tools(data["agent"][stage]["tools"], f"agent.{stage}")
+    check_pass_env(data["agent"]["pass_env"], "agent", CREDENTIALS)
+    # The gate gets no Claude login either: it runs the repository's own code.
+    check_pass_env(data["gate"]["pass_env"], "gate", (*CREDENTIALS, *environment.CLAUDE_LOGIN))
 
     tracker = data["tracker"]
+    agent = data["agent"]
+    gate = data["gate"]
     return Config(
         tenant=Tenant(**data["tenant"]),
         tracker=Tracker(**{**tracker, "states": States(**tracker["states"])}),
         codehost=CodeHost(**data["codehost"]),
-        agent=Agent(**{**data["agent"], "command": tuple(data["agent"]["command"])}),
-        gate=Gate(commands=tuple(tuple(c) for c in data["gate"]["commands"])),
+        agent=Agent(
+            command=tuple(agent["command"]),
+            timeout_minutes=agent["timeout_minutes"],
+            pass_env=tuple(agent["pass_env"]),
+            plan=agent_stage(agent["plan"]),
+            build=agent_stage(agent["build"]),
+        ),
+        gate=Gate(
+            commands=tuple(tuple(c) for c in gate["commands"]),
+            pass_env=tuple(gate["pass_env"]),
+        ),
         limits=Limits(**data["limits"], wip=wip),
         state_dir=state_dir(),
         version="sha256:" + hashlib.sha256(raw).hexdigest(),
     )
+
+
+def agent_stage(table):
+    return AgentStage(
+        **{
+            **table,
+            "max_budget_usd": float(table["max_budget_usd"]),
+            "tools": tuple(table["tools"]),
+        }
+    )
+
+
+# Names pass_env may not let through. The GitHub tokens and the SSH agent reach
+# GitHub; the askpass and SSH programs can hand git a credential; a GIT_CONFIG*
+# variable can set a credential helper or undo the engine's own git settings.
+CREDENTIALS = (
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
+    "GH_ENTERPRISE_TOKEN",
+    "GITHUB_ENTERPRISE_TOKEN",
+    "GH_CONFIG_DIR",
+    "SSH_AUTH_SOCK",
+    "GIT_ASKPASS",
+    "SSH_ASKPASS",
+    "GIT_SSH",
+    "GIT_SSH_COMMAND",
+    "GIT_TERMINAL_PROMPT",
+)
+
+
+# A tool name, then an optional rule in brackets: Read, Bash(git commit *).
+TOOL_RULE = re.compile(r"[A-Za-z]\w*(\([^()]+\))?")
+
+
+def check_tools(rules, table):
+    """Each rule reaches Claude Code as an argument, so one that is not a rule could be a flag."""
+    for rule in rules:
+        if not TOOL_RULE.fullmatch(rule):
+            raise ConfigError(
+                f'[{table}] "tools" must hold tool rules such as Read or Bash(git commit *), '
+                f'not "{rule}"'
+            )
+
+
+def check_pass_env(names, table, forbidden):
+    for name in names:
+        if name in forbidden or name.startswith("GIT_CONFIG"):
+            raise ConfigError(
+                f'[{table}] "pass_env" must not hold {name}: '
+                "the engine keeps credentials and git's config out of the agent and the gate"
+            )
+
+
+def check_agent_command(command):
+    args = iter(command[1:])
+    for arg in args:
+        flag, equals, value = arg.partition("=")
+        takes_value = AGENT_FLAGS.get(flag)
+        if takes_value is None or (equals and not takes_value):
+            raise ConfigError(
+                f'[agent] "command" may hold only {AGENT_FLAGS_TEXT} after the program, not "{arg}"'
+            )
+        if takes_value:
+            if not equals:
+                value = next(args, "")
+            if not FLAG_VALUE.fullmatch(value):
+                raise ConfigError(f'[agent] "command" gives {flag} no value')
 
 
 def find(path, tenant):
@@ -196,9 +338,33 @@ def check_value(value, expected, label):
             raise ConfigError(f"{label} must list at least one command")
         if not all(is_argv(command) for command in value):
             raise ConfigError(f"{label} must hold commands, each a non-empty list of strings")
-    elif expected is int:
-        if not isinstance(value, int) or isinstance(value, bool):
-            raise ConfigError(f"{label} must be a whole number")
+    elif expected is NAMES:
+        if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+            raise ConfigError(f"{label} must be a list of names")
+        for name in value:
+            if not ENV_NAME.fullmatch(name):
+                raise ConfigError(
+                    f'{label} must be a list of environment variable names, not "{name}"'
+                )
+    elif expected is WHOLE:
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ConfigError(f"{label} must be a whole number of 0 or more")
+    elif isinstance(expected, Form):
+        if not isinstance(value, str):
+            raise ConfigError(f"{label} must be a string")
+        if not expected.pattern.fullmatch(value):
+            raise ConfigError(f'{label} must be {expected.description}, not "{value}"')
+    elif expected is COUNT:
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise ConfigError(f"{label} must be a whole number of 1 or more")
+    elif expected is NUMBER:
+        # TOML allows nan and inf, and nan fails every comparison, so test the range directly.
+        if (
+            not isinstance(value, int | float)
+            or isinstance(value, bool)
+            or not 0 < value < math.inf
+        ):
+            raise ConfigError(f"{label} must be a finite number above 0")
     elif not isinstance(value, expected):
         raise ConfigError(f"{label} must be a string")
 
