@@ -1,0 +1,16 @@
+{
+  "gh": "2.102.0",
+  "command": [
+    "api",
+    "repos/{repo}/rules/branches/{base}"
+  ],
+  "keys": [
+    "[].parameters",
+    "[].parameters.review_draft_pull_requests",
+    "[].parameters.review_on_push",
+    "[].ruleset_id",
+    "[].ruleset_source",
+    "[].ruleset_source_type",
+    "[].type"
+  ]
+}

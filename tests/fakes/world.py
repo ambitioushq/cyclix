@@ -55,6 +55,7 @@ PR_BODY_ANSWER = "".join(
     f"{heading}\nNone.\n\n" for heading in re.findall(r"(?m)^## .*$", PR_TEMPLATE)
 )
 REPO = "o/r"
+BRANCH_PROTECTION = Path(__file__).resolve().parent / "branch-protection.json"
 OWNER = "o"
 PROJECT = 1
 TENANT = "test"
@@ -83,6 +84,7 @@ AGENT_DEFAULTS = {
     "sleep_seconds": 0,
     "stdout": None,
     "subtype": None,
+    "on_interrupt": None,
 }
 
 CONFIG = f"""\
@@ -127,6 +129,7 @@ tools = ["Read", "Edit", "Bash(git commit *)"]
 
 [gate]
 commands = [["true"]]
+timeout_minutes = 1
 pass_env = []
 
 [limits]
@@ -204,6 +207,9 @@ class World:
                     "items": [],
                 },
                 "prs": [],
+                # The base branch's protection and the rules that apply to it, shaped like
+                # Cyclix's own main: classic protection that refuses force-pushes and deletion.
+                **json.loads(BRANCH_PROTECTION.read_text()),
             }
         )
         git(self.root, "init", "-q", "--bare", "-b", "main", str(self.remote))

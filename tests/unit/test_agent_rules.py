@@ -11,6 +11,7 @@ STAGE = AgentStage(model="m", max_turns=3, max_budget_usd=1.0, tools=("Read",))
 
 def result_json(**fields):
     out = {
+        "type": "result",
         "result": "done",
         "is_error": False,
         "usage": {"input_tokens": 10, "output_tokens": 2},
@@ -54,7 +55,7 @@ def test_calls_in_one_run_folder_are_numbered(tmp_path):
     for _ in range(2):
         agent.run("hi", cwd=tmp_path, stage=STAGE, run_dir=tmp_path / "run")
     assert sorted(p.name for p in (tmp_path / "run").iterdir()) == [
-        "answer-1.json", "answer-2.json", "gh-config", "prompt-1.txt", "prompt-2.txt",
+        "answer-1.jsonl", "answer-2.jsonl", "gh-config", "prompt-1.txt", "prompt-2.txt",
     ]  # fmt: skip
 
 

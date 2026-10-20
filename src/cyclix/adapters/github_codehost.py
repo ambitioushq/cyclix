@@ -3,19 +3,26 @@
 The tenant's repo is cloned once into <state_dir>/repos/<tenant>/. Each run gets
 a worktree on the branch cyclix/<issue>-<slug>, made from the remote base after
 a fetch. A later run on the same issue checks out the branch the earlier run left.
-Pushes never force. Every failure is a CodeHostError.
+Pushes never force. git never prompts, and every git call has a time limit.
+Every failure is a CodeHostError.
 """
 
+import os
 import re
 import subprocess
 import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from cyclix.adapters import gh
+from cyclix.adapters import gh, process
 from cyclix.adapters.codehost import PR, CodeHostError, PRState, Worktree
 
 SLUG_LENGTH = 40
+# Seconds a git call may take. A call that reaches the remote gets longer than one
+# that stays in the local repository.
+GIT_NETWORK_SECONDS = 300
+GIT_LOCAL_SECONDS = 60
+NETWORK_COMMANDS = {"clone", "fetch", "pull", "push", "ls-remote"}
 
 
 def slug(title):
@@ -29,13 +36,22 @@ def branch_name(issue, slug):
 
 
 def git(cwd, *args):
-    """Run git in cwd and return its stdout."""
-    done = subprocess.run(
-        ["git", "-C", str(cwd), *args], capture_output=True, text=True, check=False
-    )
-    if done.returncode != 0:
-        raise CodeHostError(f"git {args[0]} exited {done.returncode}: {done.stderr.strip()}")
-    return done.stdout.strip()
+    """Run git in cwd and return its stdout.
+
+    git never asks for a password, so a missing credential fails the call instead
+    of waiting on a terminal no one reads.
+    """
+    timeout = GIT_NETWORK_SECONDS if args[0] in NETWORK_COMMANDS else GIT_LOCAL_SECONDS
+    stdout, stderr, code = process.run(
+        ["git", "-C", str(cwd), *args], timeout,
+        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )  # fmt: skip
+    if code is None:
+        raise CodeHostError(f"git {args[0]} gave no answer after {timeout} seconds")
+    if code != 0:
+        raise CodeHostError(f"git {args[0]} exited {code}: {stderr.strip()}")
+    return stdout.strip()
 
 
 def gh_call(call, *args):
@@ -55,7 +71,10 @@ class GitHubCodeHost:
         if (self.clone / ".git").exists():
             return
         self.clone.parent.mkdir(parents=True, exist_ok=True)
-        gh_call(gh.run, "repo", "clone", self.repo, str(self.clone))
+        try:
+            gh.run("repo", "clone", self.repo, str(self.clone), timeout=GIT_NETWORK_SECONDS)
+        except gh.GhError as error:
+            raise CodeHostError(str(error)) from error
 
     def new_worktree(self, issue, slug, run_dir):
         self.ensure_clone()

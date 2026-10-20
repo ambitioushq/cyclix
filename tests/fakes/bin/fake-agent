@@ -3,14 +3,17 @@
 
 It reads the prompt from stdin and saves it as prompts/<n>.txt in $CYCLIX_FAKES_DIR,
 where n counts the calls. Then it follows entry n of agent-script.json: sleeps if
-asked, writes the files, commits them if asked, and prints the same JSON shape as
-`claude -p --output-format json`. A step with `stdout` prints that text instead.
+asked, writes the files, commits them if asked, and prints the same lines as
+`claude -p --output-format stream-json --verbose`: an init line, one assistant line
+per turn before it sleeps, and the result line at the end, or at once on SIGINT.
+A step with `stdout` prints that text instead.
 Every process it starts is recorded in agent-pids.txt, and each call's arguments
 and environment in agent-calls.jsonl, with values only for the names the engine sets.
 """
 
 import json
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -32,38 +35,8 @@ def recorded_env():
     }
 
 
-def main():
-    world = World.from_env()
-    prompt = sys.stdin.read()
-    n = len(list(world.prompts_dir.glob("*.txt"))) + 1
-    (world.prompts_dir / f"{n}.txt").write_text(prompt)
-
-    script = world.agent_script()
-    if n > len(script):
-        sys.stderr.write(f"fake agent: no script entry for call {n}\n")
-        return 2
-    step = script[n - 1]
-    world.record_agent_pid(os.getpid())
-    world.record_agent_call(sys.argv[1:], recorded_env())
-
-    if step["sleep_seconds"]:
-        # Sleep in a child process, as the real agent's tools do, so a timeout must stop both.
-        child = subprocess.Popen(["sleep", str(step["sleep_seconds"])])
-        world.record_agent_pid(child.pid)
-        child.wait()
-
-    if step["stdout"] is not None:
-        sys.stdout.write(step["stdout"])
-        return step["exit"]
-
-    for path, content in step["files"].items():
-        target = Path(path)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content)
-    if step["commit"] and step["files"]:
-        subprocess.run(["git", "add", "--", *step["files"]], check=True)
-        subprocess.run(["git", "commit", "-q", "-m", "Work by the fake agent"], check=True)
-
+def result(step, n):
+    """The result line Claude Code prints at the end of a call."""
     failed = step["exit"] != 0 or step["subtype"] is not None
     usage = {"input_tokens": step["input_tokens"], "output_tokens": step["output_tokens"]}
     output = {
@@ -85,7 +58,80 @@ def main():
             }
         },
     }
-    print(json.dumps(output))
+    return output
+
+
+def turns(step, n):
+    """The init line, then one assistant message per turn, splitting the tokens among them.
+
+    Claude Code prints a message once for each content block, with the same id and
+    usage, so the last message comes twice.
+    """
+    lines = [{"type": "system", "subtype": "init", "model": step["model"]}]
+    count = max(step["num_turns"], 1)
+    for k in range(count):
+        share = {
+            "input_tokens": step["input_tokens"] // count
+            + (step["input_tokens"] % count if k == 0 else 0),
+            "output_tokens": step["output_tokens"] // count
+            + (step["output_tokens"] % count if k == 0 else 0),
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+        }
+        message = {"id": f"msg_fake_{n}_{k}", "model": step["model"], "usage": share}
+        lines.append({"type": "assistant", "message": message})
+    return [*lines, lines[-1]]
+
+
+def main():
+    world = World.from_env()
+    prompt = sys.stdin.read()
+    n = len(list(world.prompts_dir.glob("*.txt"))) + 1
+    (world.prompts_dir / f"{n}.txt").write_text(prompt)
+
+    script = world.agent_script()
+    if n > len(script):
+        sys.stderr.write(f"fake agent: no script entry for call {n}\n")
+        return 2
+    step = script[n - 1]
+    world.record_agent_pid(os.getpid())
+    world.record_agent_call(sys.argv[1:], recorded_env())
+
+    if step["on_interrupt"] == "ignore":
+        # A child inherits an ignored signal, so the sleep below ignores it too.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+    else:
+        # Claude Code in stream-json mode ends on SIGINT with an error result line.
+        def interrupted(signum, frame):
+            line = {**result(step, n), "subtype": "error_during_execution", "is_error": True}
+            print(json.dumps(line), flush=True)
+            os._exit(1)
+
+        signal.signal(signal.SIGINT, interrupted)
+
+    if step["stdout"] is None:
+        for line in turns(step, n):
+            print(json.dumps(line), flush=True)
+
+    if step["sleep_seconds"]:
+        # Sleep in a child process, as the real agent's tools do, so a timeout must stop both.
+        child = subprocess.Popen(["sleep", str(step["sleep_seconds"])])
+        world.record_agent_pid(child.pid)
+        child.wait()
+
+    if step["stdout"] is not None:
+        sys.stdout.write(step["stdout"])
+        return step["exit"]
+
+    for path, content in step["files"].items():
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content)
+    if step["commit"] and step["files"]:
+        subprocess.run(["git", "add", "--", *step["files"]], check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "Work by the fake agent"], check=True)
+
+    print(json.dumps(result(step, n)))
     return step["exit"]
 
 

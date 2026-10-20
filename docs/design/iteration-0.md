@@ -197,7 +197,7 @@ Moving an item stays on `gh project item-edit`, which reads nothing. The field a
 
 `push` sets the upstream and never forces, so a push that would drop a commit on the remote branch fails. `find_pr` returns the newest PR on the branch in any state. `open_pr` first looks for an open PR on the branch and returns it, so a run that crashed after opening its PR never opens a second one. A closed or merged PR on the branch is not reused: a new one is opened (settled in #10). `pr_state` returns `open`, `merged` or `closed`, with the head SHA and the merge and close times.
 
-**Agent** (`Agent` protocol): `run(prompt, cwd, model) -> AgentResult`, where the result holds the text answer, exit code, model, input and output tokens, cost, duration and turns. The Claude Code implementation runs the configured command (by default `claude -p --output-format json`) with the prompt on stdin and the worktree as its working directory, and parses the JSON result. That JSON has no top-level `model` key: the model's name is the one key of `modelUsage`. When `modelUsage` names more than one model, because Claude Code used a helper model for small tasks, the result records the model Cyclix asked for with `--model` (settled in #11). The prompt and the full answer are saved in the run folder. Only numbers reach the event.
+**Agent** (`Agent` protocol): `run(prompt, cwd, model) -> AgentResult`, where the result holds the text answer, exit code, model, input and output tokens, cost, duration and turns. The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds `--output-format stream-json --verbose`, and reads the result line at the end of the stream (changed in the Iteration 0.5 pass, fix A2; it read a single JSON result before). A call stopped at its timeout gets SIGINT first, and Claude Code answers it with a result line that holds the cost so far. A call with no result line, because it was killed or crashed, still has its assistant lines, and the result takes their tokens and turns, with the cost unknown (null). That JSON has no top-level `model` key: the model's name is the one key of `modelUsage`. When `modelUsage` names more than one model, because Claude Code used a helper model for small tasks, the result records the model Cyclix asked for with `--model` (settled in #11). The prompt and the full answer are saved in the run folder. Only numbers reach the event.
 
 ## The state directory
 
@@ -262,7 +262,7 @@ One JSON object per line in `events/<tenant>.jsonl` under the state directory. E
 - The writer refuses any string attribute over 500 characters, including strings inside `cyclix.gate.checks`. A string that long is most likely prompt or code text, which belongs in the run folder.
 - The engine version is `resource.service.version`. The config version is a hash of the config file.
 - `cyclix.agent.turns` is the number of turns the agent took, as Claude Code reports it in `num_turns`, so the turn caps can be checked against real runs. OpenTelemetry's GenAI names have no field for it, so it sits under `cyclix.*`. It is null for stages that make no agent call (added in the Iteration 0.5 pass, fix A1).
-- `cyclix.cost.usd` is rounded to 6 decimal places, a millionth of a dollar, before it is written (settled for #40). The agent reports costs such as `0.36616580000000004`, and the digits past the sixth are float noise. Cents would be too coarse for the cost of one call.
+- `cyclix.cost.usd` is null for a stage that makes no agent call, and for an agent call that printed no result line, because it was killed or crashed: the cost appears only in that line (added in the Iteration 0.5 pass, fix A2). It is rounded to 6 decimal places, a millionth of a dollar, before it is written (settled for #40). The agent reports costs such as `0.36616580000000004`, and the digits past the sixth are float noise. Cents would be too coarse for the cost of one call.
 
 The earlier loop starts writing stage-run events in this same schema before Iteration 0 exists, so the record starts early. Any change to schema 0 is made here first.
 
@@ -297,7 +297,7 @@ base = "main"
 # The engine adds the model, the caps and the permission flags for each stage. The
 # agent runs in dontAsk mode: a tool call outside the stage's list is refused.
 # See docs/design/isolation.md.
-command = ["claude", "-p", "--output-format", "json"]
+command = ["claude", "-p"]
 timeout_minutes = 60
 pass_env = []
 
@@ -317,6 +317,7 @@ tools = ["Read", "Grep", "Glob", "Edit", "Write",
 
 [gate]
 commands = [["uv", "run", "ruff", "check"], ["uv", "run", "ruff", "format", "--check"], ["uv", "run", "pytest", "-q"]]
+timeout_minutes = 10
 pass_env = []
 
 [limits]
@@ -328,7 +329,7 @@ in_review = 5
 
 `cyclix check` fails on a missing key, an unknown key, or a board option name that is not on the board.
 
-**The agent's stages** (settled in the Iteration 0.5 pass, fix A1). Each agent stage has its own table, `[agent.plan]` and `[agent.build]`, with its model, its turn and budget caps, and the tools it may use. The engine adds these to `agent.command` as flags, so the command holds none of them. After the program, the command may hold only `-p`, `--print`, `--verbose`, `--output-format <format>` and `--effort <level>`; the config is refused if it holds any other argument. `pass_env` under `[agent]` and under `[gate]` names extra environment variables to let through; it is usually empty, and it is refused if it names a credential or a variable that changes git's config. [isolation.md](isolation.md), points 7 and 8, has the reasons.
+**The agent's stages** (settled in the Iteration 0.5 pass, fix A1). Each agent stage has its own table, `[agent.plan]` and `[agent.build]`, with its model, its turn and budget caps, and the tools it may use. The engine adds these to `agent.command` as flags, so the command holds none of them. After the program, the command may hold only `-p`, `--print` and `--effort <level>`; the config is refused if it holds any other argument. The engine sets the output format itself, because it reads that output. `[gate] timeout_minutes` is how long each gate command may run, a whole number of 1 or more; a command past it is stopped and fails its check (added in fix A2). `pass_env` under `[agent]` and under `[gate]` names extra environment variables to let through; it is usually empty, and it is refused if it names a credential or a variable that changes git's config. [isolation.md](isolation.md), points 7 and 8, has the reasons.
 
 **WIP limits** (settled in #44). The `[limits.wip]` table is the one optional part of the file. It maps a Cyclix state to the most items that column may hold. A state left out has no limit, and a file without the table has no limits. Only `in_progress`, `in_review`, `parked` and `needs_decision` take a limit: nothing in the engine adds items to Ready yet, and Done is the end. Each limit is a whole number of 1 or more. `in_progress` can only be 1, until the engine runs items side by side.
 
@@ -343,8 +344,9 @@ in_review = 5
 3. The state directory exists or can be made, and a file can be written in it.
 4. The first word of `agent.command` is on `PATH`.
 5. The board's Status field has an option for every name in `[tracker.states]`, one line per state.
+6. The base branch requires a pull request and refuses force-pushes and deletion (added in the Iteration 0.5 pass, fix A2). [isolation.md](isolation.md), point 6, says how.
 
-A check that needs an earlier one is left out when that one fails: no config means no agent or board check, and no signed-in `gh` means no board check. `check` reads the board with `gh project field-list` through `adapters/gh.py`, before the tracker adapter exists.
+A check that needs an earlier one is left out when that one fails: no config means no agent, board or branch check, and no signed-in `gh` means no board or branch check. `check` reads the board with `gh project field-list` through `adapters/gh.py`, before the tracker adapter exists.
 
 **What `install` puts in the service** (settled for #41). systemd's user manager does not read the shell's `PATH`, so `cyclix install` writes one into the service unit. It finds each command the service runs on the `PATH` of the shell it runs in: `gh`, `git`, the first word of `agent.command`, and the first word of each command in `gate.commands`. The unit's `PATH` holds the directories of those commands, in that order and without repeats, then `/usr/local/bin:/usr/bin:/bin`. It does not copy the shell's whole `PATH`. If one of the commands is not on `PATH`, `install` writes nothing, exits 1, and names the command. A timer whose every pass fails is worse than no timer. A tool moved later means running `install --force` again.
 

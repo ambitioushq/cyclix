@@ -96,8 +96,9 @@ def check_command(args):
     results.append(check_state_dir(config.state_dir()))
     if cfg is not None:
         results.append(check_agent(cfg.agent.command))
-        if gh_result[1] is None:  # reading the board needs a signed-in gh
+        if gh_result[1] is None:  # reading the board and the branch needs a signed-in gh
             results.extend(check_board(cfg.tracker))
+            results.append(check_protection(cfg.codehost))
 
     for what, failure in results:
         print(f"{what}: ok" if failure is None else f"FAIL: {failure}")
@@ -156,3 +157,52 @@ def check_board(tracker):
         missing = f'the board has no {tracker.status_field} option "{name}"'
         results.append((what, None if name in options else missing))
     return results
+
+
+# What protecting the base branch takes: each rule, as a ruleset names it, and what
+# the branch allows without it.
+PROTECTION_RULES = (
+    ("pull_request", "lets a change skip a pull request"),
+    ("non_fast_forward", "allows force-pushes"),
+    ("deletion", "allows deletion"),
+)
+
+
+def check_protection(codehost):
+    """Does the base branch require a pull request and refuse force-pushes and deletion?
+
+    A rule counts whether it comes from classic branch protection or from a ruleset.
+    Reading classic protection needs admin rights, which a narrow token lacks, so a
+    ruleset alone is enough when it holds every rule.
+    """
+    base = codehost.base
+    what = f'protection of the base branch "{base}"'
+    found, unreadable = set(), None
+    try:
+        classic = gh.json("api", f"repos/{codehost.repo}/branches/{base}/protection")
+    except gh.GhError as error:
+        if "Branch not protected" not in error.stderr:
+            unreadable = error.stderr
+    else:
+        if "required_pull_request_reviews" in classic:
+            found.add("pull_request")
+        for rule, key in (
+            ("non_fast_forward", "allow_force_pushes"),
+            ("deletion", "allow_deletions"),
+        ):
+            if classic.get(key, {}).get("enabled") is False:
+                found.add(rule)
+    try:
+        rules = gh.json("api", f"repos/{codehost.repo}/rules/branches/{base}")
+    except gh.GhError as error:
+        unreadable = unreadable or error.stderr
+    else:
+        found.update(rule.get("type") for rule in rules)
+
+    gaps = [gap for rule, gap in PROTECTION_RULES if rule not in found]
+    if not gaps:
+        return what, None
+    if unreadable:
+        return what, f'cannot read the protection of the base branch "{base}": {unreadable}'
+    listed = gaps[0] if len(gaps) == 1 else ", ".join(gaps[:-1]) + " and " + gaps[-1]
+    return what, f'the base branch "{base}" {listed}'

@@ -26,7 +26,7 @@ base = "main"
 [agent]
 # The engine adds the model, the caps and the permission flags for each stage.
 # See docs/design/isolation.md.
-command = ["claude", "-p", "--output-format", "json"]
+command = ["claude", "-p"]
 timeout_minutes = 20
 pass_env = []
 
@@ -46,6 +46,7 @@ tools = ["Read", "Grep", "Glob", "Edit", "Write",
 
 [gate]
 commands = [["python3", "-m", "unittest"]]
+timeout_minutes = 10
 pass_env = []
 
 [limits]

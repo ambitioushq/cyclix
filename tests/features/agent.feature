@@ -15,6 +15,22 @@ Feature: The Claude Code agent adapter
     Then the result is an error with reason "timeout after 1 minutes"
     And no agent process is left running
 
+  @issue-55
+  Scenario: A call past the timeout is interrupted, and keeps the numbers its result line reports
+    Given the agent uses 900 input tokens and 100 output tokens over 2 turns at cost 0.4, then takes longer than the timeout
+    When the adapter runs a prompt
+    Then the result is an error with reason "timeout after 1 minutes"
+    And its tokens are 900 and 100 and its cost is 0.4
+    And no agent process is left running
+
+  @issue-55
+  Scenario: A call that ignores the interrupt is killed, and keeps the tokens and turns it used
+    Given the agent uses 900 input tokens and 100 output tokens over 2 turns at cost 0.4, then takes longer than the timeout and ignores the interrupt
+    When the adapter runs a prompt
+    Then the result is an error with reason "timeout after 1 minutes"
+    And its tokens are 900 and 100 over 2 turns, and its cost is unknown
+    And no agent process is left running
+
   @issue-11
   Scenario: Output that is not JSON is an error
     Given the agent prints "hello" and exits 0
@@ -28,6 +44,7 @@ Feature: The Claude Code agent adapter
     Then the agent was started with "--model claude-opus-5-5"
     And the agent was started with "--restricted --strict-mcp-config --tools Read,Grep,Glob"
     And the agent was started with "--permission-mode dontAsk --permission-prompts none"
+    And the agent was started with "--output-format stream-json --verbose"
     And the agent was started with "--max-turns 30 --max-budget-usd 2.0"
     And the agent was started with "--allowedTools Read Grep Glob"
 
