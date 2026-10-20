@@ -165,10 +165,15 @@ def file_committed(world, path):
     assert git(world.worktree, "status", "--porcelain") == ""
 
 
-@then(parsers.parse('the output is JSON with result "{answer}" and the scripted usage numbers'))
+@then(
+    parsers.parse(
+        'the output ends in a result line with result "{answer}" and the scripted usage numbers'
+    )
+)
 def agent_output(world, result, script, answer):
     assert result.returncode == 0, result.stderr
-    out = json.loads(result.stdout)
+    out = json.loads(result.stdout.splitlines()[-1])
+    assert out["type"] == "result"
     assert out["result"] == answer
     assert out["is_error"] is False
     assert out["total_cost_usd"] == script["cost_usd"]

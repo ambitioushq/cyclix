@@ -24,7 +24,7 @@ base = "main"
 # The engine adds the model, the caps and the permission flags for each stage. The
 # agent runs in dontAsk mode: a tool call outside the stage's list is refused.
 # See docs/design/isolation.md.
-command = ["claude", "-p", "--output-format", "json"]
+command = ["claude", "-p"]
 timeout_minutes = 60
 pass_env = []
 
@@ -44,6 +44,7 @@ tools = ["Read", "Grep", "Glob", "Edit", "Write",
 
 [gate]
 commands = [["uv", "run", "ruff", "check"], ["uv", "run", "ruff", "format", "--check"], ["uv", "run", "pytest", "-q"]]
+timeout_minutes = 10
 pass_env = []
 
 [limits]

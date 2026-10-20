@@ -85,6 +85,7 @@ class Agent:
 @dataclass(frozen=True)
 class Gate:
     commands: tuple[tuple[str, ...], ...]
+    timeout_minutes: int
     pass_env: tuple[str, ...]
 
 
@@ -153,19 +154,19 @@ SCHEMA = {
         "plan": AGENT_STAGE,
         "build": AGENT_STAGE,
     },
-    "gate": {"commands": ARGV_LIST, "pass_env": NAMES},
+    "gate": {"commands": ARGV_LIST, "timeout_minutes": COUNT, "pass_env": NAMES},
     "limits": {"runs_per_day": WHOLE},
 }
 KINDS = {"tracker": "github", "codehost": "github"}
 # The flags the agent command may hold after the program, each with whether it
 # takes a value. Every other flag is refused: the engine sets the agent's
-# permissions, tools and caps itself, appending its flags after the command.
+# permissions, tools, caps and output format itself, appending its flags after
+# the command.
 # Claude Code reads the argument after a flag that takes a value as that value,
 # even when it starts with "-", so a flag missing its value would take the
 # engine's first flag, and "--" would make the engine's flags plain arguments.
-AGENT_FLAGS = {"-p": False, "--print": False, "--verbose": False,
-               "--output-format": True, "--effort": True}  # fmt: skip
-AGENT_FLAGS_TEXT = "-p, --print, --verbose, --output-format <format> and --effort <level>"
+AGENT_FLAGS = {"-p": False, "--print": False, "--effort": True}
+AGENT_FLAGS_TEXT = "-p, --print and --effort <level>"
 
 
 def load(path=None, tenant=None):
@@ -208,6 +209,7 @@ def load(path=None, tenant=None):
         ),
         gate=Gate(
             commands=tuple(tuple(c) for c in gate["commands"]),
+            timeout_minutes=gate["timeout_minutes"],
             pass_env=tuple(gate["pass_env"]),
         ),
         limits=Limits(**data["limits"], wip=wip),

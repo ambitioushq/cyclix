@@ -31,9 +31,9 @@ Feature: The fakes behave like the real tools for the commands Cyclix uses
     When the tag check runs
     Then it fails and names the scenario
 
-  @issue-4
+  @issue-4 @issue-55
   Scenario: The fake agent follows its script
     Given the agent script writes "a.txt", commits it, and answers "done"
     When the fake agent runs in a git worktree
     Then "a.txt" is committed
-    And the output is JSON with result "done" and the scripted usage numbers
+    And the output ends in a result line with result "done" and the scripted usage numbers

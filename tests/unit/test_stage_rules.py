@@ -3,12 +3,16 @@
 The sweep runs in-process against the fake world, with the real stages.
 """
 
+import os
 import re
+import time
 
 import pytest
 from fakes.world import PR_BODY_ANSWER, PR_TEMPLATE, TEMPLATE_PATH, git
 
 from cyclix import config, runner
+from cyclix.adapters import claude_code
+from cyclix.stages import gate
 from cyclix.stages.pr import ensure_closes
 from cyclix.state.core import RunStart
 from cyclix.state.sqlite import SqliteStateCore
@@ -133,6 +137,50 @@ def test_a_gate_command_that_is_not_found_exits_127(world):
     set_gate(world, [["no-such-command-anywhere"]])
     sweep(world)
     assert events(world, 12)[-1]["cyclix.outcome.reason"] == "gate command 1 exited 127"
+
+
+def test_a_gate_command_past_the_timeout_is_stopped_with_its_children(world, monkeypatch):
+    # The test config's gate timeout is 1 minute. Here a minute lasts one second.
+    monkeypatch.setattr(gate, "SECONDS_PER_MINUTE", 1)
+    pid_file = world.root / "child.pid"
+    world.add_issue(12, state="Ready")
+    world.add_plan_and_commit()
+    set_gate(world, [["sh", "-c", f"echo started; sleep 30 & echo $! > {pid_file}; wait"]])
+    sweep(world)
+    gate_event = events(world, 12)[-1]
+    assert gate_event["cyclix.outcome.reason"] == "gate command 1 ran past 1 minutes"
+    assert [c["passed"] for c in gate_event["cyclix.gate.checks"]] == [False]
+    output = (run_dir(world, 12) / "gate-1.txt").read_text()
+    assert output == "started\n\ncyclix: stopped after 1 minutes\n"
+    assert gone(int(pid_file.read_text()))
+
+
+def gone(pid):
+    """Whether the process has ended. A killed child may take a moment to be reaped."""
+    for _ in range(50):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        time.sleep(0.1)
+    return False
+
+
+def test_a_killed_call_records_its_tokens_with_no_cost(world, core, monkeypatch):
+    # The test config's agent timeout is 1 minute. Here a minute lasts one second.
+    # The agent ignores SIGINT, so it is killed and prints no result line.
+    monkeypatch.setattr(claude_code, "SECONDS_PER_MINUTE", 1)
+    monkeypatch.setattr(claude_code, "GRACE_SECONDS", 1)
+    world.add_issue(12, state="Ready")
+    world.add_agent_step(
+        sleep_seconds=30, input_tokens=900, output_tokens=100, num_turns=2, on_interrupt="ignore"
+    )
+    sweep(world)
+    plan = next(e for e in events(world, 12) if e["cyclix.stage"] == "plan")
+    numbers = [plan[key] for key in ("gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens")]
+    assert numbers == [900, 100]
+    assert (plan["cyclix.agent.turns"], plan["cyclix.cost.usd"]) == (2, None)
+    assert core.db.execute("SELECT usd, tokens FROM spend").fetchall() == [(0.0, 1000)]
 
 
 def test_a_passing_gate_makes_the_head_the_best_verified_commit(world, core):

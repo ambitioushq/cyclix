@@ -126,12 +126,13 @@ Feature: The tenant config
       | agent.plan  | max_turns       | 0     |
       | agent.build | max_turns       | -1    |
       | agent       | timeout_minutes | 0     |
+      | gate        | timeout_minutes | 0     |
 
   @issue-55
   Scenario Outline: The agent command holds only the flags the engine allows
     Given the example config with the agent command "<command>"
     When the config is loaded
-    Then it fails with 'config: [agent] "command" may hold only -p, --print, --verbose, --output-format <format> and --effort <level> after the program, not "<arg>"'
+    Then it fails with 'config: [agent] "command" may hold only -p, --print and --effort <level> after the program, not "<arg>"'
 
     Examples:
       | command                                       | arg                            |
@@ -143,6 +144,8 @@ Feature: The tenant config
       | claude -p --plugin-dir ./plugin               | --plugin-dir                   |
       | claude -p --                                  | --                             |
       | claude -p prompt                              | prompt                         |
+      | claude -p --output-format json                | --output-format                |
+      | claude -p --verbose                           | --verbose                      |
 
   @issue-55
   Scenario Outline: A flag in the agent command must have its value
@@ -153,7 +156,7 @@ Feature: The tenant config
     Examples:
       | command                                 | flag            |
       | claude -p --effort                      | --effort        |
-      | claude -p --output-format --max-turns 1 | --output-format |
+      | claude -p --effort --max-turns 1        | --effort        |
 
   @issue-55
   Scenario Outline: The allowed flags load in either form
@@ -163,5 +166,5 @@ Feature: The tenant config
 
     Examples:
       | command                                                   |
-      | claude --print --output-format json --effort high --verbose |
-      | claude -p --output-format=json --effort=low                 |
+      | claude --print --effort high |
+      | claude -p --effort=low       |

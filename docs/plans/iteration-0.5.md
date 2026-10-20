@@ -202,7 +202,7 @@ The loop-model rewrite in step 5 will reshape the runner and the stages. These P
 
 - [ ] A. Subprocess boundaries, to the design in `docs/design/isolation.md`. Tick this box when A3 lands.
   - A1. `--permission-mode dontAsk` with a list of allowed tools for each stage, turn and cost caps on every agent call, and an environment allow-list for the agent and the gate, with no GitHub credentials.
-  - A2. The gate timeout, a timeout and `GIT_TERMINAL_PROMPT=0` for git, SIGINT before SIGKILL on the agent timeout, and `cyclix check` confirming branch protection.
+  - A2. The gate timeout, a timeout and `GIT_TERMINAL_PROMPT=0` for git, SIGINT before SIGKILL on the agent timeout, stream-json output so a timed-out call keeps its numbers, and `cyclix check` confirming branch protection.
   - A3. The agent and the gate in a rootless Podman container, with the Claude login as the only credential, a fresh clone for each run, the push through a git bundle, and outgoing traffic only to listed hosts. Several PRs.
   - The maintainer moves the loop to its own GitHub identity, limits it to `cyclix/*` branches, and requires an approving review on `main`.
 - [ ] B. Install and files: the systemd start timeout and sandboxing, and file modes for the state folder, `state.db`, the event log and run folders.
