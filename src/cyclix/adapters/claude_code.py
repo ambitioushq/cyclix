@@ -96,6 +96,11 @@ class ClaudeCode:
             # The agent may have exited on SIGINT and left a tool's process behind.
             kill_group(process)
             return stdout, stderr, None
+        except BaseException:
+            # The group does not get the terminal's SIGINT, so a Ctrl-C would leave it running.
+            kill_group(process)
+            process.wait()
+            raise
         return stdout, stderr, process.returncode
 
 

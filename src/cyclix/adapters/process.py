@@ -19,6 +19,11 @@ def run(argv, timeout_seconds, **popen):
         kill_group(process)
         stdout, stderr = process.communicate()
         return stdout, stderr, None
+    except BaseException:
+        # The group does not get the terminal's SIGINT, so a Ctrl-C would leave it running.
+        kill_group(process)
+        process.wait()
+        raise
     return stdout, stderr, process.returncode
 
 
