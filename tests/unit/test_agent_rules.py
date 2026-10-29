@@ -1,6 +1,10 @@
 """Rules of the Claude Code adapter that the scenarios do not reach."""
 
 import json
+import signal
+import subprocess
+
+import pytest
 
 from cyclix.adapters import claude_code, environment
 from cyclix.config import Agent, AgentStage
@@ -66,3 +70,21 @@ def test_without_git_the_agent_gets_no_identity(monkeypatch, tmp_path):
     monkeypatch.setenv("PATH", str(tmp_path))
     env = environment.for_agent((), tmp_path / "run", tmp_path)
     assert [key for key in env if key.startswith(("GIT_AUTHOR", "GIT_COMMITTER"))] == []
+
+
+def test_an_interrupt_kills_and_reaps_the_agent(monkeypatch, tmp_path):
+    started = []
+    communicate = subprocess.Popen.communicate
+
+    # Setting up the agent's environment runs git, which must still answer.
+    def interrupted(self, *args, **kwargs):
+        if self.args[0] != "/bin/sh":
+            return communicate(self, *args, **kwargs)
+        started.append(self)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(subprocess.Popen, "communicate", interrupted)
+    agent = claude_code.ClaudeCode(Agent(("/bin/sh", "-c", "sleep 30"), 1, (), STAGE, STAGE))
+    with pytest.raises(KeyboardInterrupt):
+        agent.run("hi", cwd=tmp_path, stage=STAGE, run_dir=tmp_path / "run")
+    assert started[0].returncode == -signal.SIGKILL
