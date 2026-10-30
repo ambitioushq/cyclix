@@ -1,6 +1,6 @@
 """The work states and the transition table: every move the engine may make, and who makes it.
 
-docs/design/iteration-0.md, "Work states and who moves them", holds the same table.
+docs/design/v0.0.md, "Work states and who moves them", holds the same table.
 A unit test checks that the two agree.
 """
 

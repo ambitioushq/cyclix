@@ -1,4 +1,4 @@
-"""One pass of the loop for one tenant, as docs/design/iteration-0.md, "The sweep", sets out.
+"""One pass of the loop for one tenant, as docs/design/v0.0.md, "The sweep", sets out.
 
 1. Read the board.
 2. Correct the state core to match it. The tracker wins every disagreement.

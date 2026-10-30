@@ -8,7 +8,7 @@ from cyclix import __version__
 from cyclix.events.log import EventError, write_stage_run
 from cyclix.events.schema import MAX_STRING
 
-DESIGN = Path(__file__).resolve().parents[2] / "docs" / "design" / "iteration-0.md"
+DESIGN = Path(__file__).resolve().parents[2] / "docs" / "design" / "v0.0.md"
 
 
 def fields(**extra):

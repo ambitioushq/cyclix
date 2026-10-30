@@ -1,7 +1,7 @@
 """Record the output shape of each gh command the adapters use, from the sandbox.
 
 Runs each command in COMMANDS against the sandbox repo and board named in
-docs/examples/sandbox.toml, the way docs/design/iteration-0.md, "The adapters",
+docs/examples/sandbox.toml, the way docs/design/v0.0.md, "The adapters",
 says the adapters call it. Writes tests/fixtures/gh-shapes/<name>.json, holding
 the command with placeholders, the gh version, and either the sorted key paths of
 its JSON output or, for a command that prints text, its lines with the repo and
