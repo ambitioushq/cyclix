@@ -6,7 +6,7 @@ Behaviour changes are listed by scenario: the feature file and the scenario's na
 
 ### Added
 
-Iteration 0, the spine (#2 to #17). These 60 scenarios are the first entries of the functional spec:
+v0.0, the spine (#2 to #17). These 60 scenarios are the first entries of the functional spec:
 
 - `agent.feature`
   - A successful call returns the answer and the numbers

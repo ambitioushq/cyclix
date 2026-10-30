@@ -1,6 +1,6 @@
 Closes #
 
-<!-- First line: "Closes #<issue>". A PR that works from a plan in docs/plans/ starts with "Refs #<umbrella issue>" instead, names the plan section it covers, and ticks that section's boxes. -->
+<!-- First line: "Closes #<issue>". A PR that works from a plan item starts with "Refs #<umbrella issue>" instead, and names the board item it covers. -->
 
 ## What changed
 

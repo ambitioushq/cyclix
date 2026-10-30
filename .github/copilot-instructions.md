@@ -6,12 +6,12 @@ Read these before reviewing:
 
 - `CLAUDE.md`: the rules every change follows. Where this file and `CLAUDE.md` differ, `CLAUDE.md` wins.
 - `docs/design/overview.md`: what Cyclix is, who owns each fact, and how the work is done.
-- `docs/design/iteration-0.md`: the design of the parts built so far.
+- `docs/design/v0.0.md`: the design of the parts built so far.
 - `tests/README.md`: how the tests are laid out and tagged.
 
 ## Check every PR for these
 
-- The PR body follows `.github/pull_request_template.md`. Its first line is `Closes #<issue>`, or `Refs #<umbrella issue>` for work from a plan in `docs/plans/`.
+- The PR body follows `.github/pull_request_template.md`. Its first line is `Closes #<issue>`, or `Refs #<umbrella issue>` for work from a plan item, and then the body names the board item it covers.
 - The runtime imports only the standard library. A new runtime dependency needs a written reason in the design docs.
 - No private project, client or account names, private paths or tokens, in files or commit messages. The repository is public.
 - New behaviour has a scenario in `tests/features/`, tagged with the issue that introduced it, such as `@issue-7`. A unit test is used only where a scenario cannot reach a rule cheaply.

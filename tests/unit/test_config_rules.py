@@ -31,7 +31,7 @@ def example():
 
 
 def test_the_example_matches_the_design_doc():
-    design = (ROOT / "docs" / "design" / "iteration-0.md").read_text()
+    design = (ROOT / "docs" / "design" / "v0.0.md").read_text()
     section = design.split("## The config file")[1]
     block = re.search(r"```toml\n(.*?)```", section, re.DOTALL)[1]
     assert block == example()

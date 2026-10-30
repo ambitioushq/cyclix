@@ -1,4 +1,4 @@
-"""Event schema version 0, as fixed in docs/design/iteration-0.md, "The event log, schema version 0".
+"""Event schema version 0, as fixed in docs/design/v0.0.md, "The event log, schema version 0".
 
 Any change here is made in that doc first.
 """

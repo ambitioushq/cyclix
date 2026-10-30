@@ -1,6 +1,6 @@
 # Isolation: what the agent and the gate can reach
 
-Cyclix runs a coding agent unattended, and then runs the code that agent wrote in the gate. This document is the design for keeping both away from the host's credentials and from the world outside the run. It was settled on 2026-10-09 in the Iteration 0.5 pass, as fix A in `docs/plans/iteration-0.5.md`. Part of it is built now and part of it later. "The order it is built in" at the end says which part lands in which PR.
+Cyclix runs a coding agent unattended, and then runs the code that agent wrote in the gate. This document is the design for keeping both away from the host's credentials and from the world outside the run. It was settled on 2026-10-09 in the v0.1 pass, as fix A. Part of it is built now and part of it later. "The order it is built in" at the end says which part lands in which PR.
 
 ## The problem
 
@@ -12,7 +12,7 @@ Today the answer is: everything the host user can do.
 - It runs with `--permission-mode bypassPermissions`, so Claude Code allows every tool call without asking.
 - It runs as the host user, so it can read every file in that user's home folder. On the self tenant's host, that includes the `gh` login in `~/.config/gh/hosts.yml` and the Claude login in `~/.claude/.credentials.json`.
 - The gate runs the agent's code with the same environment and the same user (`stages/gate.py`).
-- The loop opens its PRs under the maintainer's own GitHub identity, and admins may bypass branch protection on `main` (see "Cyclix as its own tenant" in `iteration-0.md`). An agent that reads the `gh` token can therefore merge a PR or push to `main` past the rules.
+- The loop opens its PRs under the maintainer's own GitHub identity, and admins may bypass branch protection on `main` (see "Cyclix as its own tenant" in `v0.0.md`). An agent that reads the `gh` token can therefore merge a PR or push to `main` past the rules.
 
 "Cyclix never merges" is kept today only because no agent has tried.
 
