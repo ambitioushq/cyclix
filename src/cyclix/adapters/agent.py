@@ -15,7 +15,8 @@ class AgentResult:
     model: str
     input_tokens: int
     output_tokens: int
-    cost_usd: float
+    # None when the call printed no result, which is the only place the cost appears.
+    cost_usd: float | None
     duration_ms: int
     turns: int
 

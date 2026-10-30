@@ -71,7 +71,8 @@ def call_agent(
     ctx.state.set_phase(ctx.run_id, "agent")
     result = ctx.agent.run(text, ctx.worktree.path, stage, ctx.run_dir)
     tokens = result.input_tokens + result.output_tokens
-    ctx.state.add_spend(ctx.config.tenant.name, result.cost_usd, tokens)
+    # A call with no result has an unknown cost, which the day's spend leaves out.
+    ctx.state.add_spend(ctx.config.tenant.name, result.cost_usd or 0.0, tokens)
     fields = {
         schema.MODEL: result.model,
         schema.INPUT_TOKENS: result.input_tokens,

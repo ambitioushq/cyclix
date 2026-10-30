@@ -7,7 +7,10 @@ one error type whatever went wrong.
 import json as jsonlib
 import subprocess
 
-# Seconds one gh call may take. A call that runs longer fails as exit 124, like timeout(1).
+from cyclix.adapters import process
+
+# Seconds one gh call may take, unless the caller gives another. A call that runs
+# longer fails as exit 124, like timeout(1).
 TIMEOUT = 60
 
 
@@ -19,19 +22,21 @@ class GhError(Exception):
         super().__init__(f"{' '.join(self.argv[:3])} exited {code}: {self.stderr}")
 
 
-def run(*args):
+def run(*args, timeout=None):
     """Run gh with these arguments and return its stdout."""
+    timeout = timeout or TIMEOUT
     try:
-        done = subprocess.run(
-            ["gh", *args], capture_output=True, text=True, check=False, timeout=TIMEOUT
-        )
+        stdout, stderr, code = process.run(
+            ["gh", *args], timeout,
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )  # fmt: skip
     except FileNotFoundError:
         raise GhError(args, 127, "gh is not on PATH") from None
-    except subprocess.TimeoutExpired:
-        raise GhError(args, 124, f"no answer after {TIMEOUT} seconds") from None
-    if done.returncode != 0:
-        raise GhError(args, done.returncode, done.stderr)
-    return done.stdout
+    if code is None:
+        raise GhError(args, 124, f"no answer after {timeout} seconds")
+    if code != 0:
+        raise GhError(args, code, stderr)
+    return stdout
 
 
 def json(*args):

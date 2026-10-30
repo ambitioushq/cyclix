@@ -40,9 +40,29 @@ def agent_answers_with_numbers(world, answer, input_tokens, output_tokens, cost)
 
 @given("the agent takes longer than the timeout")
 def agent_takes_too_long(world, monkeypatch):
-    # The test config's timeout is 1 minute. Here a minute lasts one second; the agent sleeps 30.
-    monkeypatch.setattr(claude_code, "SECONDS_PER_MINUTE", 1)
+    shorten_timeout(monkeypatch)
     world.add_agent_step(sleep_seconds=30)
+
+
+@given(
+    parsers.re(
+        r"the agent uses (?P<input_tokens>\d+) input tokens and (?P<output_tokens>\d+) output tokens "
+        r"over (?P<turns>\d+) turns at cost (?P<cost>[\d.]+), then takes longer than the timeout"
+        r"(?P<ignores> and ignores the interrupt)?"
+    )
+)
+def agent_works_then_hangs(world, monkeypatch, input_tokens, output_tokens, turns, cost, ignores):
+    shorten_timeout(monkeypatch)
+    world.add_agent_step(
+        sleep_seconds=30, input_tokens=int(input_tokens), output_tokens=int(output_tokens),
+        num_turns=int(turns), cost_usd=float(cost), on_interrupt="ignore" if ignores else None,
+    )  # fmt: skip
+
+
+def shorten_timeout(monkeypatch):
+    # The test config's timeout is 1 minute. Here a minute lasts one second, as does the grace period.
+    monkeypatch.setattr(claude_code, "SECONDS_PER_MINUTE", 1)
+    monkeypatch.setattr(claude_code, "GRACE_SECONDS", 1)
 
 
 @given(parsers.parse('the agent stops with subtype "{subtype}"'))
@@ -118,6 +138,19 @@ def answer_is(result, answer):
 
 
 @then(
+    parsers.parse(
+        "its tokens are {input_tokens:d} and {output_tokens:d} over {turns:d} turns, "
+        "and its cost is unknown"
+    )
+)
+def numbers_without_cost(result, input_tokens, output_tokens, turns):
+    assert (result.input_tokens, result.output_tokens, result.turns) == (
+        input_tokens, output_tokens, turns,
+    )  # fmt: skip
+    assert result.cost_usd is None
+
+
+@then(
     parsers.parse("its tokens are {input_tokens:d} and {output_tokens:d} and its cost is {cost:g}")
 )
 def numbers_are(result, input_tokens, output_tokens, cost):
@@ -129,7 +162,8 @@ def numbers_are(result, input_tokens, output_tokens, cost):
 def saved_in_run_folder(world):
     run_dir = world.root / "run"
     assert (run_dir / "prompt-1.txt").read_text() == PROMPT
-    assert json.loads((run_dir / "answer-1.json").read_text())["result"] == "plan written"
+    last = (run_dir / "answer-1.jsonl").read_text().splitlines()[-1]
+    assert json.loads(last)["result"] == "plan written"
 
 
 @then(parsers.parse('the result is an error with reason "{reason}"'))

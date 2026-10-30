@@ -1,11 +1,12 @@
 """Run Claude Code in print mode and read its JSON result.
 
-The configured command (by default `claude -p --output-format json`) runs with
-the stage's model, caps and tools added, the prompt on stdin, the worktree as its
+The configured command (by default `claude -p`) runs with the stage's model,
+caps and tools added, and stream-json output, which prints each message as it
+comes, so a call killed at its timeout still shows the tokens and turns it used, the prompt on stdin, the worktree as its
 working directory, and only the environment that adapters/environment.py allows.
 The agent runs restricted and in dontAsk mode, so a tool call outside the stage's
 list is refused, and the repository's own settings, hooks and MCP servers do not load. Call n in a run folder saves prompt-<n>.txt and the raw output as
-answer-<n>.json, so the prompt and the full answer stay in the run folder and
+answer-<n>.jsonl, so the prompt and the full answer stay in the run folder and
 only the numbers reach the event log.
 
 A failed call does not raise. It returns an AgentResult with is_error set and
@@ -13,17 +14,20 @@ the reason, so a stage handles every failure the same way.
 """
 
 import json
-import os
 import signal
 import subprocess
 import time
+from dataclasses import replace
 from pathlib import Path
 
 from cyclix.adapters import environment
 from cyclix.adapters.agent import AgentResult
+from cyclix.adapters.process import kill_group
 
 # A test shortens the minute so the timeout scenario does not take one.
 SECONDS_PER_MINUTE = 60
+# How long the agent has to print its result after SIGINT, before SIGKILL.
+GRACE_SECONDS = 30
 
 # The result subtypes Claude Code ends with when a cap stops the session.
 CAP_REASONS = {
@@ -52,15 +56,21 @@ class ClaudeCode:
             stdout, stderr, code = self._call(argv, prompt, cwd, env)
         except FileNotFoundError:
             return failed(model, f"agent command not found: {argv[0]}", 127, started)
-        (run_dir / f"answer-{n}.json").write_text(stdout)
+        (run_dir / f"answer-{n}.jsonl").write_text(stdout)
         if code is None:
-            return failed(model, f"timeout after {self.timeout_minutes} minutes", -9, started)
+            # An interrupted call may still have printed its result, which holds what it cost.
+            result = parse(stdout, stderr, -9, model, started)
+            return replace(
+                result, answer="", reason=f"timeout after {self.timeout_minutes} minutes"
+            )
         return parse(stdout, stderr, code, model, started)
 
     def _call(self, argv, prompt, cwd, env):
-        """Run the agent in its own process group, and kill the whole group on a timeout.
+        """Run the agent in its own process group, and stop the whole group on a timeout.
 
-        The exit code is None after a timeout. The output is whatever came before it.
+        On a timeout the group gets SIGINT, so Claude Code ends its turn and prints its
+        result, then SIGKILL after the grace period. The exit code is None after a
+        timeout, and the output is whatever the agent printed.
         """
         process = subprocess.Popen(
             argv,
@@ -77,9 +87,20 @@ class ClaudeCode:
                 prompt, timeout=self.timeout_minutes * SECONDS_PER_MINUTE
             )
         except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGKILL)
-            stdout, stderr = process.communicate()
+            kill_group(process, signal.SIGINT)
+            try:
+                stdout, stderr = process.communicate(timeout=GRACE_SECONDS)
+            except subprocess.TimeoutExpired:
+                kill_group(process)
+                stdout, stderr = process.communicate()
+            # The agent may have exited on SIGINT and left a tool's process behind.
+            kill_group(process)
             return stdout, stderr, None
+        except BaseException:
+            # The group does not get the terminal's SIGINT, so a Ctrl-C would leave it running.
+            kill_group(process)
+            process.wait()
+            raise
         return stdout, stderr, process.returncode
 
 
@@ -92,7 +113,7 @@ def stage_flags(stage):
     """
     tools = list(dict.fromkeys(rule.split("(", 1)[0] for rule in stage.tools))
     return [
-        "--model", stage.model,
+        "--model", stage.model, "--output-format", "stream-json", "--verbose",
         "--restricted", "--strict-mcp-config", "--tools", ",".join(tools),
         "--permission-mode", "dontAsk", "--permission-prompts", "none",
         "--max-turns", str(stage.max_turns), "--max-budget-usd", str(stage.max_budget_usd),
@@ -101,14 +122,22 @@ def stage_flags(stage):
 
 
 def parse(stdout, stderr, code, model, started):
-    try:
-        out = json.loads(stdout)
-    except ValueError:
-        out = None
-    if not isinstance(out, dict):
+    """Read the stream's result line, or what the assistant lines show when there is none.
+
+    A call that was killed, or crashed, prints no result line. Its assistant lines
+    still say how many tokens and turns it used, but not what it cost.
+    """
+    lines = json_lines(stdout)
+    out = next((line for line in reversed(lines) if line.get("type") == "result"), None)
+    if out is None:
+        messages = assistant_messages(lines)
         if code != 0:
-            return failed(model, f"agent exited {code}: {stderr.strip()[-500:]}", code, started)
-        return failed(model, "agent output was not JSON", code, started)
+            reason = f"agent exited {code}: {stderr.strip()[-500:]}"
+        elif lines:
+            reason = "agent printed no result"
+        else:
+            reason = "agent output was not JSON"
+        return partial(model, reason, code, started, messages)
 
     usage = out.get("usage") or {}
     is_error = bool(out.get("is_error")) or code != 0
@@ -130,6 +159,29 @@ def parse(stdout, stderr, code, model, started):
     )
 
 
+def json_lines(stdout):
+    """Each line of the stream that is a JSON object. Anything else is skipped."""
+    lines = []
+    for text in stdout.splitlines():
+        try:
+            line = json.loads(text)
+        except ValueError:
+            continue
+        if isinstance(line, dict):
+            lines.append(line)
+    return lines
+
+
+def assistant_messages(lines):
+    """The assistant messages by id. A message comes once per content block, with the same usage."""
+    messages = {}
+    for line in lines:
+        message = line.get("message") if line.get("type") == "assistant" else None
+        if isinstance(message, dict) and "id" in message:
+            messages[message["id"]] = message
+    return list(messages.values())
+
+
 def model_used(out, requested):
     """The result has no top-level model key. The model is the one key of modelUsage.
 
@@ -140,17 +192,23 @@ def model_used(out, requested):
 
 
 def failed(model, reason, code, started):
+    return partial(model, reason, code, started, [])
+
+
+def partial(model, reason, code, started, messages):
+    """A call with no result line: the tokens and turns its messages show, and no cost."""
+    usage = [message.get("usage") or {} for message in messages]
     return AgentResult(
         answer="",
         is_error=True,
         reason=reason,
         exit_code=code,
-        model=model,
-        input_tokens=0,
-        output_tokens=0,
-        cost_usd=0.0,
+        model=next((m["model"] for m in reversed(messages) if m.get("model")), model),
+        input_tokens=sum(u.get("input_tokens", 0) for u in usage),
+        output_tokens=sum(u.get("output_tokens", 0) for u in usage),
+        cost_usd=None,
         duration_ms=elapsed_ms(started),
-        turns=0,
+        turns=len(messages),
     )
 
 

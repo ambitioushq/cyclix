@@ -1,10 +1,13 @@
 """Rules of the GitHub code-host adapter that the scenarios do not reach."""
 
+import os
+
 import pytest
 from fakes.runner import environment
 from fakes.world import git
 
 from cyclix import config
+from cyclix.adapters import gh, github_codehost
 from cyclix.adapters.codehost import CodeHostError
 from cyclix.adapters.github_codehost import GitHubCodeHost, slug
 
@@ -85,3 +88,40 @@ def test_a_gh_failure_is_a_code_host_error(world, codehost):
     world.add_fault("pr view", exit=1, stderr="HTTP 502")
     with pytest.raises(CodeHostError, match="HTTP 502"):
         codehost.pr_state(20)
+
+
+def fake_git(monkeypatch, tmp_path, script):
+    """Put a git that runs this shell script first on PATH."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    git_path = bin_dir / "git"
+    git_path.write_text(f"#!/bin/sh\n{script}\n")
+    git_path.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+
+
+def test_git_never_prompts_for_a_password(monkeypatch, tmp_path):
+    fake_git(monkeypatch, tmp_path, 'echo "$GIT_TERMINAL_PROMPT"')
+    assert github_codehost.git(tmp_path, "status") == "0"
+
+
+@pytest.mark.parametrize(
+    ("command", "limit"), [("fetch", "GIT_NETWORK_SECONDS"), ("status", "GIT_LOCAL_SECONDS")]
+)
+def test_a_git_call_past_its_time_limit_is_an_error(monkeypatch, tmp_path, command, limit):
+    # A child holds the output pipe open, as git's credential helper would.
+    fake_git(monkeypatch, tmp_path, "sleep 30 & wait")
+    monkeypatch.setattr(github_codehost, "GIT_NETWORK_SECONDS", 100)
+    monkeypatch.setattr(github_codehost, "GIT_LOCAL_SECONDS", 100)
+    monkeypatch.setattr(github_codehost, limit, 1)
+    with pytest.raises(CodeHostError, match=f"git {command} gave no answer after 1 seconds"):
+        github_codehost.git(tmp_path, command)
+
+
+def test_the_clone_gets_the_network_time_limit(codehost, monkeypatch):
+    calls = []
+    monkeypatch.setattr(gh, "run", lambda *args, **kwargs: calls.append((args, kwargs)))
+    codehost.ensure_clone()
+    [(args, kwargs)] = calls
+    assert args[:2] == ("repo", "clone")
+    assert kwargs == {"timeout": github_codehost.GIT_NETWORK_SECONDS}

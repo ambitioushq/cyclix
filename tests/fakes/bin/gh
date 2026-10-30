@@ -76,6 +76,8 @@ def parse(argv):
     command = tuple(argv[:2])
     if command == ("api", "graphql"):
         return parse_graphql(argv)
+    if argv[0] == "api" and len(argv) == 2:
+        return ("api", "rest"), [argv[1]], {}
     if command not in COMMANDS:
         raise unsupported()
     count, allowed = COMMANDS[command]
@@ -432,6 +434,28 @@ def repo_clone(world, data, positional, flags):
         raise Exit(done.returncode, done.stderr)
 
 
+def api_rest(world, data, positional, flags):
+    """GET one REST path: a branch's protection, or the rules that apply to it."""
+    [path] = positional
+    found = re.fullmatch(
+        r"repos/(?P<repo>[^/]+/[^/]+)/(?:branches/(?P<branch>[^/]+)/protection|rules/branches/(?P<rules>[^/]+))",
+        path,
+    )
+    if found is None:
+        raise unsupported()
+    if found["repo"] != data["repo"]:
+        raise Exit(1, "gh: Not Found (HTTP 404)\n", '{"message":"Not Found","status":"404"}')
+    if found["rules"] is not None:
+        return data["rules"]
+    if data["protection"] is None:
+        raise Exit(
+            1,
+            "gh: Branch not protected (HTTP 404)\n",
+            '{"message":"Branch not protected","status":"404"}',
+        )
+    return data["protection"]
+
+
 def auth_status(world, data, positional, flags):
     if not data.get("logged_in", True):
         raise Exit(1, "You are not logged into any GitHub hosts. To log in, run: gh auth login\n")
@@ -441,6 +465,7 @@ def auth_status(world, data, positional, flags):
 HANDLERS = {
     ("project", "field-list"): project_field_list,
     ("api", "graphql"): api_graphql,
+    ("api", "rest"): api_rest,
     ("project", "item-edit"): project_item_edit,
     ("issue", "view"): issue_view,
     ("issue", "comment"): issue_comment,
