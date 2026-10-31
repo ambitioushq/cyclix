@@ -24,7 +24,6 @@ import tempfile
 import time
 from pathlib import Path
 
-from cyclix import config
 from cyclix.adapters import github_tracker
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,8 +79,8 @@ COMMANDS = {
 # Commands that read Cyclix's own repo instead of the sandbox. GitHub shows branch
 # protection only for a public repo or a paid plan, and the sandbox is neither.
 # Both only read, and reading classic protection needs admin rights on the repo.
-OWN_REPO = {"branch-protection", "branch-rules"}
-OWN_CONFIG = ROOT / "docs" / "examples" / "tenant.toml"
+OWN_REPO_COMMANDS = {"branch-protection", "branch-rules"}
+OWN_REPO = {"repo": "ambitioushq/cyclix", "base": "main"}
 
 # Commands that print text, not JSON. Their lines are recorded with values masked.
 TEXT = {"pr-create"}
@@ -283,10 +282,9 @@ def record(sandbox, workdir):
 
     version = gh("--version").split()[2]
     recordings = {}
-    own = config.load(OWN_CONFIG).codehost
     for name, template in COMMANDS.items():
-        if name in OWN_REPO:
-            output = gh(*fill(template, {**values, "repo": own.repo, "base": own.base}))
+        if name in OWN_REPO_COMMANDS:
+            output = gh(*fill(template, {**values, **OWN_REPO}))
         else:
             output = gh(*fill(template, values))
         if name == "pr-create":

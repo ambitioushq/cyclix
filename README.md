@@ -8,30 +8,30 @@ Cyclix runs an unattended issue-to-PR loop. It takes a well-formed issue from a 
 
 ## Usage
 
-Each command takes the name of a tenant. The tenant's config is read from the path in `CYCLIX_CONFIG`, else `~/.config/cyclix/<tenant>.toml` (`$XDG_CONFIG_HOME` is used if set). The examples use a tenant named `cyclix`.
+Each command takes the name of a tenant. The tenant's config is read from the path in `CYCLIX_CONFIG`, else `~/.config/cyclix/<tenant>.toml` (`$XDG_CONFIG_HOME` is used if set). The examples use a tenant named `storefront`.
 
 Check that the config loads, `gh` is signed in, the state directory is writable, the agent is on `PATH` and the board has every Status option:
 
 ```sh
-cyclix check --tenant cyclix
+cyclix check --tenant storefront
 ```
 
 Make one pass of the loop (`--once` is required):
 
 ```sh
-cyclix run --once --tenant cyclix
+cyclix run --once --tenant storefront
 ```
 
 Run the loop on a systemd user timer, every 10 minutes by default. `--every` sets another span, `--dry-run` prints the units and changes nothing, and `--force` replaces units that differ:
 
 ```sh
-cyclix install --tenant cyclix
+cyclix install --tenant storefront
 ```
 
 Stop the timer and remove its units:
 
 ```sh
-cyclix uninstall --tenant cyclix
+cyclix uninstall --tenant storefront
 ```
 
 ## Links
