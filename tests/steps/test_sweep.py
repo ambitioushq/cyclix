@@ -84,7 +84,7 @@ def pass_running(world):
 
 @when("a second pass starts", target_fixture="result")
 def second_pass(world):
-    return run_cyclix(world, "run", "--once")
+    return run_cyclix(world, "run")
 
 
 # Then

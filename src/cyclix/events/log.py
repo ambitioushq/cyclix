@@ -9,14 +9,14 @@ import json
 import os
 import secrets
 from datetime import UTC, datetime
+from importlib.metadata import version
 from pathlib import Path
 
-from cyclix import __version__
 from cyclix.events import schema
 
 
 class EventError(Exception):
-    """An event that schema 0 does not allow. Nothing is written."""
+    """An event that the schema does not allow. Nothing is written."""
 
 
 def write_stage_run(state_dir: Path, tenant: str, fields: dict[str, object]) -> dict:
@@ -40,7 +40,7 @@ def write_stage_run(state_dir: Path, tenant: str, fields: dict[str, object]) -> 
         "trace_id": secrets.token_hex(16),
         "span_id": secrets.token_hex(8),
         "body": schema.STAGE_RUN,
-        "resource": {"service.name": schema.SERVICE_NAME, "service.version": __version__},
+        "resource": {"service.name": schema.SERVICE_NAME, "service.version": version("cyclix")},
         "attributes": attributes,
     }
     append(Path(state_dir) / "events" / f"{tenant}.jsonl", event)

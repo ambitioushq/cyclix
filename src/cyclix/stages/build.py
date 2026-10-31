@@ -1,4 +1,4 @@
-"""The minimal build stage: one agent call in the worktree that leaves its work committed.
+"""The build stage: one agent call in the worktree that leaves its work committed.
 
 The agent's final answer becomes the PR body. The stage saves it as pr.md in the run folder.
 """

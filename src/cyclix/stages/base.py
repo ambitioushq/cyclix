@@ -19,22 +19,25 @@ from cyclix.events import schema
 from cyclix.state.core import StateCore
 from cyclix.workstate import State
 
-# The outcomes that let the run go on to the next stage.
-GO_ON = frozenset({"passed", "skipped"})
 
-
-@dataclass(frozen=True)
+@dataclass
 class RunContext:
+    """What every stage in one run works with.
+
+    The runner makes it when it claims the item. Admission fills in issue and
+    worktree, which the stages after it read. The reconciler runs with neither.
+    """
+
     config: Config
     state: StateCore
     tracker: Tracker
     codehost: CodeHost
     agent: Agent
     run_id: str
-    issue: Issue
-    worktree: Worktree
+    number: int  # the issue's number
     run_dir: Path
-    round: int = 1
+    issue: Issue | None = None
+    worktree: Worktree | None = None
 
 
 @dataclass(frozen=True)

@@ -1,4 +1,4 @@
-"""The minimal PR stage: push the branch, open the PR (or find the open one), move to In review.
+"""The PR stage: push the branch, open the PR (or find the open one), move to In review.
 
 The PR has the issue's title and the build agent's answer (pr.md) as its body.
 

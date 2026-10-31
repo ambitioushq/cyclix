@@ -16,10 +16,10 @@ Check that the config loads, `gh` is signed in, the state directory is writable,
 cyclix check --tenant storefront
 ```
 
-Make one pass of the loop (`--once` is required):
+Make one pass of the loop:
 
 ```sh
-cyclix run --once --tenant storefront
+cyclix run --tenant storefront
 ```
 
 Run the loop on a systemd user timer, every 10 minutes by default. `--every` sets another span, `--dry-run` prints the units and changes nothing, and `--force` replaces units that differ:

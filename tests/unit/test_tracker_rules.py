@@ -30,7 +30,6 @@ def test_the_board_is_read_once_per_tracker(world, tracker):
     world.add_issue(3, state="Ready")
     world.add_issue(4, state="Ready")
     assert [item.issue for item in tracker.items()] == [3, 4]
-    assert [item.issue for item in tracker.ready_items()] == [3, 4]
     tracker.set_state(3, State.IN_PROGRESS)
     tracker.set_state(4, State.IN_PROGRESS)
     assert len(world.graphql_calls("BoardItems")) == 1

@@ -59,6 +59,37 @@ MIGRATIONS = [
         PRIMARY KEY (tenant, day)
     );
     """,
+    # 1 -> 2: drop the round column. SQLite cannot drop a column that is part of a
+    # UNIQUE key, so runs is rebuilt with the same ids. The checks that point at
+    # those ids are set aside while it is, because dropping runs under them fails
+    # the foreign key. An open row is ended later from its fields, so the dropped
+    # event keys leave those too.
+    """
+    CREATE TEMP TABLE checks_kept AS SELECT * FROM checks;
+    DELETE FROM checks;
+    CREATE TABLE runs_new (
+        id INTEGER PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        tenant TEXT NOT NULL,
+        issue INTEGER NOT NULL,
+        stage TEXT NOT NULL,
+        phase TEXT,
+        started_at TEXT NOT NULL,
+        ended_at TEXT,
+        outcome TEXT,
+        fields_json TEXT NOT NULL,
+        UNIQUE (run_id, stage)
+    );
+    INSERT INTO runs_new
+        SELECT id, run_id, tenant, issue, stage, phase, started_at, ended_at, outcome,
+            json_remove(fields_json, '$."cyclix.round"', '$."cyclix.trust_level"')
+        FROM runs;
+    DROP TABLE runs;
+    ALTER TABLE runs_new RENAME TO runs;
+    CREATE UNIQUE INDEX runs_one_open ON runs (run_id) WHERE ended_at IS NULL;
+    INSERT INTO checks SELECT * FROM checks_kept;
+    DROP TABLE checks_kept;
+    """,
 ]
 SCHEMA_VERSION = len(MIGRATIONS)
 
@@ -162,27 +193,24 @@ class SqliteStateCore:
             "cyclix.issue.id": run.issue,
             "cyclix.run.id": run.run_id,
             "cyclix.stage": run.stage,
-            "cyclix.round": run.round,
         }
         try:
             with self.write() as db:
                 db.execute(
-                    "INSERT INTO runs (run_id, tenant, issue, stage, round, started_at,"
-                    " fields_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO runs (run_id, tenant, issue, stage, started_at, fields_json)"
+                    " VALUES (?, ?, ?, ?, ?, ?)",
                     (
                         run.run_id,
                         run.tenant,
                         run.issue,
                         run.stage,
-                        run.round,
                         self.stamp(),
                         json.dumps(fields),
                     ),
                 )
         except sqlite3.IntegrityError:
             raise StateError(
-                f"run {run.run_id} already has an open stage,"
-                f" or already ran {run.stage} round {run.round}"
+                f"run {run.run_id} already has an open stage, or already ran {run.stage}"
             ) from None
 
     def open_row(self, db, run_id):
@@ -203,10 +231,7 @@ class SqliteStateCore:
         with self.write() as db:
             row_id, built, _ = self.open_row(db, run_id)
             built.update(fields)
-            db.execute(
-                "UPDATE runs SET fields_json = ?, round = ? WHERE id = ?",
-                (json.dumps(built), built["cyclix.round"], row_id),
-            )
+            db.execute("UPDATE runs SET fields_json = ? WHERE id = ?", (json.dumps(built), row_id))
 
     def end_run(self, run_id, outcome, reason):
         """End the run's open stage and return its event fields, outcome included."""
@@ -222,7 +247,7 @@ class SqliteStateCore:
 
     def open_runs(self, tenant):
         rows = self.db.execute(
-            "SELECT run_id, tenant, issue, stage, phase, round, started_at, fields_json"
+            "SELECT run_id, tenant, issue, stage, phase, started_at, fields_json"
             " FROM runs WHERE tenant = ? AND ended_at IS NULL ORDER BY started_at, id",
             (tenant,),
         )
@@ -233,11 +258,10 @@ class SqliteStateCore:
                 issue=issue,
                 stage=stage,
                 phase=phase,
-                round=round_,
                 started_at=datetime.fromisoformat(started),
                 fields=json.loads(fields),
             )
-            for run_id, t, issue, stage, phase, round_, started, fields in rows
+            for run_id, t, issue, stage, phase, started, fields in rows
         ]
 
     def runs_today(self, tenant):
@@ -261,26 +285,6 @@ class SqliteStateCore:
                 'INSERT INTO checks (run_row, sha, "check", passed, at) VALUES (?, ?, ?, ?, ?)',
                 (row_id, sha, check, int(passed), self.stamp()),
             )
-
-    def best_verified(self, tenant, issue):
-        """The last commit whose checks all passed, in a stage row that ended without crashing.
-
-        A row still open, or ended as crashed, may have stopped partway through
-        its checks, so its commits never count.
-        """
-        row = self.db.execute(
-            """
-            SELECT checks.sha FROM checks JOIN runs ON runs.id = checks.run_row
-            WHERE runs.tenant = ? AND runs.issue = ?
-              AND runs.ended_at IS NOT NULL AND runs.outcome != 'crashed'
-            GROUP BY checks.run_row, checks.sha
-            HAVING MIN(checks.passed) = 1
-            ORDER BY MAX(checks.id) DESC
-            LIMIT 1
-            """,
-            (tenant, issue),
-        ).fetchone()
-        return row[0] if row else None
 
     # Spend
 

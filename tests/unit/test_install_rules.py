@@ -12,7 +12,7 @@ from cyclix import install
 
 def test_a_path_with_a_space_and_a_percent_is_quoted_and_escaped():
     unit = install.service_unit("t", Path("/opt/my tools/cyclix"), Path("/etc/100% cyclix.toml"))
-    assert 'ExecStart="/opt/my tools/cyclix" run --once --tenant t' in unit.splitlines()
+    assert 'ExecStart="/opt/my tools/cyclix" run --tenant t' in unit.splitlines()
     assert 'Environment="CYCLIX_CONFIG=/etc/100%% cyclix.toml"' in unit.splitlines()
 
 

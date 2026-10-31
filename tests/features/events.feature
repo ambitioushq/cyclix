@@ -4,7 +4,7 @@ Feature: Each stage run writes one event to the event log
     Given a stage run for #12 at stage "gate" ending "parked" with reason "gate command 2 exited 1"
     When its event is written
     Then the event log holds one line for #12
-    And the line has schema "cyclix.event/0" and body "stage_run"
+    And the line has schema "cyclix.event/1" and body "stage_run"
     And it has every stage-run key, with null for the model fields
 
   Scenario: Long text is refused
@@ -16,7 +16,7 @@ Feature: Each stage run writes one event to the event log
   Scenario: A key outside the schema is refused
     Given a stage run with the extra field "cyclix.prompt" = "plan the change"
     When its event is written
-    Then it fails with "event attribute cyclix.prompt is not in schema cyclix.event/0"
+    Then it fails with "event attribute cyclix.prompt is not in schema cyclix.event/1"
     And the event log is unchanged
 
   Scenario: Each stage run is its own trace

@@ -46,7 +46,7 @@ def state_dir(tmp_path):
 def one_pass(state_dir):
     env = {**os.environ, "CYCLIX_CONFIG": str(recorder.CONFIG), "CYCLIX_STATE_DIR": str(state_dir)}
     result = subprocess.run(
-        [sys.executable, "-m", "cyclix", "run", "--once"],
+        [sys.executable, "-m", "cyclix", "run"],
         env=env, capture_output=True, text=True, check=False,
     )  # fmt: skip
     assert result.returncode == 0, result.stdout + result.stderr

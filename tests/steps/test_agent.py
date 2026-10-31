@@ -18,6 +18,12 @@ PROMPT = "Write a plan for issue #3."
 
 
 @pytest.fixture
+def agent_options():
+    """Constructor arguments for the adapter, which a Given step may set."""
+    return {}
+
+
+@pytest.fixture
 def fake_env(world, monkeypatch):
     for key, value in environment(world).items():
         monkeypatch.setenv(key, value)
@@ -39,8 +45,8 @@ def agent_answers_with_numbers(world, answer, input_tokens, output_tokens, cost)
 
 
 @given("the agent takes longer than the timeout")
-def agent_takes_too_long(world, monkeypatch):
-    shorten_timeout(monkeypatch)
+def agent_takes_too_long(world, agent_options):
+    shorten_timeout(agent_options)
     world.add_agent_step(sleep_seconds=30)
 
 
@@ -51,18 +57,17 @@ def agent_takes_too_long(world, monkeypatch):
         r"(?P<ignores> and ignores the interrupt)?"
     )
 )
-def agent_works_then_hangs(world, monkeypatch, input_tokens, output_tokens, turns, cost, ignores):
-    shorten_timeout(monkeypatch)
+def agent_works_then_hangs(world, agent_options, input_tokens, output_tokens, turns, cost, ignores):
+    shorten_timeout(agent_options)
     world.add_agent_step(
         sleep_seconds=30, input_tokens=int(input_tokens), output_tokens=int(output_tokens),
         num_turns=int(turns), cost_usd=float(cost), on_interrupt="ignore" if ignores else None,
     )  # fmt: skip
 
 
-def shorten_timeout(monkeypatch):
-    # The test config's timeout is 1 minute. Here a minute lasts one second, as does the grace period.
-    monkeypatch.setattr(claude_code, "SECONDS_PER_MINUTE", 1)
-    monkeypatch.setattr(claude_code, "GRACE_SECONDS", 1)
+def shorten_timeout(agent_options):
+    # The test config's timeout is 1 minute. Here the call gets one second, as does the grace period.
+    agent_options.update(timeout_seconds=1, grace_seconds=1)
 
 
 @given(parsers.parse('the agent stops with subtype "{subtype}"'))
@@ -111,18 +116,18 @@ def agent_prints(world, text, code):
 
 
 @when("the adapter runs a prompt", target_fixture="result")
-def adapter_runs(world, fake_env):
-    return run_stage(world, "plan")
+def adapter_runs(world, fake_env, agent_options):
+    return run_stage(world, "plan", agent_options)
 
 
 @when(parsers.parse("the adapter runs a prompt for the {stage} stage"), target_fixture="result")
-def adapter_runs_stage(world, fake_env, stage):
-    return run_stage(world, stage)
+def adapter_runs_stage(world, fake_env, agent_options, stage):
+    return run_stage(world, stage, agent_options)
 
 
-def run_stage(world, stage):
+def run_stage(world, stage, agent_options):
     agent_config = config.load(world.config).agent
-    agent = claude_code.ClaudeCode(agent_config)
+    agent = claude_code.ClaudeCode(agent_config, **agent_options)
     work = world.root / "work"
     work.mkdir(exist_ok=True)
     return agent.run(PROMPT, work, getattr(agent_config, stage), world.root / "run")

@@ -87,14 +87,14 @@ def test_the_oldest_ready_issue_is_admitted(world, stages):
 def test_the_run_stops_at_the_first_stage_that_does_not_pass(world, core, stages):
     gate = FakeStage("gate", StageResult("parked", "gate command 2 exited 1"))
     pr = passing("pr")
-    stages(passing("plan"), FakeStage("build", StageResult("skipped")), gate, pr)
+    stages(passing("plan"), passing("build"), gate, pr)
     world.add_issue(12, state="Ready")
     assert sweep(world) == 0
     outcomes = [(e["cyclix.stage"], e["cyclix.outcome"]) for e in events(world, 12)]
     assert outcomes == [
         ("admission", "passed"),
         ("plan", "passed"),
-        ("build", "skipped"),
+        ("build", "passed"),
         ("gate", "parked"),
     ]
     assert pr.seen == []

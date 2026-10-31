@@ -1,7 +1,8 @@
 """The work states and the transition table: every move the engine may make, and who makes it.
 
-docs/design/v0.0.md, "Work states and who moves them", holds the same table.
-A unit test checks that the two agree.
+Each writer may make only its own moves, so a stage cannot put an item in a state
+another writer owns. The design doc holds the same table, and a unit test checks
+that the two agree.
 """
 
 from enum import StrEnum

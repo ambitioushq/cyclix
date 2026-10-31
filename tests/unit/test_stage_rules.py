@@ -1,4 +1,4 @@
-"""Rules of the minimal stages that stages.feature and sweep.feature do not check.
+"""Rules of the stages that stages.feature and sweep.feature do not check.
 
 The sweep runs in-process against the fake world, with the real stages.
 """
@@ -11,9 +11,13 @@ import pytest
 from fakes.world import PR_BODY_ANSWER, PR_TEMPLATE, TEMPLATE_PATH, git
 
 from cyclix import config, runner
-from cyclix.adapters import claude_code
-from cyclix.stages import gate
-from cyclix.stages.pr import ensure_closes
+from cyclix.adapters.claude_code import ClaudeCode
+from cyclix.adapters.github_codehost import GitHubCodeHost
+from cyclix.adapters.github_tracker import GitHubTracker
+from cyclix.stages.build import Build
+from cyclix.stages.gate import Gate
+from cyclix.stages.plan import Plan
+from cyclix.stages.pr import PR, ensure_closes
 from cyclix.state.core import RunStart
 from cyclix.state.sqlite import SqliteStateCore
 
@@ -29,6 +33,19 @@ def core(world):
 
 def sweep(world):
     return runner.sweep(config.load(world.config))
+
+
+def sweep_with(world, agent=None, stages=runner.STAGES):
+    """One pass with the agent or the stages a test gives in place of the usual ones."""
+    cfg = config.load(world.config)
+    state = SqliteStateCore(cfg.state_dir)
+    try:
+        runner.Sweep(
+            cfg, state, GitHubTracker(cfg), GitHubCodeHost(cfg), agent or ClaudeCode(cfg.agent),
+            stages,
+        ).run()  # fmt: skip
+    finally:
+        state.close()
 
 
 def events(world, issue):
@@ -60,7 +77,6 @@ def test_the_pr_has_the_issue_title_and_the_build_answer_as_its_body(world):
     assert world.comments(12) == [f"In review: https://github.com/o/r/pull/{pr['number']}"]
     by_stage = {e["cyclix.stage"]: e for e in events(world, 12)}
     assert by_stage["pr"]["vcs.change.id"] == str(pr["number"])
-    assert by_stage["adversarial_review"]["cyclix.outcome"] == "skipped"
     assert by_stage["plan"]["gen_ai.request.model"] == "claude-sonnet-5-5"
     assert by_stage["plan"]["gen_ai.usage.input_tokens"] == 1000
 
@@ -128,7 +144,9 @@ def test_the_gate_records_each_check_against_the_head_and_saves_its_output(world
     folder = run_dir(world, 12)
     assert (folder / "gate-1.txt").read_text() == "first\n"
     assert not (folder / "gate-3.txt").exists()
-    assert core.best_verified(TENANT, 12) is None
+    rows = core.db.execute('SELECT sha, "check", passed FROM checks ORDER BY id').fetchall()
+    head = gate["vcs.ref.head.revision"]
+    assert rows == [(head, "echo first", 1), (head, "false", 0)]
 
 
 def test_a_gate_command_that_is_not_found_exits_127(world):
@@ -139,14 +157,13 @@ def test_a_gate_command_that_is_not_found_exits_127(world):
     assert events(world, 12)[-1]["cyclix.outcome.reason"] == "gate command 1 exited 127"
 
 
-def test_a_gate_command_past_the_timeout_is_stopped_with_its_children(world, monkeypatch):
-    # The test config's gate timeout is 1 minute. Here a minute lasts one second.
-    monkeypatch.setattr(gate, "SECONDS_PER_MINUTE", 1)
+def test_a_gate_command_past_the_timeout_is_stopped_with_its_children(world):
+    # The test config's gate timeout is 1 minute. Here the gate waits one second.
     pid_file = world.root / "child.pid"
     world.add_issue(12, state="Ready")
     world.add_plan_and_commit()
     set_gate(world, [["sh", "-c", f"echo started; sleep 30 & echo $! > {pid_file}; wait"]])
-    sweep(world)
+    sweep_with(world, stages=(Plan(), Build(), Gate(timeout_seconds=1), PR()))
     gate_event = events(world, 12)[-1]
     assert gate_event["cyclix.outcome.reason"] == "gate command 1 ran past 1 minutes"
     assert [c["passed"] for c in gate_event["cyclix.gate.checks"]] == [False]
@@ -166,16 +183,15 @@ def gone(pid):
     return False
 
 
-def test_a_killed_call_records_its_tokens_with_no_cost(world, core, monkeypatch):
-    # The test config's agent timeout is 1 minute. Here a minute lasts one second.
+def test_a_killed_call_records_its_tokens_with_no_cost(world, core):
+    # The test config's agent timeout is 1 minute. Here the agent gets one second.
     # The agent ignores SIGINT, so it is killed and prints no result line.
-    monkeypatch.setattr(claude_code, "SECONDS_PER_MINUTE", 1)
-    monkeypatch.setattr(claude_code, "GRACE_SECONDS", 1)
     world.add_issue(12, state="Ready")
     world.add_agent_step(
         sleep_seconds=30, input_tokens=900, output_tokens=100, num_turns=2, on_interrupt="ignore"
     )
-    sweep(world)
+    agent = ClaudeCode(config.load(world.config).agent, timeout_seconds=1, grace_seconds=1)
+    sweep_with(world, agent=agent)
     plan = next(e for e in events(world, 12) if e["cyclix.stage"] == "plan")
     numbers = [plan[key] for key in ("gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens")]
     assert numbers == [900, 100]
@@ -183,12 +199,14 @@ def test_a_killed_call_records_its_tokens_with_no_cost(world, core, monkeypatch)
     assert core.db.execute("SELECT usd, tokens FROM spend").fetchall() == [(0.0, 1000)]
 
 
-def test_a_passing_gate_makes_the_head_the_best_verified_commit(world, core):
+def test_a_passing_gate_records_each_check_as_passed_against_the_head(world, core):
     world.add_issue(12, state="Ready")
     world.add_plan_and_commit()
     sweep(world)
     gate = next(e for e in events(world, 12) if e["cyclix.stage"] == "gate")
-    assert core.best_verified(TENANT, 12) == gate["vcs.ref.head.revision"]
+    rows = core.db.execute("SELECT sha, passed FROM checks").fetchall()
+    assert rows
+    assert set(rows) == {(gate["vcs.ref.head.revision"], 1)}
 
 
 def test_a_failed_agent_call_fails_the_plan(world):

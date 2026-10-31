@@ -20,8 +20,8 @@ def core(tmp_path):
     core.close()
 
 
-def begin(core, run_id="r1", issue=5, stage="gate", round=1):
-    core.begin_run(RunStart(run_id=run_id, tenant="t", issue=issue, stage=stage, round=round))
+def begin(core, run_id="r1", issue=5, stage="gate"):
+    core.begin_run(RunStart(run_id=run_id, tenant="t", issue=issue, stage=stage))
 
 
 def raw(tmp_path):
@@ -31,10 +31,10 @@ def raw(tmp_path):
 # Opening and the schema
 
 
-def test_a_new_file_is_wal_at_schema_1(core, tmp_path):
+def test_a_new_file_is_wal_at_schema_2(core, tmp_path):
     db = raw(tmp_path)
     assert db.execute("PRAGMA journal_mode").fetchone() == ("wal",)
-    assert db.execute("SELECT value FROM meta").fetchall() == [("1",)]
+    assert db.execute("SELECT value FROM meta").fetchall() == [("2",)]
     assert core.db.execute("PRAGMA busy_timeout").fetchone() == (5000,)
 
 
@@ -49,22 +49,62 @@ def test_reopening_keeps_the_data(tmp_path):
 
 def test_an_older_file_is_migrated_by_numbered_steps(tmp_path, monkeypatch):
     SqliteStateCore(tmp_path).close()
-    step_2 = "CREATE TABLE extra (x INTEGER); INSERT INTO extra VALUES (7)"
-    monkeypatch.setattr(state_sqlite, "MIGRATIONS", [*state_sqlite.MIGRATIONS, step_2])
-    monkeypatch.setattr(state_sqlite, "SCHEMA_VERSION", 2)
+    step = "CREATE TABLE extra (x INTEGER); INSERT INTO extra VALUES (7)"
+    monkeypatch.setattr(state_sqlite, "MIGRATIONS", [*state_sqlite.MIGRATIONS, step])
+    monkeypatch.setattr(state_sqlite, "SCHEMA_VERSION", 3)
     SqliteStateCore(tmp_path).close()
     db = raw(tmp_path)
-    assert db.execute("SELECT value FROM meta").fetchall() == [("2",)]
+    assert db.execute("SELECT value FROM meta").fetchall() == [("3",)]
     assert db.execute("SELECT x FROM extra").fetchall() == [(7,)]
 
 
 def test_a_failed_migration_step_leaves_the_old_version(tmp_path, monkeypatch):
     SqliteStateCore(tmp_path).close()
     monkeypatch.setattr(state_sqlite, "MIGRATIONS", [*state_sqlite.MIGRATIONS, "NOT SQL"])
-    monkeypatch.setattr(state_sqlite, "SCHEMA_VERSION", 2)
+    monkeypatch.setattr(state_sqlite, "SCHEMA_VERSION", 3)
     with pytest.raises(sqlite3.OperationalError):
         SqliteStateCore(tmp_path)
-    assert raw(tmp_path).execute("SELECT value FROM meta").fetchall() == [("1",)]
+    assert raw(tmp_path).execute("SELECT value FROM meta").fetchall() == [("2",)]
+
+
+def test_the_step_that_drops_the_round_keeps_every_row(tmp_path, monkeypatch):
+    with monkeypatch.context() as at_1:
+        at_1.setattr(state_sqlite, "MIGRATIONS", state_sqlite.MIGRATIONS[:1])
+        at_1.setattr(state_sqlite, "SCHEMA_VERSION", 1)
+        SqliteStateCore(tmp_path).close()
+    db = raw(tmp_path)
+    ended = '{"cyclix.stage": "gate", "cyclix.round": 1, "cyclix.trust_level": null}'
+    opened = '{"cyclix.stage": "pr", "cyclix.round": 1}'
+    db.executescript(
+        f"""
+        INSERT INTO runs VALUES (4, 'r1', 't', 5, 'gate', NULL, 1, '2026-10-02T10:00:00+00:00',
+            '2026-10-02T10:05:00+00:00', 'passed', '{ended}');
+        INSERT INTO runs VALUES (9, 'r1', 't', 5, 'pr', 'push', 1, '2026-10-02T10:06:00+00:00',
+            NULL, NULL, '{opened}');
+        INSERT INTO checks VALUES (1, 4, 'abc', 'tests', 1, '2026-10-02T10:04:00+00:00');
+        """
+    )
+    db.close()
+    core = SqliteStateCore(tmp_path)
+    rows = core.db.execute("SELECT id, stage, phase, outcome FROM runs ORDER BY id")
+    assert rows.fetchall() == [
+        (4, "gate", None, "passed"),
+        (9, "pr", "push", None),
+    ]
+    columns = [row[1] for row in core.db.execute("PRAGMA table_info(runs)")]
+    assert "round" not in columns
+    assert core.db.execute("SELECT run_row, sha FROM checks").fetchall() == [(4, "abc")]
+    assert core.db.execute("PRAGMA foreign_key_check").fetchall() == []
+    [open_run] = core.open_runs("t")
+    assert (open_run.stage, open_run.phase) == ("pr", "push")
+    assert core.end_run("r1", "crashed", "") == {
+        "cyclix.stage": "pr",
+        "cyclix.outcome": "crashed",
+        "cyclix.outcome.reason": "",
+    }
+    with pytest.raises(StateError, match="already ran gate"):
+        begin(core, run_id="r1", stage="gate")
+    core.close()
 
 
 # Claims
@@ -124,23 +164,16 @@ def test_a_call_on_a_run_with_no_open_stage_is_refused(core):
 
 
 def test_begin_run_seeds_the_event_identity(core):
-    begin(core, issue=12, stage="pr", round=2)
+    begin(core, issue=12, stage="pr")
     fields = core.end_run("r1", "stopped", "STOP: unclear")
     assert fields == {
         "cyclix.tenant": "t",
         "cyclix.issue.id": 12,
         "cyclix.run.id": "r1",
         "cyclix.stage": "pr",
-        "cyclix.round": 2,
         "cyclix.outcome": "stopped",
         "cyclix.outcome.reason": "STOP: unclear",
     }
-
-
-def test_adding_the_round_field_moves_the_round_column(core):
-    begin(core)
-    core.add_fields("r1", {"cyclix.round": 3})
-    assert core.open_runs("t")[0].round == 3
 
 
 def test_an_ended_run_is_not_open(core):
@@ -152,32 +185,11 @@ def test_an_ended_run_is_not_open(core):
 # Checks
 
 
-def test_checks_in_a_crashed_stage_never_count(core):
+def test_a_check_is_recorded_against_the_open_stage(core):
     begin(core)
     core.record_check("r1", "a", "lint", True)
-    core.end_run("r1", "crashed", "no live process")
-    assert core.best_verified("t", 5) is None
-
-
-def test_checks_in_an_open_stage_do_not_count_yet(core):
-    begin(core)
-    core.record_check("r1", "a", "lint", True)
-    assert core.best_verified("t", 5) is None
-
-
-def test_a_later_passing_commit_wins(core):
-    for round, sha in ((1, "a"), (2, "b")):
-        begin(core, round=round)
-        core.record_check("r1", sha, "tests", True)
-        core.end_run("r1", "passed", "")
-    assert core.best_verified("t", 5) == "b"
-
-
-def test_best_verified_is_per_issue(core):
-    begin(core, issue=6)
-    core.record_check("r1", "a", "tests", True)
-    core.end_run("r1", "passed", "")
-    assert core.best_verified("t", 5) is None
+    rows = core.db.execute('SELECT run_row, sha, "check", passed FROM checks').fetchall()
+    assert rows == [(1, "a", "lint", 1)]
 
 
 # Spend

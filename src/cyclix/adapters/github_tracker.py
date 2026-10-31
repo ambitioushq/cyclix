@@ -75,9 +75,6 @@ class GitHubTracker:
         self._board = None
         self._items = None
 
-    def ready_items(self):
-        return [item for item in self.items() if item.state is State.READY]
-
     def items(self):
         """Every item of the configured repo in a mapped state, by issue number.
 
