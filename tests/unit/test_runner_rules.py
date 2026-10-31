@@ -148,6 +148,16 @@ def test_a_long_reason_is_cut_to_fit_the_event_and_the_log(world, stages, caplog
     assert line.endswith(": " + "x" * 500), line
 
 
+def test_a_reason_over_several_lines_is_logged_on_one(world, stages, caplog):
+    stages(FakeStage("gate", StageResult("parked", "service failed\n  retry request\n")))
+    world.add_issue(12, state="Ready")
+    with caplog.at_level(logging.DEBUG, logger="cyclix"):
+        assert sweep(world) == 0
+    assert events(world, 12)[-1]["cyclix.outcome.reason"] == "service failed\n  retry request\n"
+    [line] = [r.getMessage() for r in caplog.records if r.getMessage().startswith("stage gate")]
+    assert line.endswith(" ms: service failed retry request"), line
+
+
 def test_the_day_limit_stops_admission(world, core, stages):
     stages()
     for n in range(6):

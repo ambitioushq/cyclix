@@ -198,11 +198,12 @@ class Sweep:
             schema.REPOSITORY_URL: f"https://github.com/{self.config.codehost.repo}",
             schema.DURATION_MS: round((time.monotonic() - started) * 1000),
         }
-        # The reason can quote the agent, so the log gets no more of it than the event does.
+        # The reason can quote the agent, so the log gets no more of it than the event does,
+        # on one line, so a reason over several lines does not part from its prefix.
         logger.debug(
             "stage %s for #%d %s after %d ms: %s",
             name, issue, result.outcome, fields[schema.DURATION_MS],
-            result.reason[: schema.MAX_STRING],
+            " ".join(result.reason[: schema.MAX_STRING].split()),
         )  # fmt: skip
         if ctx.worktree is not None:
             fields[schema.HEAD_NAME] = ctx.worktree.branch
