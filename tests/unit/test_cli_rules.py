@@ -50,6 +50,15 @@ def test_a_bad_config_fails_and_skips_the_checks_that_need_it(world):
     assert "skipped: protection of the base branch: needs the config" in lines(result)
 
 
+def test_a_skipped_check_names_only_the_failed_checks_it_needs(world):
+    world.config.write_text("[tenant]\n")
+    world.set_logged_in(False)
+    result = run_cyclix(world, "check")
+    assert result.returncode == 1
+    assert "skipped: agent command: needs the config" in lines(result), result.stdout
+    assert "skipped: board: needs the config and gh signed in" in lines(result), result.stdout
+
+
 def test_check_without_a_config_file_says_how_to_name_one(world):
     env = environment(world)
     del env["CYCLIX_CONFIG"]

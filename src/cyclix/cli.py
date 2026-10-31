@@ -106,7 +106,7 @@ def check_command(args):
     results.append(gh_result)
     results.append(check_state_dir(config.state_dir()))
     if cfg is None:
-        results.append(skipped("agent command", failed))
+        results.append(skipped("agent command", failed & {"the config"}))
     else:
         results.append(check_agent(cfg.agent.command, path))
     # Reading the board and the branch needs both the config and a signed-in gh.
