@@ -28,7 +28,10 @@ line-length = 100
 extend-include = ["tests/fakes/bin/*"]
 
 [tool.ruff.lint]
-extend-select = ["I", "UP", "B"]
+extend-select = ["I", "UP", "B", "TD003", "ERA001"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ERA001"]
 
 [tool.coverage.run]
 source = ["cyclix"]
