@@ -47,6 +47,9 @@ These steps are defined in `conftest.py`, so any feature can use them.
 | `the S event's outcome is "O"` | Then | Checks that the event log holds exactly one event at stage S, with outcome O. |
 | `it exits N` | Then | Checks the exit code of `result`. |
 | `it prints "T"` | Then | Checks that T is a whole line of `result`'s stdout. Write a quote inside T as `\"`. |
+| `it logs "T"` | Then | Checks that T is a whole line of `result`'s stderr, where `cyclix run` writes its log records. Write a quote inside T as `\"`. |
+| `a log line starts with "T"` | Then | Checks that a line of `result`'s stderr starts with T. |
+| `it writes nothing` | Then | Checks that `result`'s stdout and stderr are both empty. |
 
 ## The sandbox
 

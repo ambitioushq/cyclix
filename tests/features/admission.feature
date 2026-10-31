@@ -23,7 +23,7 @@ Feature: Admission takes a Ready issue from the board when there is room
     And an issue #3 in state "Ready" on the board
     When one pass runs
     Then the board shows #3 in "Ready"
-    And it prints "admission waits: In review holds 2 of its WIP limit of 2"
+    And it logs "admission waits: In review holds 2 of its WIP limit of 2"
 
   Scenario: A merge in the same pass frees a place
     Given the config sets a WIP limit of 1 on in_review
@@ -40,7 +40,7 @@ Feature: Admission takes a Ready issue from the board when there is room
     And an issue #2 in state "Ready" on the board
     When one pass runs
     Then the board shows #2 in "Ready"
-    And it prints "admission waits: Parked holds 1 of its WIP limit of 1"
+    And it logs "admission waits: Parked holds 1 of its WIP limit of 1"
 
   Scenario: A config without WIP limits admits as before
     Given the config has no WIP limits

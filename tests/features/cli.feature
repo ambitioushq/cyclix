@@ -8,6 +8,15 @@ Feature: The cyclix command checks a tenant's setup and refuses unknown subcomma
     Then it exits 0
     And every line ends in "ok"
 
+  Scenario: check --verbose logs the config it read and its gh calls
+    Given a valid tenant config
+    And gh is signed in
+    When I run "cyclix check --verbose"
+    Then it exits 0
+    And every line ends in "ok"
+    And a log line starts with "DEBUG cyclix.cli: read the config at "
+    And a log line starts with "DEBUG cyclix.adapters.gh: gh auth status exited 0 after "
+
   Scenario: check fails when gh is not signed in, and skips the checks that need it
     Given a valid tenant config
     And gh is not signed in

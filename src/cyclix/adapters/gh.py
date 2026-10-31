@@ -5,9 +5,13 @@ one error type whatever went wrong.
 """
 
 import json as jsonlib
+import logging
 import subprocess
+import time
 
 from cyclix.adapters import process
+
+logger = logging.getLogger(__name__)
 
 # Seconds one gh call may take, unless the caller gives another. A call that runs
 # longer fails as exit 124, like timeout(1).
@@ -19,21 +23,29 @@ class GhError(Exception):
         self.argv = ["gh", *args]
         self.code = code
         self.stderr = stderr.strip()
-        super().__init__(f"{' '.join(self.argv[:3])} exited {code}: {self.stderr}")
+        super().__init__(f"{name(args)} exited {code}: {self.stderr}")
+
+
+def name(args):
+    """Name a call by its first three words. The rest can hold a body."""
+    return " ".join(["gh", *args][:3])
 
 
 def run(*args, timeout=None):
     """Run gh with these arguments and return its stdout."""
     timeout = timeout or TIMEOUT
+    started = time.monotonic()
     try:
         stdout, stderr, code = process.run(
             ["gh", *args], timeout,
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )  # fmt: skip
     except FileNotFoundError:
-        raise GhError(args, 127, "gh is not on PATH") from None
+        code, stderr = 127, "gh is not on PATH"
     if code is None:
-        raise GhError(args, 124, f"no answer after {timeout} seconds")
+        code, stderr = 124, f"no answer after {timeout} seconds"
+    ms = round((time.monotonic() - started) * 1000)
+    logger.debug("%s exited %d after %d ms", name(args), code, ms)
     if code != 0:
         raise GhError(args, code, stderr)
     return stdout

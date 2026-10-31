@@ -4,6 +4,7 @@ The sweep runs in-process against the fake world, with fake stages in place of S
 """
 
 import json
+import logging
 import sqlite3
 from contextlib import closing
 from dataclasses import dataclass, field
@@ -137,11 +138,24 @@ def test_a_stage_fields_reach_its_event(world, stages):
     assert events(world, 12)[-1]["vcs.ref.head.revision"] == "abc"
 
 
-def test_a_long_reason_is_cut_to_fit_the_event(world, stages):
+def test_a_long_reason_is_cut_to_fit_the_event_and_the_log(world, stages, caplog):
     stages(FakeStage("gate", StageResult("parked", "x" * 600)))
     world.add_issue(12, state="Ready")
-    assert sweep(world) == 0
+    with caplog.at_level(logging.DEBUG, logger="cyclix"):
+        assert sweep(world) == 0
     assert len(events(world, 12)[-1]["cyclix.outcome.reason"]) == 500
+    [line] = [r.getMessage() for r in caplog.records if r.getMessage().startswith("stage gate")]
+    assert line.endswith(": " + "x" * 500), line
+
+
+def test_a_reason_over_several_lines_is_logged_on_one(world, stages, caplog):
+    stages(FakeStage("gate", StageResult("parked", "service failed\n  retry request\n")))
+    world.add_issue(12, state="Ready")
+    with caplog.at_level(logging.DEBUG, logger="cyclix"):
+        assert sweep(world) == 0
+    assert events(world, 12)[-1]["cyclix.outcome.reason"] == "service failed\n  retry request\n"
+    [line] = [r.getMessage() for r in caplog.records if r.getMessage().startswith("stage gate")]
+    assert line.endswith(" ms: service failed retry request"), line
 
 
 def test_the_day_limit_stops_admission(world, core, stages):
@@ -208,10 +222,11 @@ def test_a_run_that_crashed_in_the_removed_review_stage_is_ended_after_the_upgra
     assert world.comments(12) == ["Parked: run crashed in phase none"]
 
 
-def test_a_failed_board_read_fails_the_pass(world, capsys):
+def test_a_failed_board_read_fails_the_pass(world, caplog):
     world.add_fault("api graphql", exit=1, stderr="HTTP 502")
     assert sweep(world) == 1
-    assert "HTTP 502" in capsys.readouterr().err
+    [record] = [r for r in caplog.records if r.levelname == "ERROR"]
+    assert "HTTP 502" in record.getMessage()
 
 
 def test_runs_today_counts_each_run_once_by_the_utc_date(tmp_path):
