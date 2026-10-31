@@ -1,6 +1,8 @@
 import json
+from decimal import Decimal
 
 import pytest
+from fakes.world import PLAN_ANSWER, PR_BODY_ANSWER, REPO
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from cyclix.events.log import EventError, write_stage_run
@@ -76,6 +78,28 @@ def two_runs(core, seen):
     seen["runs"].append(stage_run(core, "r1", "build", "passed", ""))
 
 
+@given(parsers.parse("the agent reports a cost of {cost}"))
+def agent_reports_cost(world, cost):
+    world.add_agent_step(answer="## Approach\nChange one file.\n", cost_usd=float(cost))
+    world.add_agent_step(
+        files={"change.txt": "a change\n"}, commit=True, answer="done", cost_usd=float(cost)
+    )
+
+
+@given(
+    parsers.parse(
+        "the agent writes a plan in {plan_turns:d} turns, "
+        "then commits a change in {build_turns:d} turns"
+    )
+)
+def plan_and_build_in_turns(world, plan_turns, build_turns):
+    world.add_agent_step(answer=PLAN_ANSWER, num_turns=plan_turns)
+    world.add_agent_step(
+        files={"change.txt": "a change\n"}, commit=True, answer=PR_BODY_ANSWER,
+        num_turns=build_turns,
+    )  # fmt: skip
+
+
 # When
 
 
@@ -137,3 +161,34 @@ def different_traces(state_dir):
 @then(parsers.parse("both carry cyclix.issue.id {issue:d}"))
 def both_carry(state_dir, issue):
     assert [line["attributes"]["cyclix.issue.id"] for line in log_lines(state_dir)] == [issue] * 2
+
+
+@then(
+    parsers.parse(
+        'every stage_run event for #{issue:d} has "{key}" set to the tenant\'s repository URL'
+    )
+)
+def events_carry_repository_url(world, result, issue, key):
+    found = [e["attributes"] for e in world.events() if e["attributes"]["cyclix.issue.id"] == issue]
+    assert found, result.stdout + result.stderr
+    assert [a.get(key) for a in found] == [f"https://github.com/{REPO}"] * len(found)
+
+
+@then(
+    parsers.parse(
+        'the plan event\'s "{key}" is written with no more than the settled number of decimal places'
+    )
+)
+def plan_cost_is_rounded(world, result, key):
+    plans = [e["attributes"] for e in world.events() if e["attributes"]["cyclix.stage"] == "plan"]
+    assert len(plans) == 1, result.stdout + result.stderr
+    cost = plans[0][key]
+    # 6 places is the rule in docs/design/v0.0.md, "The event log, schema version 0".
+    assert Decimal(repr(cost)).as_tuple().exponent >= -6, cost
+    assert cost == 0.366166
+
+
+@then(parsers.parse("the {stage} event records {turns:d} agent turns"))
+def event_records_turns(world, result, stage, turns):
+    [event] = [e for e in world.events() if e["attributes"]["cyclix.stage"] == stage]
+    assert event["attributes"]["cyclix.agent.turns"] == turns

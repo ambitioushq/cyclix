@@ -5,7 +5,7 @@ import record_gh_shapes as recorder
 from fakes.runner import run_gh
 from pytest_bdd import given, scenarios, then, when
 
-scenarios("gh_shapes.feature")
+scenarios(str(Path(__file__).parent / "gh_shapes.feature"))
 
 # What a recording holds besides the command and the gh version.
 SHAPE_KEYS = {"keys", "lines"}

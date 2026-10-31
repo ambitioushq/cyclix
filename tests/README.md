@@ -1,16 +1,18 @@
 # Tests
 
-The `.feature` files in `features/` are Cyclix's functional spec. Their steps live in `steps/`. `unit/` holds unit tests, kept for rules a scenario cannot reach cheaply.
+The `.feature` files in `features/` are Cyclix's functional spec. Each file covers one thing Cyclix does, and its `Feature:` title names that behaviour. A new scenario goes in the file for the capability it describes. Each feature file's steps are in the file of the same name in `steps/`, such as `steps/test_config.py` for `features/config.feature`. The sandbox feature is the exception: see "The sandbox".
 
-Every test file needs a basename unique across `steps/` and `unit/`, because the test folders are not packages. Name a unit file after the rules it checks, such as `unit/test_config_rules.py` beside `steps/test_config.py`.
+`harness/` holds the checks of the test footing and the repository, not of Cyclix's behaviour: the fakes, the recorded `gh` output shapes, the installed package and the README. Each feature file there sits beside its steps file, which names the feature by its path.
+
+`unit/` holds unit tests, kept for rules a scenario cannot reach cheaply.
+
+Every test file needs a basename unique across `steps/`, `harness/` and `unit/`, because the test folders are not packages. Name a unit file after the rules it checks, such as `unit/test_config_rules.py` beside `steps/test_config.py`.
 
 ## Tags
 
-Every scenario carries the tag of the issue that introduced it, such as `@issue-4`. A later issue that changes a scenario keeps the old tag and adds its own. `pytest -m issue_4` runs one issue's scenarios.
+A scenario tagged `@sandbox` runs against real GitHub. See "The sandbox" below.
 
-A scenario that needs code from a later issue carries `@xfail-until-<n>`, such as `@xfail-until-9`. It runs as a strict expected failure, so it fails the suite once it starts passing. The PR for issue n removes the tag. `unit/test_scenario_tags.py` fails if any scenario has no issue tag.
-
-A feature tagged `@live` is checked by hand against Cyclix's own repo and board, and recorded in the PR that adds it. No steps file binds it, so pytest never runs it. `features/self_tenant.feature` is the one such feature. To run the same check on its own: `uv run python tests/tag_check.py`.
+A feature tagged `@live` is checked by hand against Cyclix's own repo and board, and recorded in the PR that adds it. No steps file binds it, so pytest never runs it.
 
 ## The fake world
 
@@ -52,6 +54,6 @@ These steps are defined in `conftest.py`, so any feature can use them.
 CYCLIX_SANDBOX=1 uv run pytest -m sandbox
 ```
 
-`scripts/record_gh_shapes.py` records the shape of each `gh` command's output from the sandbox into `fixtures/gh-shapes/`. `features/gh_shapes.feature` runs the fake gh on the same commands and fails if its output has another shape. When real `gh` changes, run the script, commit the new recordings, and change the fake until the scenario passes.
+`scripts/record_gh_shapes.py` records the shape of each `gh` command's output from the sandbox into `fixtures/gh-shapes/`. `harness/gh_shapes.feature` runs the fake gh on the same commands and fails if its output has another shape. When real `gh` changes, run the script, commit the new recordings, and change the fake until the scenario passes.
 
 The workflow `.github/workflows/sandbox.yml` does both, by hand and weekly. It needs two secrets in the `sandbox` environment, which only runs from `main` can read: `CYCLIX_SANDBOX_TOKEN` (a token that can read and write the sandbox repo's contents, issues and PRs, the organization's projects, and the administration settings of `ambitioushq/cyclix`, read-only, because the script records the branch protection of Cyclix's own `main`) and `CLAUDE_CODE_OAUTH_TOKEN` (made with `claude setup-token`, so the agent runs on a Claude subscription, not the API).

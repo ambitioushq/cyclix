@@ -11,7 +11,7 @@ from pytest_bdd import given, parsers, scenarios, when
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-scenarios("package.feature")
+scenarios(str(Path(__file__).parent / "package.feature"))
 
 
 @given("Cyclix is installed from the working tree")

@@ -1,37 +1,31 @@
-Feature: The tenant config
+Feature: The tenant config loads, or names what is wrong with it
 
-  @issue-6
   Scenario: A complete config loads
     Given the example tenant config
     When the config is loaded
     Then the tenant is "cyclix"
     And the version starts with "sha256:"
 
-  @issue-6
   Scenario: A missing state mapping is named
     Given the example config without "needs_decision" under [tracker.states]
     When the config is loaded
     Then it fails with 'config: [tracker.states] is missing "needs_decision"'
 
-  @issue-6
   Scenario: An unknown key is refused
     Given the example config with "colour = 3" under [gate]
     When the config is loaded
     Then it fails with 'config: unknown key "colour" in [gate]'
 
-  @issue-6
   Scenario: CYCLIX_CONFIG picks the file
     Given CYCLIX_CONFIG points at a config for tenant "sandbox"
     When the config is loaded with no path
     Then the tenant is "sandbox"
 
-  @issue-55
   Scenario: Each agent stage has its own model, caps and tools
     Given the example tenant config
     When the config is loaded
     Then the plan stage uses "claude-opus-5-5" with 30 turns, a budget of 2.0 and the tools "Read Grep Glob"
 
-  @issue-55
   Scenario Outline: A budget cap must be a finite number above 0
     Given the example config with "max_budget_usd" set to <value> under [agent.build]
     When the config is loaded
@@ -44,7 +38,6 @@ Feature: The tenant config
       | nan   |
       | inf   |
 
-  @issue-55
   Scenario Outline: pass_env cannot let a credential or git's config through
     Given the example config with "pass_env" set to ["<name>"] under [<table>]
     When the config is loaded
@@ -60,7 +53,6 @@ Feature: The tenant config
       | agent | GIT_CONFIG_PARAMETERS   |
       | gate  | GIT_CONFIG_KEY_0        |
 
-  @issue-55
   Scenario Outline: A value the engine puts in a command or a path must have its expected form
     Given the example config with "<key>" set to <value> under [<table>]
     When the config is loaded
@@ -78,7 +70,6 @@ Feature: The tenant config
       | agent.plan  | model  | "--settings"     | a model name or alias                                                  |
       | agent.build | model  | "sonnet x"       | a model name or alias                                                  |
 
-  @issue-55
   Scenario Outline: A pass_env entry must be an environment variable name
     Given the example config with "pass_env" set to ["<name>"] under [<table>]
     When the config is loaded
@@ -90,7 +81,6 @@ Feature: The tenant config
       | gate  | A=B      |
       | gate  | HAS SPACE |
 
-  @issue-55
   Scenario Outline: A count in the config cannot be negative
     Given the example config with "<key>" set to <value> under [<table>]
     When the config is loaded
@@ -101,7 +91,6 @@ Feature: The tenant config
       | tracker | project      | 0     | a whole number of 1 or more |
       | limits  | runs_per_day | -1    | a whole number of 0 or more |
 
-  @issue-55
   Scenario Outline: A stage's tools must be tool rules, never flags
     Given the example config with "tools" set to ["Read", "<rule>"] under [agent.build]
     When the config is loaded
@@ -115,7 +104,6 @@ Feature: The tenant config
       | Bash(git commit *              |
       | Read, Write                    |
 
-  @issue-55
   Scenario Outline: A turn cap or timeout below 1 is refused
     Given the example config with "<key>" set to <value> under [<table>]
     When the config is loaded
@@ -128,7 +116,6 @@ Feature: The tenant config
       | agent       | timeout_minutes | 0     |
       | gate        | timeout_minutes | 0     |
 
-  @issue-55
   Scenario Outline: The agent command holds only the flags the engine allows
     Given the example config with the agent command "<command>"
     When the config is loaded
@@ -147,7 +134,6 @@ Feature: The tenant config
       | claude -p --output-format json                | --output-format                |
       | claude -p --verbose                           | --verbose                      |
 
-  @issue-55
   Scenario Outline: A flag in the agent command must have its value
     Given the example config with the agent command "<command>"
     When the config is loaded
@@ -158,7 +144,6 @@ Feature: The tenant config
       | claude -p --effort                      | --effort        |
       | claude -p --effort --max-turns 1        | --effort        |
 
-  @issue-55
   Scenario Outline: The allowed flags load in either form
     Given the example config with the agent command "<command>"
     When the config is loaded

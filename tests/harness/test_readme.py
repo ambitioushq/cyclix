@@ -3,7 +3,7 @@ from pathlib import Path
 
 from pytest_bdd import scenarios, then
 
-scenarios("readme.feature")
+scenarios(str(Path(__file__).parent / "readme.feature"))
 
 README = Path(__file__).resolve().parents[2] / "README.md"
 
