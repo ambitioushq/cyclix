@@ -18,6 +18,12 @@ def config_mapping(world, state, option):
     world.config.write_text(text)
 
 
+@given(parsers.parse('a valid tenant config whose agent command is "{command}"'))
+def config_agent_command(world, command):
+    text = world.config.read_text()
+    world.config.write_text(text.replace('command = ["fake-agent"]', f'command = ["{command}"]'))
+
+
 @given("gh is signed in")
 def gh_signed_in(world):
     world.set_logged_in(True)
@@ -43,6 +49,17 @@ def every_line_ends_in(result, text):
     lines = result.stdout.splitlines()
     assert lines, result.stderr
     assert all(line.endswith(text) for line in lines), result.stdout
+
+
+@then(parsers.parse('it reports "{failure}" with the fix "{fix}"'))
+def reports_with_fix(world, result, failure, fix):
+    """The failure line, then its fix line; <config> stands for the config file's path."""
+    failure = failure.replace('\\"', '"')
+    fix = fix.replace('\\"', '"').replace("<config>", str(world.config))
+    lines = result.stdout.splitlines()
+    assert failure in lines, result.stdout
+    index = lines.index(failure)
+    assert lines[index + 1 : index + 2] == [f"  fix: {fix}"], result.stdout
 
 
 # The rules a ruleset adds to protect a branch, in the shape GitHub lists them.
