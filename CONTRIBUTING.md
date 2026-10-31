@@ -12,12 +12,11 @@ It does not mean the project is closed. The maintainer reads every issue and dec
 
 1. **Report bugs.** A bug you can reproduce is the most useful thing you can send. [Open an issue](https://github.com/ambitioushq/cyclix/issues/new/choose) with what you ran, what you expected, and what happened. Leave out secrets, tokens and private repository names, because issues are public. A security problem goes through private reporting instead, as [SECURITY.md](SECURITY.md) explains.
 2. **Share use cases and design feedback.** Tell us where Cyclix fits your repository or workflow badly, or where the docs mislead you. [Open an issue](https://github.com/ambitioushq/cyclix/issues) for it.
-3. **Fix the documentation.** Corrections and clarifications are welcome. [Open an issue](https://github.com/ambitioushq/cyclix/issues), or send a small fix straight as a pull request.
+3. **Fix the documentation.** Corrections and clarifications are welcome. [Open an issue](https://github.com/ambitioushq/cyclix/issues) for each one. Once we agree on the fix, you can send it as a pull request.
 
 ## Code contributions
 
-- **Small, obvious fixes** can come straight as a pull request. That means a typo, a docstring, or a one-line bug fix that is clearly correct.
-- **Anything larger starts with an issue.** A new feature, a change in behaviour, or a refactor needs an issue where we agree the approach before you write code. A large pull request that arrives without one may not be merged, however good the code is. Most of a change's cost is not the diff. It is whether the change fits the design, and the work of keeping it up afterwards.
+- **Every pull request starts with an issue**, even a typo or a one-line fix. Open the issue first, and write code once we agree on the approach there. A pull request that arrives without one is not merged, however good the code is. Most of a change's cost is not the diff. It is whether the change fits the design, and the work of keeping it up afterwards.
 - **A pull request made with an AI tool meets the same bar, and the bar is understanding.** The pull request is tied to an agreed issue. You can explain every part of the change and why it fits Cyclix's design. A pull request that reads as unreviewed AI output is closed: one with no linked issue, generated boilerplate, or changes its author cannot explain. Judging whether a change fits the design is the real work, and a tool cannot do it for you.
 
 None of this is a judgement of your work. It is how one maintainer keeps one design. If that does not suit you, the Apache license lets you fork Cyclix.
