@@ -20,7 +20,9 @@ This list holds every rule a change follows that a review can check.
 - A design choice the PR makes is listed under "Design notes" in the PR body and recorded in a design doc. Flag a design choice made silently.
 - Any difference from the issue is explained in the Summary.
 - The PR body states the change and its reason directly. Flag a body that says who asked for, decided or approved a change, or that mentions the maintainer.
-- A code comment says why the code does something a reader could not work out from the code. Flag a comment that describes the change, or names an issue, PR or line number.
+- A docstring states the contract a caller relies on: what the code does, returns, raises or changes. Flag a docstring that walks through how the code works, or states a behaviour promise no test checks.
+- A code comment says why the code does something a reader could not work out from the code. Flag a comment that describes the change, or names a line number, a count or version history. Flag commented-out code. The version beside a pinned action's SHA is required (see "Workflow files").
+- Flag an issue or PR number in a comment or docstring, except in `TODO(#123): reason` or in a regression test's docstring that states the behaviour in words first. An issue in another repo uses the full name (`owner/repo#123`).
 
 ## Workflow files
 
