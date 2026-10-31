@@ -55,7 +55,7 @@ def prints_difference(result):
 
 @then("the unit is unchanged")
 def unit_unchanged(world):
-    assert (world.units_dir / "cyclix-cyclix.service").read_text() == DIFFERENT_UNIT
+    assert (world.units_dir / "cyclix-storefront.service").read_text() == DIFFERENT_UNIT
 
 
 @then(parsers.parse('the unit "{name}" holds "{line}"'))

@@ -62,7 +62,7 @@ def test_the_version_changes_with_the_file(tmp_path):
 @pytest.mark.parametrize(
     ("old", "new", "message"),
     [
-        ('owner = "ambitioushq"\n', "", 'config: [tracker] is missing "owner"'),
+        ('owner = "acme"\n', "", 'config: [tracker] is missing "owner"'),
         (LIMITS_SECTION, "", "config: missing table [limits]"),
         ("[limits]", "[limits.extra]\n[limits]", "config: unknown table [limits.extra]"),
         ("[tenant]", "[other]\n[tenant]", "config: unknown table [other]"),
@@ -70,7 +70,7 @@ def test_the_version_changes_with_the_file(tmp_path):
         ('kind = "github"\nrepo', 'kind = "gitlab"\nrepo', 'config: [codehost] kind must be "github", not "gitlab"'),
         ("project = 1", 'project = "1"', 'config: [tracker] "project" must be a whole number of 1 or more'),
         ("project = 1", "project = true", 'config: [tracker] "project" must be a whole number of 1 or more'),
-        ('name = "cyclix"', "name = 5", 'config: [tenant] "name" must be a string'),
+        ('name = "storefront"', "name = 5", 'config: [tenant] "name" must be a string'),
         ("runs_per_day = 6", "runs_per_day = 6\nrun_per_day = 6", 'config: unknown key "run_per_day" in [limits]'),
     ],
 )  # fmt: skip
@@ -125,15 +125,15 @@ def test_the_tenant_name_finds_the_file_in_the_config_folder(monkeypatch, tmp_pa
     else:
         monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
         folder = tmp_path / ".config"
-    path = folder / "cyclix" / "cyclix.toml"
+    path = folder / "cyclix" / "storefront.toml"
     path.parent.mkdir(parents=True)
     path.write_text(example())
-    assert config.load(tenant="cyclix").tenant.name == "cyclix"
+    assert config.load(tenant="storefront").tenant.name == "storefront"
 
 
 def test_the_path_argument_wins_over_the_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("CYCLIX_CONFIG", str(tmp_path / "nope.toml"))
-    assert config.load(EXAMPLE).tenant.name == "cyclix"
+    assert config.load(EXAMPLE).tenant.name == "storefront"
 
 
 def test_no_path_no_env_no_tenant_is_an_error(monkeypatch):

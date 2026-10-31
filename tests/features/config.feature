@@ -3,7 +3,7 @@ Feature: The tenant config loads, or names what is wrong with it
   Scenario: A complete config loads
     Given the example tenant config
     When the config is loaded
-    Then the tenant is "cyclix"
+    Then the tenant is "storefront"
     And the version starts with "sha256:"
 
   Scenario: A missing state mapping is named
@@ -64,7 +64,7 @@ Feature: The tenant config loads, or names what is wrong with it
       | tenant      | name   | "-x"             | letters, digits, ".", "_" and "-", starting with a letter or digit     |
       | tracker     | owner  | "--help"         | a GitHub user or organization name                                     |
       | codehost    | repo   | "--upload-pack"  | a GitHub repository written as owner/name                              |
-      | codehost    | repo   | "ambitioushq"    | a GitHub repository written as owner/name                              |
+      | codehost    | repo   | "acme"           | a GitHub repository written as owner/name                              |
       | codehost    | base   | "-b"             | a branch name                                                          |
       | codehost    | base   | "main..other"    | a branch name                                                          |
       | agent.plan  | model  | "--settings"     | a model name or alias                                                  |

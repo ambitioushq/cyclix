@@ -1,9 +1,9 @@
 [tenant]
-name = "cyclix"
+name = "storefront"
 
 [tracker]
 kind = "github"
-owner = "ambitioushq"
+owner = "acme"
 project = 1
 status_field = "Status"
 
@@ -17,7 +17,7 @@ done = "Done"
 
 [codehost]
 kind = "github"
-repo = "ambitioushq/cyclix"
+repo = "acme/storefront"
 base = "main"
 
 [agent]
