@@ -1,6 +1,5 @@
 Feature: The engine makes only the moves in the transition table
 
-  @issue-8
   Scenario Outline: Allowed moves
     Then <writer> may move an item from <from> to <to>
 
@@ -13,12 +12,10 @@ Feature: The engine makes only the moves in the transition table
       | reconciler | In review   | Done           |
       | reconciler | In review   | Parked         |
 
-  @issue-8
   Scenario: The engine never moves an item back to Ready
     Then no engine writer may move an item from Parked to Ready
     And no engine writer may move an item from Needs decision to Ready
 
-  @issue-8
   Scenario: An illegal move changes nothing on the board
     Given an issue #4 in state "Parked" on the board
     When the PR station tries to move #4 to "In review"

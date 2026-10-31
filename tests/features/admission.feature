@@ -1,5 +1,21 @@
-@issue-44
-Feature: WIP limits stop admission while a column is full
+Feature: Admission takes a Ready issue from the board when there is room
+
+  Scenario: Admission ignores issues that are not on the board
+    Given an open #30 with no board item
+    And an issue #12 in state "Ready" on the board
+    When one pass runs
+    Then issue #12 is admitted
+    And issue #30 is never read
+
+  Scenario: Admission never reads comments
+    Given an issue #12 in state "Ready" on the board with a comment from a non-maintainer
+    When one pass runs
+    Then no gh call reads #12's comments
+
+  Scenario: Only one item is In progress at a time
+    Given issue #12 is In progress and issue #13 is Ready
+    When one pass runs
+    Then issue #13 stays in "Ready"
 
   Scenario: A full In review column stops admission
     Given the config sets a WIP limit of 2 on in_review

@@ -1,6 +1,6 @@
 Closes #
 
-<!-- First line: "Closes #<issue>". A PR that works from a plan item starts with "Refs #<umbrella issue>" instead, and names the board item it covers. -->
+<!-- First line: "Closes #<issue>" when the PR resolves an issue. A PR without an issue deletes the line. -->
 
 ## What changed
 
@@ -8,7 +8,7 @@ Closes #
 
 ## Scenarios
 
-<!-- Every scenario this PR adds, changes or removes, by feature file and name. Each scenario carries the tag of the issue that introduced it, such as @issue-7. -->
+<!-- Every scenario this PR adds, changes or removes, by feature file and name. -->
 
 - Added:
 - Changed:

@@ -1,5 +1,5 @@
-@sandbox @issue-15
-Feature: The spine works against real GitHub
+@sandbox
+Feature: A real issue reaches an open PR and then Done on real GitHub
 
   Scenario: A real issue reaches an open PR and then Done
     Given a new issue in the sandbox repository, in state "Ready" on the sandbox board

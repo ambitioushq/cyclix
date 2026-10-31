@@ -1,4 +1,3 @@
-@issue-15
 Feature: The fake gh matches real gh output
 
   Scenario: Each fake command returns the same keys as the real one

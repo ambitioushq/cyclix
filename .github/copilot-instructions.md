@@ -7,14 +7,14 @@ Read these before reviewing:
 - `CLAUDE.md`: the rules every change follows. Where this file and `CLAUDE.md` differ, `CLAUDE.md` wins.
 - `docs/design/overview.md`: what Cyclix is, who owns each fact, and how the work is done.
 - `docs/design/v0.0.md`: the design of the parts built so far.
-- `tests/README.md`: how the tests are laid out and tagged.
+- `tests/README.md`: how the tests are laid out.
 
 ## Check every PR for these
 
-- The PR body follows `.github/pull_request_template.md`. Its first line is `Closes #<issue>`, or `Refs #<umbrella issue>` for work from a plan item, and then the body names the board item it covers.
+- The PR body follows `.github/pull_request_template.md`. When the PR resolves an issue, its first line is `Closes #<issue>`. A PR without an issue needs no issue line.
 - The runtime imports only the standard library. A new runtime dependency needs a written reason in the design docs.
 - No private project, client or account names, private paths or tokens, in files or commit messages. The repository is public.
-- New behaviour has a scenario in `tests/features/`, tagged with the issue that introduced it, such as `@issue-7`. A unit test is used only where a scenario cannot reach a rule cheaply.
+- New behaviour has a scenario in the file in `tests/features/` for the capability it describes. A unit test is used only where a scenario cannot reach a rule cheaply.
 - A design choice the PR makes is listed under "Decisions" in the PR body and recorded in a design doc. Flag a design choice made silently.
 - Any difference from the issue is listed under "Changed from the issue".
 - A code comment says why the code does something a reader could not work out from the code. Flag a comment that describes the change, or names an issue, PR or line number.

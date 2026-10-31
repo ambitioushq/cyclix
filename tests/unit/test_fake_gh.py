@@ -1,6 +1,6 @@
 """How the fake gh behaves beyond the shape of its output.
 
-The shape scenario (features/gh_shapes.feature) checks that its output has the
+The shape scenario (harness/gh_shapes.feature) checks that its output has the
 same keys as real gh, from recordings made on the sandbox.
 """
 

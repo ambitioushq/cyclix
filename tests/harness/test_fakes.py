@@ -1,7 +1,5 @@
 import json
 import shlex
-import subprocess
-import sys
 from pathlib import Path
 
 from fakes.runner import run_agent, run_gh
@@ -10,9 +8,7 @@ from pytest_bdd import given, parsers, scenarios, then, when
 
 from cyclix.adapters.github_tracker import BOARD_ITEMS
 
-TAG_CHECK = Path(__file__).resolve().parents[1] / "tag_check.py"
-
-scenarios("fakes.feature")
+scenarios(str(Path(__file__).parent / "fakes.feature"))
 
 
 # The fake gh
@@ -92,38 +88,6 @@ def first_call_fails(results, code, text):
 def second_call_succeeds(results):
     assert results[1].returncode == 0, results[1].stderr
     assert results[1].stdout.strip().startswith("https://github.com/o/r/pull/")
-
-
-# The tag check
-
-
-@given("a feature file with a scenario that has no @issue tag", target_fixture="features_dir")
-def untagged_feature(tmp_path):
-    features = tmp_path / "features"
-    features.mkdir()
-    (features / "loose.feature").write_text(
-        "Feature: Loose\n\n"
-        "  @issue-1\n"
-        "  Scenario: Tagged\n"
-        "    Given something\n\n"
-        "  Scenario: Not tagged\n"
-        "    Given something\n"
-    )
-    return features
-
-
-@when("the tag check runs", target_fixture="result")
-def tag_check_runs(features_dir):
-    return subprocess.run(
-        [sys.executable, TAG_CHECK, features_dir], capture_output=True, text=True, check=False
-    )
-
-
-@then("it fails and names the scenario")
-def tag_check_fails(result):
-    assert result.returncode == 1
-    assert "Not tagged" in result.stdout
-    assert "Tagged" not in result.stdout.replace("Not tagged", "")
 
 
 # The fake agent

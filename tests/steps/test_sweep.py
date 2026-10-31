@@ -1,10 +1,8 @@
 import fcntl
 import re
-from decimal import Decimal
 
 import pytest
 from fakes.runner import run_cyclix
-from fakes.world import REPO
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from cyclix.state.core import RunStart
@@ -81,20 +79,6 @@ def pass_running(world):
     lock.close()
 
 
-@given(parsers.parse("issue #{busy:d} is In progress and issue #{ready:d} is Ready"))
-def one_in_progress(world, busy, ready):
-    world.add_issue(busy, state="In progress")
-    world.add_issue(ready, state="Ready")
-
-
-@given(parsers.parse("the agent reports a cost of {cost}"))
-def agent_reports_cost(world, cost):
-    world.add_agent_step(answer="## Approach\nChange one file.\n", cost_usd=float(cost))
-    world.add_agent_step(
-        files={"change.txt": "a change\n"}, commit=True, answer="done", cost_usd=float(cost)
-    )
-
-
 # When
 
 
@@ -119,31 +103,6 @@ def events_at_stages(world, result, issue, first, middle, last):
         if e["attributes"]["cyclix.issue.id"] == issue
     ]
     assert stages == wanted, result.stdout + result.stderr
-
-
-@then(
-    parsers.parse(
-        'every stage_run event for #{issue:d} has "{key}" set to the tenant\'s repository URL'
-    )
-)
-def events_carry_repository_url(world, result, issue, key):
-    found = [e["attributes"] for e in world.events() if e["attributes"]["cyclix.issue.id"] == issue]
-    assert found, result.stdout + result.stderr
-    assert [a.get(key) for a in found] == [f"https://github.com/{REPO}"] * len(found)
-
-
-@then(
-    parsers.parse(
-        'the plan event\'s "{key}" is written with no more than the settled number of decimal places'
-    )
-)
-def plan_cost_is_rounded(world, result, key):
-    plans = [e["attributes"] for e in world.events() if e["attributes"]["cyclix.stage"] == "plan"]
-    assert len(plans) == 1, result.stdout + result.stderr
-    cost = plans[0][key]
-    # 6 places is the rule in docs/design/v0.0.md, "The event log, schema version 0".
-    assert Decimal(repr(cost)).as_tuple().exponent >= -6, cost
-    assert cost == 0.366166
 
 
 @then(parsers.parse("no PR for #{issue:d} exists"))
@@ -178,9 +137,3 @@ def stage_event(world, result, issue, stage, outcome):
 def board_shows_with_reason(world, issue, state, reason):
     assert world.board_state(issue) == state
     assert world.comments(issue) == [f"Parked: {reason}"]
-
-
-@then(parsers.parse('issue #{issue:d} stays in "{state}"'))
-def stays_in(world, result, issue, state):
-    assert result.returncode == 0, result.stderr
-    assert world.board_state(issue) == state
