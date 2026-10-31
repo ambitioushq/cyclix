@@ -12,7 +12,7 @@ run still open when a pass holds the lock was left by a pass that died.
 """
 
 import fcntl
-import sys
+import logging
 import time
 from collections import Counter
 from contextlib import contextmanager
@@ -37,6 +37,8 @@ from cyclix.state.core import RunStart, StateError
 from cyclix.state.sqlite import SqliteStateCore
 from cyclix.workstate import IllegalMove, State, Writer, move
 
+logger = logging.getLogger(__name__)
+
 OK, FAILED = 0, 1
 
 # The stages after admission, in order.
@@ -53,7 +55,7 @@ def sweep(config):
     """Make one pass. Return 0 when it completes, 1 when it stops on an error."""
     with locked(config) as held:
         if not held:
-            print("another pass is running")
+            logger.info("another pass is running")
             return OK
         state = SqliteStateCore(config.state_dir)
         try:
@@ -62,7 +64,7 @@ def sweep(config):
                 ClaudeCode(config.agent), STAGES,
             ).run()  # fmt: skip
         except PASS_ERRORS as error:
-            print(f"cyclix run: {error}", file=sys.stderr)
+            logger.error("cyclix run: %s", error)
             return FAILED
         finally:
             state.close()
@@ -95,6 +97,7 @@ class Sweep:
 
     def run(self):
         items = self.tracker.items()
+        logger.debug("the board read returned %d items", len(items))
         # Issue number -> state, oldest issue first. Kept up to date with the pass's own moves.
         board = {item.issue: item.state for item in items}
         self.end_crashed_runs(board)
@@ -113,6 +116,7 @@ class Sweep:
                 self.move(run.issue, State.PARKED, reason, Writer.SWEEP)
                 board[run.issue] = State.PARKED
             self.end(run.run_id, "crashed", reason)
+            logger.debug("ended run %s for #%d as crashed", run.run_id, run.issue)
 
     def release_claims(self, board):
         """Release each claim whose item a human, or this pass, took out of the engine's hands."""
@@ -154,11 +158,11 @@ class Sweep:
         if State.IN_PROGRESS in board.values():
             return
         if full := self.full_column(board):
-            print(f"admission waits: {full}")
+            logger.info("admission waits: %s", full)
             return
         limit = self.config.limits.runs_per_day
         if self.state.runs_today(self.tenant) >= limit:
-            print(f"the day's limit of {limit} runs is reached")
+            logger.info("the day's limit of %d runs is reached", limit)
             return
         ready = [issue for issue, state in board.items() if state is State.READY]
         if not ready:
@@ -167,6 +171,7 @@ class Sweep:
         run_id = new_run_id(issue)
         if not self.state.claim(self.tenant, issue, run_id):
             return
+        logger.debug("admitted #%d as %s", issue, run_id)
         ctx = self.context(issue, run_id)
         for stage in (Admission(), *self.stages):
             if not self.run_stage(stage, ctx):
@@ -193,6 +198,10 @@ class Sweep:
             schema.REPOSITORY_URL: f"https://github.com/{self.config.codehost.repo}",
             schema.DURATION_MS: round((time.monotonic() - started) * 1000),
         }
+        logger.debug(
+            "stage %s for #%d %s after %d ms: %s",
+            name, issue, result.outcome, fields[schema.DURATION_MS], result.reason,
+        )  # fmt: skip
         if ctx.worktree is not None:
             fields[schema.HEAD_NAME] = ctx.worktree.branch
         self.state.add_fields(run_id, {**fields, **result.fields})
@@ -224,6 +233,7 @@ class Sweep:
             # Removing a worktree needs only its path, so the branch is left empty.
             self.codehost.remove_worktree(Worktree(issue=issue, branch="", path=path))
         self.state.release(self.tenant, issue)
+        logger.debug("released the claim on #%d", issue)
 
     def run_dir(self, issue, run_id):
         return self.config.state_dir / "runs" / self.tenant / str(issue) / run_id

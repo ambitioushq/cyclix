@@ -208,10 +208,11 @@ def test_a_run_that_crashed_in_the_removed_review_stage_is_ended_after_the_upgra
     assert world.comments(12) == ["Parked: run crashed in phase none"]
 
 
-def test_a_failed_board_read_fails_the_pass(world, capsys):
+def test_a_failed_board_read_fails_the_pass(world, caplog):
     world.add_fault("api graphql", exit=1, stderr="HTTP 502")
     assert sweep(world) == 1
-    assert "HTTP 502" in capsys.readouterr().err
+    [record] = [r for r in caplog.records if r.levelname == "ERROR"]
+    assert "HTTP 502" in record.getMessage()
 
 
 def test_runs_today_counts_each_run_once_by_the_utc_date(tmp_path):

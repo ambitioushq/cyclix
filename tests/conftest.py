@@ -167,6 +167,22 @@ def exits_with(result, code):
     assert result.returncode == code, result.stdout + result.stderr
 
 
+@then("it writes nothing")
+def writes_nothing(result):
+    assert (result.stdout, result.stderr) == ("", "")
+
+
+@then(parsers.parse('it logs "{text}"'))
+def logs(result, text):
+    text = text.replace('\\"', '"')  # a quote inside the quoted text is written \"
+    assert text in result.stderr.splitlines(), result.stderr
+
+
+@then(parsers.parse('a log line starts with "{text}"'))
+def log_line_starts_with(result, text):
+    assert any(line.startswith(text) for line in result.stderr.splitlines()), result.stderr
+
+
 @then(parsers.parse('it prints "{text}"'))
 def prints(result, text):
     text = text.replace('\\"', '"')  # a quote inside the quoted text is written \"

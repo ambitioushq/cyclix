@@ -1,4 +1,6 @@
-"""Rules of the gh runner: every failure becomes a GhError."""
+"""Rules of the gh runner: every failure becomes a GhError, and no log record holds a body."""
+
+import logging
 
 import pytest
 
@@ -41,3 +43,12 @@ def test_a_call_that_hangs_is_a_gh_error(monkeypatch, tmp_path):
     with pytest.raises(gh.GhError) as error:
         gh.run("auth", "status")
     assert (error.value.code, error.value.stderr) == (124, "no answer after 0.1 seconds")
+
+
+def test_a_call_is_logged_without_its_body(world, caplog):
+    world.add_issue(12, state="Ready")
+    with caplog.at_level(logging.DEBUG, logger="cyclix"):
+        gh.run("issue", "comment", "12", "-R", "o/r", "--body", "a secret body")
+    messages = [record.getMessage() for record in caplog.records]
+    assert any(m.startswith("gh issue comment exited 0 after ") for m in messages), messages
+    assert not any("secret" in m for m in messages), messages

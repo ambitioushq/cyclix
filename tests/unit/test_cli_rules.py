@@ -1,5 +1,6 @@
 """Rules of the cyclix command that the scenarios in cli.feature do not reach."""
 
+import logging
 import os
 import subprocess
 import sys
@@ -7,6 +8,8 @@ from pathlib import Path
 
 import pytest
 from fakes.runner import BIN, environment, run_cyclix
+
+from cyclix import cli
 
 
 def lines(result):
@@ -27,6 +30,19 @@ def test_run_with_a_bad_config_fails(world):
     result = run_cyclix(world, "run")
     assert result.returncode == 1
     assert result.stderr == 'config: [tenant] is missing "name"\n'
+
+
+def test_setting_up_logging_again_replaces_the_handler():
+    cyclix = logging.getLogger("cyclix")
+    try:
+        cli.set_up_logging(verbose=False)
+        cli.set_up_logging(verbose=True)
+        assert len(cyclix.handlers) == 1
+        assert cyclix.level == logging.DEBUG
+    finally:
+        for handler in cyclix.handlers[:]:
+            cyclix.removeHandler(handler)
+        cyclix.setLevel(logging.NOTSET)
 
 
 def test_no_subcommand_is_a_usage_error(world):

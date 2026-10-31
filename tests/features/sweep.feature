@@ -8,6 +8,15 @@ Feature: One pass of the loop
     Then a PR for #12 is open
     And the board shows #12 in "In review"
     And the event log holds stage_run events for #12 at admission, plan, build, gate and pr
+    And it writes nothing
+
+  Scenario: A verbose pass logs each stage's outcome
+    Given an issue #12 in state "Ready" on the board
+    And the agent writes a plan, then commits a change
+    And the gate commands pass
+    When I run "cyclix run --verbose"
+    Then it exits 0
+    And a log line starts with "DEBUG cyclix.runner: stage plan for #12 passed after "
 
   Scenario: A failing stage stops the run and parks the item
     Given an issue #12 in state "Ready" on the board
@@ -34,4 +43,4 @@ Feature: One pass of the loop
     Given a pass is running for the tenant
     When a second pass starts
     Then it exits 0
-    And it prints "another pass is running"
+    And it logs "another pass is running"
