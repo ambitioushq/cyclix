@@ -39,7 +39,9 @@ class ClaudeCode:
         """timeout_seconds, when given, takes the place of the config's timeout."""
         self.command = agent_config.command
         self.timeout_minutes = agent_config.timeout_minutes
-        self.timeout_seconds = timeout_seconds or agent_config.timeout_minutes * 60
+        if timeout_seconds is None:
+            timeout_seconds = agent_config.timeout_minutes * 60
+        self.timeout_seconds = timeout_seconds
         self.grace_seconds = grace_seconds
         self.pass_env = agent_config.pass_env
 

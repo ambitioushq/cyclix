@@ -54,6 +54,16 @@ def test_a_missing_command_is_an_error_not_an_exception(tmp_path):
     assert (result.is_error, result.reason) == (True, "agent command not found: no-such-agent-cmd")
 
 
+def test_a_timeout_of_zero_seconds_is_kept(tmp_path):
+    agent = claude_code.ClaudeCode(
+        Agent(("/bin/sh", "-c", "sleep 30"), 1, (), STAGE, STAGE),
+        timeout_seconds=0,
+        grace_seconds=0,
+    )
+    result = agent.run("hi", cwd=tmp_path, stage=STAGE, run_dir=tmp_path / "run")
+    assert (result.is_error, result.reason) == (True, "timeout after 1 minutes")
+
+
 def test_calls_in_one_run_folder_are_numbered(tmp_path):
     agent = claude_code.ClaudeCode(Agent(("true",), 1, (), STAGE, STAGE))
     for _ in range(2):

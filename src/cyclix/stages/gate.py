@@ -29,7 +29,9 @@ class Gate:
         checks = []
         fields = {schema.HEAD_REVISION: sha, schema.GATE_CHECKS: checks}
         timeout_minutes = ctx.config.gate.timeout_minutes
-        timeout = self.timeout_seconds or timeout_minutes * 60
+        timeout = self.timeout_seconds
+        if timeout is None:
+            timeout = timeout_minutes * 60
         env = environment.for_gate(ctx.config.gate.pass_env, ctx.run_dir, ctx.worktree.path)
         for n, command in enumerate(ctx.config.gate.commands, 1):
             name = shlex.join(command)[: schema.MAX_STRING]

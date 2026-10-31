@@ -172,6 +172,16 @@ def test_a_gate_command_past_the_timeout_is_stopped_with_its_children(world):
     assert gone(int(pid_file.read_text()))
 
 
+def test_a_gate_timeout_of_zero_seconds_is_kept(world):
+    world.add_issue(12, state="Ready")
+    world.add_plan_and_commit()
+    set_gate(world, [["sleep", "30"]])
+    started = time.monotonic()
+    sweep_with(world, stages=(Plan(), Build(), Gate(timeout_seconds=0), PR()))
+    assert events(world, 12)[-1]["cyclix.outcome.reason"] == "gate command 1 ran past 1 minutes"
+    assert time.monotonic() - started < 25
+
+
 def gone(pid):
     """Whether the process has ended. A killed child may take a moment to be reaped."""
     for _ in range(50):
