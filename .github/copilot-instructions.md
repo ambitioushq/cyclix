@@ -16,8 +16,9 @@ This list holds every rule a change follows that a review can check.
 - The runtime imports only the standard library. A new runtime dependency needs a written reason in the design docs.
 - No private project, client or account names, private paths or tokens, in files or commit messages. The repository is public.
 - New behaviour has a scenario in the file in `tests/features/` for the capability it describes. A unit test is used only where a scenario cannot reach a rule cheaply.
-- A design choice the PR makes is listed under "Decisions" in the PR body and recorded in a design doc. Flag a design choice made silently.
-- Any difference from the issue is listed under "Changed from the issue".
+- A design choice the PR makes is listed under "Design notes" in the PR body and recorded in a design doc. Flag a design choice made silently.
+- Any difference from the issue is explained in the Summary.
+- The PR body states the change and its reason directly. Flag a body that says who asked for, decided or approved a change, or that mentions the maintainer.
 - A code comment says why the code does something a reader could not work out from the code. Flag a comment that describes the change, or names an issue, PR or line number.
 
 ## Workflow files

@@ -1,27 +1,13 @@
-Closes #
+<!-- If this PR resolves an issue, put "Closes #<number>" on the first line. Otherwise delete this comment. -->
 
-<!-- First line: "Closes #<issue>" when the PR resolves an issue. A PR without an issue deletes the line. -->
+## Summary
 
-## What changed
+<!-- What changes, and why. If the PR differs from its issue, say how and why. Name any follow-up issue filed. -->
 
-<!-- Plain sentences: what the engine does now that it did not before. -->
+## Testing
 
-## Scenarios
+<!-- The scenarios added, changed or removed, by feature file and name, and the checks run. -->
 
-<!-- Every scenario this PR adds, changes or removes, by feature file and name. -->
+## Design notes
 
-- Added:
-- Changed:
-- Removed:
-
-## Changed from the issue
-
-<!-- Any difference from the issue's acceptance scenarios or its "What to build" list, and why. Write "None" if there is none. The issue body is never edited after filing; differences are recorded here. -->
-
-## Decisions
-
-<!-- Design questions settled while building, with the design doc section that now records each one. Write "None" if there is none. -->
-
-## Follow-ups
-
-<!-- Issues filed for work this PR found but did not do. Write "None" if there is none. -->
+<!-- Each design choice this PR makes, with the design doc section that records it. Delete this section if there are none. -->
