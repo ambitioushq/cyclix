@@ -41,7 +41,10 @@ Run the same checks CI runs before you open a pull request:
 ```sh
 uv run ruff check
 uv run ruff format --check
-uv run pytest
+uv run coverage run -m pytest
+uv run coverage report
 ```
+
+CI fails when test coverage drops below the floor set by `fail_under` in `pyproject.toml`.
 
 [tests/README.md](tests/README.md) explains how the tests are laid out, and where a new scenario goes.

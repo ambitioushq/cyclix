@@ -13,7 +13,7 @@ Read these before reviewing:
 This list holds every rule a change follows that a review can check.
 
 - The PR body follows `.github/pull_request_template.md`. When the PR resolves an issue, its first line is `Closes #<issue>`. A PR without an issue needs no issue line.
-- A PR from someone outside `@ambitioushq/maintainers` that changes behaviour links the issue where its approach was agreed. Flag one that does not. The rule above, that a PR without an issue needs no issue line, covers only maintainer PRs.
+- A PR from someone outside `@ambitioushq/maintainers` may skip an issue when it is a small, obvious fix: a typo, a docstring, or a one-line bug fix that is clearly correct, as `CONTRIBUTING.md` allows. Any other outside PR that changes behaviour links the issue where its approach was agreed. Flag one that does not. The rule above, that a PR without an issue needs no issue line, covers maintainer PRs and these small fixes only.
 - The runtime imports only the standard library. A new runtime dependency needs a written reason in the design docs.
 - No private project, client or account names, private paths or tokens, in files or commit messages. The repository is public.
 - New behaviour has a scenario in the file in `tests/features/` for the capability it describes. A unit test is used only where a scenario cannot reach a rule cheaply.
