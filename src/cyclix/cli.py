@@ -126,7 +126,8 @@ def check_command(args):
         elif result.failure is None:
             print(f"{result.what}: ok")
         else:
-            print(f"FAIL: {result.what}: {result.failure}")
+            # gh's errors can run over several lines, which would part the fix from its failure.
+            print(f"FAIL: {result.what}: {' '.join(result.failure.split())}")
             print(f"  fix: {result.fix}")
     return FAILED if any(r.failure is not None for r in results) else OK
 
@@ -263,8 +264,14 @@ def check_protection(codehost):
     if not missing:
         return Result(what)
     if unreadable:
-        fix = f'protect "{base}" with a ruleset in the settings of {repo}, '
-        fix += f"or sign gh in as an admin of {repo}"
+        # GitHub protects no branch of a private repository on a free plan, so
+        # neither a ruleset nor admin rights help there.
+        if "make this repository public" in unreadable:
+            fix = f"make {repo} public, or move its owner to a paid GitHub plan; "
+            fix += f'then add a ruleset for "{base}" in the settings of {repo}'
+        else:
+            fix = f'protect "{base}" with a ruleset in the settings of {repo}, '
+            fix += f"or sign gh in as an admin of {repo}"
         return Result(what, f"cannot read it: {unreadable}", fix)
     gaps = and_list([gap for gap, _ in missing])
     settings = and_list([f'"{setting}"' for _, setting in missing])

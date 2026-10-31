@@ -124,6 +124,36 @@ def test_an_unreadable_board_fails(world):
     ), result.stdout
 
 
+def test_a_failure_over_several_lines_prints_on_one(world):
+    world.add_fault("project field-list", exit=1, stderr="error: one\nTo fix it: two\n")
+    result = run_cyclix(world, "check")
+    assert result.returncode == 1
+    assert reports(
+        result,
+        "FAIL: board o/1: cannot read it: error: one To fix it: two",
+        f"check [tracker] owner and project in {world.config}; "
+        'if they are right, run "gh auth refresh -s read:project"',
+    ), result.stdout
+
+
+def test_unreadable_protection_says_to_add_a_ruleset_or_sign_in_as_an_admin(world):
+    data = world.load()
+    data["rules"] = []
+    world.save(data)
+    world.add_fault(
+        "api repos/o/r/branches/main/protection",
+        stderr="gh: Must have admin rights to Repository. (HTTP 403)\n",
+    )
+    result = run_cyclix(world, "check")
+    assert result.returncode == 1
+    assert reports(
+        result,
+        'FAIL: protection of the base branch "main": cannot read it: '
+        "gh: Must have admin rights to Repository. (HTTP 403)",
+        'protect "main" with a ruleset in the settings of o/r, or sign gh in as an admin of o/r',
+    ), result.stdout
+
+
 @pytest.mark.skipif(os.geteuid() == 0, reason="root can write anywhere")
 def test_a_state_dir_that_cannot_be_written_fails(world):
     world.state_dir.chmod(0o500)

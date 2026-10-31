@@ -49,13 +49,13 @@ Feature: The cyclix command checks a tenant's setup and refuses unknown subcomma
     When I run "cyclix check"
     Then it exits 0
 
-  Scenario: check fails when it cannot read the base branch's protection
+  Scenario: check fails when the repository's plan hides the base branch's protection
     Given a valid tenant config
     And the base branch has no ruleset
     And its branch protection settings cannot be read
     When I run "cyclix check"
     Then it exits 1
-    And it reports "FAIL: protection of the base branch \"main\": cannot read it: gh: Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)" with the fix "protect \"main\" with a ruleset in the settings of o/r, or sign gh in as an admin of o/r"
+    And it reports "FAIL: protection of the base branch \"main\": cannot read it: gh: Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)" with the fix "make o/r public, or move its owner to a paid GitHub plan; then add a ruleset for \"main\" in the settings of o/r"
 
   Scenario: An unknown subcommand is a usage error
     When I run "cyclix fly"
