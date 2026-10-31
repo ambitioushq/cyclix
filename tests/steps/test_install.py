@@ -7,7 +7,7 @@ from pytest_bdd import given, parsers, scenarios, then
 
 scenarios("install.feature")
 
-DIFFERENT_UNIT = "[Service]\nExecStart=/somewhere/else run --once\n"
+DIFFERENT_UNIT = "[Service]\nExecStart=/somewhere/else run\n"
 
 
 @given(parsers.parse('a valid tenant config for "{tenant}"'))
@@ -49,7 +49,7 @@ def no_unit_files(world):
 @then("it prints the difference")
 def prints_difference(result):
     lines = result.stdout.splitlines()
-    assert "-ExecStart=/somewhere/else run --once" in lines, result.stdout
+    assert "-ExecStart=/somewhere/else run" in lines, result.stdout
     assert any(line.startswith("+ExecStart=") for line in lines), result.stdout
 
 

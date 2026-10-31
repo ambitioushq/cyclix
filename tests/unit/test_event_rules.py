@@ -1,10 +1,10 @@
 import json
 import re
+from importlib.metadata import version
 from pathlib import Path
 
 import pytest
 
-from cyclix import __version__
 from cyclix.events.log import EventError, write_stage_run
 from cyclix.events.schema import MAX_STRING
 
@@ -17,7 +17,6 @@ def fields(**extra):
         "cyclix.issue.id": 12,
         "cyclix.run.id": "r1",
         "cyclix.stage": "gate",
-        "cyclix.round": 1,
         "cyclix.outcome": "passed",
         "cyclix.outcome.reason": "",
     }
@@ -30,8 +29,8 @@ def lines(state_dir):
 
 
 def doc_example():
-    """The example event in the design doc's "The event log, schema version 0"."""
-    section = DESIGN.read_text().split("## The event log, schema version 0", 1)[1]
+    """The example event in the design doc's "The event log, schema version 1"."""
+    section = DESIGN.read_text().split("## The event log, schema version 1", 1)[1]
     return json.loads(re.search(r"```json\n(.*?)```", section, re.DOTALL)[1])
 
 
@@ -53,7 +52,7 @@ def test_ids_timestamp_and_resource_have_the_schema_shapes(tmp_path):
     assert re.fullmatch(r"[0-9a-f]{32}", event["trace_id"])
     assert re.fullmatch(r"[0-9a-f]{16}", event["span_id"])
     assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z", event["timestamp"])
-    assert event["resource"] == {"service.name": "cyclix", "service.version": __version__}
+    assert event["resource"] == {"service.name": "cyclix", "service.version": version("cyclix")}
 
 
 def test_events_append_and_keep_earlier_lines(tmp_path):

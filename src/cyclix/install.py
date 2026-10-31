@@ -111,7 +111,7 @@ def timer_name(tenant):
 
 
 def service_unit(tenant, program, config_path):
-    exec_start = " ".join(exec_word(str(w)) for w in [program, "run", "--once", "--tenant", tenant])
+    exec_start = " ".join(exec_word(str(w)) for w in [program, "run", "--tenant", tenant])
     return (
         "[Unit]\n"
         f"Description=Cyclix: one sweep for tenant {tenant}\n"

@@ -68,17 +68,12 @@ def board_with_many_items(world, count):
 # When
 
 
-@when("the tracker lists Ready items")
-def list_ready(tracker, seen):
-    try:
-        seen["items"] = tracker.ready_items()
-    except GhError as error:
-        seen["error"] = error
-
-
 @when("the tracker lists the board")
 def list_board(tracker, seen):
-    seen["items"] = tracker.items()
+    try:
+        seen["items"] = tracker.items()
+    except GhError as error:
+        seen["error"] = error
 
 
 @when(parsers.parse("the tracker sets #{number:d} to {state}"))

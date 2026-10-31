@@ -34,11 +34,8 @@ class Issue:
 
 
 class Tracker(Protocol):
-    def ready_items(self) -> list[Item]:
-        """Items in Ready, oldest issue first."""
-
     def items(self) -> list[Item]:
-        """Every item in a Cyclix state. An item in any other state is left out."""
+        """Every item in a Cyclix state, oldest issue first. An item in any other state is left out."""
 
     def item_state(self, issue: int) -> State | None:
         """The issue's state, or None when it is not on the board or not in a Cyclix state."""

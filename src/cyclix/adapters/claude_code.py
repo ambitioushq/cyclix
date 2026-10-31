@@ -24,8 +24,6 @@ from cyclix.adapters import environment
 from cyclix.adapters.agent import AgentResult
 from cyclix.adapters.process import kill_group
 
-# A test shortens the minute so the timeout scenario does not take one.
-SECONDS_PER_MINUTE = 60
 # How long the agent has to print its result after SIGINT, before SIGKILL.
 GRACE_SECONDS = 30
 
@@ -37,9 +35,14 @@ CAP_REASONS = {
 
 
 class ClaudeCode:
-    def __init__(self, agent_config):
+    def __init__(self, agent_config, timeout_seconds=None, grace_seconds=GRACE_SECONDS):
+        """timeout_seconds, when given, takes the place of the config's timeout."""
         self.command = agent_config.command
         self.timeout_minutes = agent_config.timeout_minutes
+        if timeout_seconds is None:
+            timeout_seconds = agent_config.timeout_minutes * 60
+        self.timeout_seconds = timeout_seconds
+        self.grace_seconds = grace_seconds
         self.pass_env = agent_config.pass_env
 
     def run(self, prompt, cwd, stage, run_dir):
@@ -83,13 +86,11 @@ class ClaudeCode:
             start_new_session=True,
         )
         try:
-            stdout, stderr = process.communicate(
-                prompt, timeout=self.timeout_minutes * SECONDS_PER_MINUTE
-            )
+            stdout, stderr = process.communicate(prompt, timeout=self.timeout_seconds)
         except subprocess.TimeoutExpired:
             kill_group(process, signal.SIGINT)
             try:
-                stdout, stderr = process.communicate(timeout=GRACE_SECONDS)
+                stdout, stderr = process.communicate(timeout=self.grace_seconds)
             except subprocess.TimeoutExpired:
                 kill_group(process)
                 stdout, stderr = process.communicate()

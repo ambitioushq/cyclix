@@ -2,7 +2,7 @@
 
 A run is one pass of an issue through the stages. It keeps one run_id, which is
 also on the claim and names the run folder. Each stage in the pass gets its own
-row, so one run has one row per stage and round, and at most one open row at a
+row, so one run has one row per stage, and at most one open row at a
 time. set_phase, add_fields, record_check and end_run act on the run's open row.
 """
 
@@ -31,7 +31,6 @@ class RunStart:
     tenant: str
     issue: int
     stage: str
-    round: int = 1
 
 
 @dataclass(frozen=True)
@@ -43,7 +42,6 @@ class RunState:
     issue: int
     stage: str
     phase: str | None
-    round: int
     started_at: datetime
     fields: dict[str, object]
 
@@ -59,5 +57,4 @@ class StateCore(Protocol):
     def open_runs(self, tenant: str) -> list[RunState]: ...
     def runs_today(self, tenant: str) -> int: ...
     def record_check(self, run_id: str, sha: str, check: str, passed: bool) -> None: ...
-    def best_verified(self, tenant: str, issue: int) -> str | None: ...
     def add_spend(self, tenant: str, usd: float, tokens: int) -> None: ...

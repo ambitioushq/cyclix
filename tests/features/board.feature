@@ -1,14 +1,14 @@
 Feature: Cyclix reads and moves items on the GitHub board
 
-  Scenario: Ready items come back oldest first
+  Scenario: Items come back oldest first
     Given issues #7 and #3 in state "Ready" on the board, #3 created first
-    When the tracker lists Ready items
+    When the tracker lists the board
     Then it returns #3, then #7
 
   Scenario: Items outside the configured repo are ignored
     Given a Ready item for issue #2 of another repository
     And a Ready draft item
-    When the tracker lists Ready items
+    When the tracker lists the board
     Then neither is returned
 
   Scenario: Setting a state moves the item on the board
@@ -18,7 +18,7 @@ Feature: Cyclix reads and moves items on the GitHub board
 
   Scenario: A gh failure surfaces with its details
     Given "api graphql" fails with exit 1 and stderr "HTTP 502" once
-    When the tracker lists Ready items
+    When the tracker lists the board
     Then it raises a GhError holding exit 1 and "HTTP 502"
 
   Scenario: One pass reads the board once

@@ -22,15 +22,11 @@ def reports(result, failure, fix):
     return output[index + 1 : index + 2] == [f"  fix: {fix}"]
 
 
-def test_run_once_with_a_bad_config_fails(world):
+def test_run_with_a_bad_config_fails(world):
     world.config.write_text("[tenant]\n")
-    result = run_cyclix(world, "run", "--once")
+    result = run_cyclix(world, "run")
     assert result.returncode == 1
     assert result.stderr == 'config: [tenant] is missing "name"\n'
-
-
-def test_run_without_once_is_a_usage_error(world):
-    assert run_cyclix(world, "run").returncode == 2
 
 
 def test_no_subcommand_is_a_usage_error(world):

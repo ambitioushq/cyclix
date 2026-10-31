@@ -1,9 +1,9 @@
-"""Event schema version 0, as fixed in docs/design/v0.0.md, "The event log, schema version 0".
+"""Event schema version 1: the keys and values a stage-run event may hold.
 
-Any change here is made in that doc first.
+Any change here is made in the design doc's event log section first.
 """
 
-SCHEMA = "cyclix.event/0"
+SCHEMA = "cyclix.event/1"
 SERVICE_NAME = "cyclix"
 
 STAGE_RUN = "stage_run"
@@ -18,13 +18,11 @@ RUN_ID = "cyclix.run.id"
 STAGE = "cyclix.stage"
 OUTCOME = "cyclix.outcome"
 OUTCOME_REASON = "cyclix.outcome.reason"
-ROUND = "cyclix.round"
-TRUST_LEVEL = "cyclix.trust_level"
 CONFIG_VERSION = "cyclix.config.version"
 INSTRUCTIONS_VERSION = "cyclix.agent.instructions.version"
 DURATION_MS = "cyclix.duration_ms"
 COST_USD = "cyclix.cost.usd"
-# The decimal places kept in COST_USD, as fixed in the design doc under "The event log, schema version 0".
+# The decimal places kept in COST_USD: a millionth of a dollar. Past that, the agent's costs are float noise.
 COST_PLACES = 6
 REPOSITORY_URL = "vcs.repository.url.full"
 HEAD_NAME = "vcs.ref.head.name"
@@ -44,8 +42,6 @@ STAGE_RUN_KEYS = (
     STAGE,
     OUTCOME,
     OUTCOME_REASON,
-    ROUND,
-    TRUST_LEVEL,
     CONFIG_VERSION,
     INSTRUCTIONS_VERSION,
     DURATION_MS,
@@ -61,5 +57,5 @@ STAGE_RUN_KEYS = (
     GATE_CHECKS,
 )
 
-STAGES = ("admission", "plan", "build", "gate", "adversarial_review", "pr", "reconciler")
-OUTCOMES = ("passed", "parked", "stopped", "failed", "crashed", "skipped")
+STAGES = ("admission", "plan", "build", "gate", "pr", "reconciler")
+OUTCOMES = ("passed", "parked", "stopped", "failed", "crashed")

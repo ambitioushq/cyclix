@@ -1,4 +1,4 @@
-"""The minimal plan stage: one agent call that writes plan.md in the run folder.
+"""The plan stage: one agent call that writes plan.md in the run folder.
 
 An answer that starts with "STOP:" stops the run, and the rest of that line is the reason.
 """

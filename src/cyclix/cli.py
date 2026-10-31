@@ -1,18 +1,19 @@
 """The cyclix command: what an operator and systemd run.
 
-Exit codes: 0 success, 1 a check or run failed, 2 bad usage, 3 not built yet.
+Exit codes: 0 success, 1 a check or run failed, 2 bad usage.
 """
 
 import argparse
 import shutil
 import sys
 import tempfile
+from importlib.metadata import version
 from typing import NamedTuple
 
-from cyclix import __version__, config, install, runner
+from cyclix import config, install, runner
 from cyclix.adapters import gh
 
-OK, FAILED, USAGE, NOT_BUILT = 0, 1, 2, 3
+OK, FAILED, USAGE = 0, 1, 2
 
 
 def main(argv=None):
@@ -29,15 +30,14 @@ def main(argv=None):
 
 def build_parser():
     parser = argparse.ArgumentParser(prog="cyclix")
-    parser.add_argument("--version", action="version", version=f"cyclix {__version__}")
+    parser.add_argument("--version", action="version", version=f"cyclix {version('cyclix')}")
     commands = parser.add_subparsers(dest="command", metavar="command")
 
     check = commands.add_parser("check", help="check that a tenant is ready to run")
     check.add_argument("--tenant", metavar="NAME")
     check.set_defaults(handler=check_command)
 
-    run = commands.add_parser("run", help="run the loop for a tenant")
-    run.add_argument("--once", action="store_true", required=True, help="make one sweep")
+    run = commands.add_parser("run", help="make one pass of the loop for a tenant")
     run.add_argument("--tenant", metavar="NAME")
     run.set_defaults(handler=run_command)
 

@@ -114,7 +114,7 @@ def name_list(text):
 
 @when("one pass runs", target_fixture="result")
 def one_pass(world):
-    return run_cyclix(world, "run", "--once")
+    return run_cyclix(world, "run")
 
 
 @when(parsers.parse('I run "{command}"'), target_fixture="result")

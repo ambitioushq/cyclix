@@ -1,18 +1,17 @@
-"""One pass of the loop for one tenant, as docs/design/v0.0.md, "The sweep", sets out.
+"""One pass of the loop for one tenant.
 
 1. Read the board.
 2. Correct the state core to match it. The tracker wins every disagreement.
 3. Run the reconciler on every item In review.
 4. If no item is In progress, no column is at its WIP limit, and the day's run
-   limit is not reached, admit the oldest Ready item and run it through STAGES. Stop at the first stage whose
-   outcome is not passed or skipped.
+   limit is not reached, admit the oldest Ready item and run it through STAGES.
+   Stop at the first stage whose outcome is not passed.
 
 A file lock at <state_dir>/<tenant>.lock keeps two passes from overlapping. So a
 run still open when a pass holds the lock was left by a pass that died.
 """
 
 import fcntl
-import functools
 import sys
 import time
 from collections import Counter
@@ -27,13 +26,13 @@ from cyclix.adapters.github_tracker import GitHubTracker
 from cyclix.adapters.tracker import TrackerError
 from cyclix.events import log, schema
 from cyclix.events.log import EventError
-from cyclix.stages import admission, reconciler
-from cyclix.stages.adversarial_review import AdversarialReview
-from cyclix.stages.base import GO_ON, StageResult
+from cyclix.stages.admission import Admission
+from cyclix.stages.base import RunContext, StageResult
 from cyclix.stages.build import Build
 from cyclix.stages.gate import Gate
 from cyclix.stages.plan import Plan
 from cyclix.stages.pr import PR
+from cyclix.stages.reconciler import Reconciler, ended_pr
 from cyclix.state.core import RunStart, StateError
 from cyclix.state.sqlite import SqliteStateCore
 from cyclix.workstate import IllegalMove, State, Writer, move
@@ -41,7 +40,7 @@ from cyclix.workstate import IllegalMove, State, Writer, move
 OK, FAILED = 0, 1
 
 # The stages after admission, in order.
-STAGES = (Plan(), Build(), Gate(), AdversarialReview(), PR())
+STAGES = (Plan(), Build(), Gate(), PR())
 
 # While an item is in one of these states the engine holds it, so its claim stays.
 HELD = frozenset({State.IN_PROGRESS, State.IN_REVIEW})
@@ -60,7 +59,7 @@ def sweep(config):
         try:
             Sweep(
                 config, state, GitHubTracker(config), GitHubCodeHost(config),
-                ClaudeCode(config.agent),
+                ClaudeCode(config.agent), STAGES,
             ).run()  # fmt: skip
         except PASS_ERRORS as error:
             print(f"cyclix run: {error}", file=sys.stderr)
@@ -85,13 +84,14 @@ def locked(config):
 
 
 class Sweep:
-    def __init__(self, config, state, tracker, codehost, agent):
+    def __init__(self, config, state, tracker, codehost, agent, stages):
         self.config = config
         self.tenant = config.tenant.name
         self.state = state
         self.tracker = tracker
         self.codehost = codehost
         self.agent = agent
+        self.stages = stages
 
     def run(self):
         items = self.tracker.items()
@@ -131,14 +131,11 @@ class Sweep:
         """
         claims = {claim.issue: claim.run_id for claim in self.state.claims(self.tenant)}
         for item in items:
-            pr = reconciler.ended_pr(self.codehost, item)
+            pr = ended_pr(self.codehost, item)
             if pr is None:
                 continue
             run_id = claims.get(item.issue) or new_run_id(item.issue)
-            work = functools.partial(
-                reconciler.reconcile, self.state, self.tracker, run_id, item, pr
-            )
-            if self.run_stage(item.issue, run_id, reconciler.name, work):
+            if self.run_stage(Reconciler(item, pr), self.context(item.issue, run_id)):
                 board[item.issue] = State.DONE if pr.state == "merged" else State.PARKED
             self.release(item.issue, run_id)
 
@@ -170,30 +167,24 @@ class Sweep:
         run_id = new_run_id(issue)
         if not self.state.claim(self.tenant, issue, run_id):
             return
-        admitted = {}
-
-        def admit():
-            result, admitted["ctx"] = admission.admit(
-                self.config, self.state, self.tracker, self.codehost, self.agent, issue, run_id,
-                self.run_dir(issue, run_id),
-            )  # fmt: skip
-            return result
-
-        if not self.run_stage(issue, run_id, admission.name, admit):
-            return
-        ctx = admitted["ctx"]
-        for stage in STAGES:
-            if not self.run_stage(
-                issue, run_id, stage.name, functools.partial(stage.run, ctx), ctx
-            ):
+        ctx = self.context(issue, run_id)
+        for stage in (Admission(), *self.stages):
+            if not self.run_stage(stage, ctx):
                 return
 
-    def run_stage(self, issue, run_id, name, work, ctx=None):
+    def context(self, issue, run_id):
+        return RunContext(
+            config=self.config, state=self.state, tracker=self.tracker, codehost=self.codehost,
+            agent=self.agent, run_id=run_id, number=issue, run_dir=self.run_dir(issue, run_id),
+        )  # fmt: skip
+
+    def run_stage(self, stage, ctx):
         """Run one stage as one row in the state core and one event. Return True to go on."""
+        issue, run_id, name = ctx.number, ctx.run_id, stage.name
         self.state.begin_run(RunStart(run_id=run_id, tenant=self.tenant, issue=issue, stage=name))
         started = time.monotonic()
         try:
-            result = work()
+            result = stage.run(ctx)
         except Exception as error:  # noqa: BLE001 - any error in a stage fails that stage
             result = StageResult("failed", f"{name} raised {type(error).__name__}: {error}")
         fields = {
@@ -202,10 +193,10 @@ class Sweep:
             schema.REPOSITORY_URL: f"https://github.com/{self.config.codehost.repo}",
             schema.DURATION_MS: round((time.monotonic() - started) * 1000),
         }
-        if ctx is not None:
+        if ctx.worktree is not None:
             fields[schema.HEAD_NAME] = ctx.worktree.branch
         self.state.add_fields(run_id, {**fields, **result.fields})
-        go_on = result.outcome in GO_ON
+        go_on = result.outcome == "passed"
         stopped_to = None
         if not go_on and self.tracker.item_state(issue) is State.IN_PROGRESS:
             stopped_to = result.move_to or State.PARKED
@@ -248,7 +239,7 @@ def instructions_version(config):
 
 
 def writer_for(stage):
-    """A stage with a writer of its own moves as itself. Build, gate and review move as any stage."""
+    """A stage with a writer of its own moves as itself. Build and gate move as any stage."""
     try:
         return Writer(stage)
     except ValueError:

@@ -184,7 +184,7 @@ def plan_cost_is_rounded(world, result, key):
     plans = [e["attributes"] for e in world.events() if e["attributes"]["cyclix.stage"] == "plan"]
     assert len(plans) == 1, result.stdout + result.stderr
     cost = plans[0][key]
-    # 6 places is the rule in docs/design/v0.0.md, "The event log, schema version 0".
+    # 6 places is the rule in docs/design/v0.0.md, "The event log, schema version 1".
     assert Decimal(repr(cost)).as_tuple().exponent >= -6, cost
     assert cost == 0.366166
 

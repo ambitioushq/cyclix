@@ -3,7 +3,7 @@ Feature: Installing the loop as a systemd timer
   Scenario: A dry run prints the units and changes nothing
     Given a valid tenant config for "storefront"
     When I run "cyclix install --tenant storefront --dry-run"
-    Then it prints a service with "ExecStart=" ending in "run --once --tenant storefront"
+    Then it prints a service with "ExecStart=" ending in "run --tenant storefront"
     And it prints a timer with "OnUnitActiveSec=10min"
     And no file is written
 

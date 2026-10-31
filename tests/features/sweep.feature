@@ -7,7 +7,7 @@ Feature: One pass of the loop
     When one pass runs
     Then a PR for #12 is open
     And the board shows #12 in "In review"
-    And the event log holds stage_run events for #12 at admission, plan, build, gate, adversarial_review and pr
+    And the event log holds stage_run events for #12 at admission, plan, build, gate and pr
 
   Scenario: A failing stage stops the run and parks the item
     Given an issue #12 in state "Ready" on the board
