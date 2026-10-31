@@ -4,6 +4,7 @@ The sweep runs in-process against the fake world, with fake stages in place of S
 """
 
 import json
+import logging
 import sqlite3
 from contextlib import closing
 from dataclasses import dataclass, field
@@ -137,11 +138,14 @@ def test_a_stage_fields_reach_its_event(world, stages):
     assert events(world, 12)[-1]["vcs.ref.head.revision"] == "abc"
 
 
-def test_a_long_reason_is_cut_to_fit_the_event(world, stages):
+def test_a_long_reason_is_cut_to_fit_the_event_and_the_log(world, stages, caplog):
     stages(FakeStage("gate", StageResult("parked", "x" * 600)))
     world.add_issue(12, state="Ready")
-    assert sweep(world) == 0
+    with caplog.at_level(logging.DEBUG, logger="cyclix"):
+        assert sweep(world) == 0
     assert len(events(world, 12)[-1]["cyclix.outcome.reason"]) == 500
+    [line] = [r.getMessage() for r in caplog.records if r.getMessage().startswith("stage gate")]
+    assert line.endswith(": " + "x" * 500), line
 
 
 def test_the_day_limit_stops_admission(world, core, stages):
