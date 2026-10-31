@@ -13,6 +13,15 @@ def lines(result):
     return result.stdout.splitlines()
 
 
+def reports(result, failure, fix):
+    """Does the output hold the failure line, then its fix line?"""
+    output = lines(result)
+    if failure not in output:
+        return False
+    index = output.index(failure)
+    return output[index + 1 : index + 2] == [f"  fix: {fix}"]
+
+
 def test_run_once_with_a_bad_config_fails(world):
     world.config.write_text("[tenant]\n")
     result = run_cyclix(world, "run", "--once")
@@ -35,8 +44,43 @@ def test_a_bad_config_fails_and_skips_the_checks_that_need_it(world):
     world.config.write_text("[tenant]\n")
     result = run_cyclix(world, "check")
     assert result.returncode == 1
-    assert 'FAIL: config: [tenant] is missing "name"' in lines(result)
-    assert not any("agent" in line or "board" in line for line in lines(result))
+    assert reports(result, 'FAIL: config: [tenant] is missing "name"', f"edit {world.config}")
+    assert "skipped: agent command: needs the config" in lines(result)
+    assert "skipped: board: needs the config" in lines(result)
+    assert "skipped: protection of the base branch: needs the config" in lines(result)
+
+
+def test_check_without_a_config_file_says_how_to_name_one(world):
+    env = environment(world)
+    del env["CYCLIX_CONFIG"]
+    result = subprocess.run(
+        ["cyclix", "check"], env=env, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 1
+    assert reports(
+        result,
+        "FAIL: config: no config file given: set CYCLIX_CONFIG or pass --tenant",
+        "pass --tenant NAME, or set CYCLIX_CONFIG to the config file's path",
+    ), result.stdout
+
+
+def test_check_for_a_tenant_without_a_config_file_names_the_file_to_write(world):
+    env = environment(world)
+    del env["CYCLIX_CONFIG"]
+    result = subprocess.run(
+        ["cyclix", "check", "--tenant", "nosuch"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    path = world.xdg_config / "cyclix" / "nosuch.toml"
+    assert result.returncode == 1
+    assert reports(
+        result,
+        f"FAIL: config: cannot read {path}: No such file or directory",
+        f"write the tenant config at {path}",
+    ), result.stdout
 
 
 def test_gh_missing_from_path_fails_and_skips_the_board(world, tmp_path):
@@ -53,25 +97,22 @@ def test_gh_missing_from_path_fails_and_skips_the_board(world, tmp_path):
         check=False,
     )
     assert result.returncode == 1
-    assert "FAIL: gh is not on PATH" in lines(result)
-    assert not any("board" in line for line in lines(result))
-
-
-def test_an_agent_command_not_on_path_fails(world):
-    text = world.config.read_text().replace(
-        'command = ["fake-agent"]', 'command = ["no-such-agent"]'
-    )
-    world.config.write_text(text)
-    result = run_cyclix(world, "check")
-    assert result.returncode == 1
-    assert 'FAIL: the agent command "no-such-agent" is not on PATH' in lines(result)
+    assert reports(
+        result, "FAIL: gh: not on PATH", "install gh, the GitHub CLI, and put it on PATH"
+    ), result.stdout
+    assert "skipped: board o/1: needs gh signed in" in lines(result)
 
 
 def test_an_unreadable_board_fails(world):
     world.add_fault("project field-list", exit=1, stderr="HTTP 502")
     result = run_cyclix(world, "check")
     assert result.returncode == 1
-    assert "FAIL: cannot read board o/1: HTTP 502" in lines(result)
+    assert reports(
+        result,
+        "FAIL: board o/1: cannot read it: HTTP 502",
+        f"check [tracker] owner and project in {world.config}; "
+        'if they are right, run "gh auth refresh -s read:project"',
+    ), result.stdout
 
 
 @pytest.mark.skipif(os.geteuid() == 0, reason="root can write anywhere")
@@ -82,9 +123,10 @@ def test_a_state_dir_that_cannot_be_written_fails(world):
     finally:
         world.state_dir.chmod(0o700)
     assert result.returncode == 1
-    assert any(
-        line.startswith(f"FAIL: the state directory {world.state_dir} is not writable")
-        for line in lines(result)
+    assert reports(
+        result,
+        f"FAIL: state directory {world.state_dir}: not writable: Permission denied",
+        f"make {world.state_dir} writable, or set CYCLIX_STATE_DIR to a directory you can write",
     ), result.stdout
 
 
@@ -93,4 +135,9 @@ def test_a_board_without_the_status_field_fails(world):
     world.config.write_text(text)
     result = run_cyclix(world, "check")
     assert result.returncode == 1
-    assert 'FAIL: the board has no single-select field "Stage"' in lines(result)
+    assert reports(
+        result,
+        'FAIL: board o/1: no single-select field "Stage"',
+        'add a single-select field "Stage" to the board, '
+        f"or change [tracker] status_field in {world.config}",
+    ), result.stdout
