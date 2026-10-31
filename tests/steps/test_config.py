@@ -130,3 +130,60 @@ def plan_stage_uses(loaded, model, turns, budget, tools):
 def agent_command_is(loaded, command):
     assert not isinstance(loaded, Exception), loaded
     assert loaded.agent.command == tuple(shlex.split(command))
+
+
+@pytest.fixture
+def home(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    return home
+
+
+@pytest.fixture
+def named():
+    """The instruction folder a scenario names, as written in the config."""
+    return {}
+
+
+def name_folder(config_file, folder):
+    edit_table(config_file, "agent", lambda lines: [f"instructions = {json.dumps(folder)}", *lines])
+
+
+@given(parsers.parse('a folder "{name}" in the home folder holding "{path}"'))
+def home_folder(home, name, path):
+    (home / name).mkdir()
+    (home / name / path).write_text("The rules.\n")
+
+
+@given(parsers.parse('the example config names the instruction folder "{folder}"'))
+def example_names_folder(config_file, folder):
+    name_folder(config_file, folder)
+
+
+@given(parsers.parse("the example config names {kind} as its instruction folder"))
+def example_names_bad_folder(config_file, tmp_path, named, kind):
+    if kind == "a missing folder":
+        folder = str(tmp_path / "no-such-folder")
+    elif kind == "a file":
+        folder = str(config_file)
+    else:
+        assert kind == "a relative path", kind
+        folder = "instructions"
+    named["folder"] = folder
+    name_folder(config_file, folder)
+
+
+@then("it names no instruction folder")
+def no_instruction_folder(loaded):
+    assert loaded.agent.instructions is None
+
+
+@then(parsers.parse('the instruction folder is "{name}" in the home folder'))
+def instruction_folder_is(loaded, home, name):
+    assert loaded.agent.instructions.folder == home / name, loaded
+
+
+@then(parsers.parse("it fails with '{message}' about that folder"))
+def fails_about_folder(loaded, named, message):
+    fails_with(loaded, message.replace("<folder>", named["folder"]))

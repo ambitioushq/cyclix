@@ -156,7 +156,7 @@ def test_the_state_dir_is_found_in_three_steps(monkeypatch, tmp_path):
 @pytest.mark.parametrize(
     ("old", "new", "message"),
     [
-        ("pass_env = []\n\n[agent.plan]", "pass_env = [1]\n\n[agent.plan]",
+        ("timeout_minutes = 60\npass_env = []", "timeout_minutes = 60\npass_env = [1]",
          'config: [agent] "pass_env" must be a list of names'),
         ("max_budget_usd = 2.0", 'max_budget_usd = "2"',
          'config: [agent.plan] "max_budget_usd" must be a finite number above 0'),
@@ -165,3 +165,46 @@ def test_the_state_dir_is_found_in_three_steps(monkeypatch, tmp_path):
 def test_agent_stage_values_are_checked(tmp_path, old, new, message):
     assert old in example()
     assert fails(tmp_path, example().replace(old, new, 1)) == message
+
+
+def with_instructions(value):
+    return example().replace("pass_env = []\n", f"pass_env = []\ninstructions = {value}\n", 1)
+
+
+def test_the_instruction_folder_must_be_a_string(tmp_path):
+    assert (
+        fails(tmp_path, with_instructions("3")) == 'config: [agent] "instructions" must be a string'
+    )
+
+
+def test_the_instruction_files_are_read_in_path_order(tmp_path):
+    folder = tmp_path / "rules"
+    (folder / "docs").mkdir(parents=True)
+    (folder / "docs" / "CLAUDE.md").write_text("docs\n")
+    (folder / "CLAUDE.md").write_text("top\n")
+    loaded = config.load(write(tmp_path, with_instructions(f'"{folder}"')))
+    assert loaded.agent.instructions.files == (
+        ("CLAUDE.md", b"top\n"),
+        ("docs/CLAUDE.md", b"docs\n"),
+    )
+    assert loaded.agent.instructions.version.startswith("sha256:")
+
+
+def test_the_instruction_version_changes_with_a_file_name(tmp_path):
+    folder = tmp_path / "rules"
+    folder.mkdir()
+    (folder / "a.md").write_text("same\n")
+    path = write(tmp_path, with_instructions(f'"{folder}"'))
+    first = config.load(path).agent.instructions.version
+    (folder / "a.md").rename(folder / "b.md")
+    assert config.load(path).agent.instructions.version != first
+
+
+def test_an_unreadable_instruction_file_is_refused(tmp_path):
+    folder = tmp_path / "rules"
+    folder.mkdir()
+    (folder / "CLAUDE.md").symlink_to(tmp_path / "gone.md")
+    message = fails(tmp_path, with_instructions(f'"{folder}"'))
+    assert message == (
+        f'config: [agent] "instructions" cannot read {folder / "CLAUDE.md"}: No such file or directory'
+    )

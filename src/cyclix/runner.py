@@ -198,6 +198,7 @@ class Sweep:
             result = StageResult("failed", f"{name} raised {type(error).__name__}: {error}")
         fields = {
             schema.CONFIG_VERSION: self.config.version,
+            schema.INSTRUCTIONS_VERSION: instructions_version(self.config),
             schema.REPOSITORY_URL: f"https://github.com/{self.config.codehost.repo}",
             schema.DURATION_MS: round((time.monotonic() - started) * 1000),
         }
@@ -239,6 +240,11 @@ class Sweep:
 
 def new_run_id(issue):
     return f"r-{datetime.now(UTC):%Y%m%d-%H%M%S}-{issue}"
+
+
+def instructions_version(config):
+    instructions = config.agent.instructions
+    return None if instructions is None else instructions.version
 
 
 def writer_for(stage):

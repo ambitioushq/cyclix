@@ -23,6 +23,12 @@ Feature: The cyclix command checks a tenant's setup and refuses unknown subcomma
     Then it exits 1
     And it reports "FAIL: agent command no-such-agent: not on PATH" with the fix "install it, or change [agent] command in <config>"
 
+  Scenario: check fails when the instruction folder is missing
+    Given a valid tenant config naming a missing instruction folder
+    When I run "cyclix check"
+    Then it exits 1
+    And it reports "FAIL: config: [agent] \"instructions\" names <world>/no-such-folder, which does not exist" with the fix "edit <config>"
+
   Scenario: check fails when the board lacks a configured option
     Given a valid tenant config mapping "in_review" to "In review"
     And the board has no "In review" option

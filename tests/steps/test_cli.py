@@ -24,6 +24,11 @@ def config_agent_command(world, command):
     world.config.write_text(text.replace('command = ["fake-agent"]', f'command = ["{command}"]'))
 
 
+@given("a valid tenant config naming a missing instruction folder")
+def config_missing_instructions(world):
+    world.name_instructions(world.root / "no-such-folder")
+
+
 @given("gh is signed in")
 def gh_signed_in(world):
     world.set_logged_in(True)
@@ -53,8 +58,12 @@ def every_line_ends_in(result, text):
 
 @then(parsers.parse('it reports "{failure}" with the fix "{fix}"'))
 def reports_with_fix(world, result, failure, fix):
-    """The failure line, then its fix line; <config> stands for the config file's path."""
+    """The failure line, then its fix line.
+
+    <config> stands for the config file's path, and <world> for the world's folder.
+    """
     failure = failure.replace('\\"', '"')
+    failure = failure.replace("<world>", str(world.root))
     fix = fix.replace('\\"', '"').replace("<config>", str(world.config))
     lines = result.stdout.splitlines()
     assert failure in lines, result.stdout

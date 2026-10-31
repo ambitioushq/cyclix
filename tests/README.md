@@ -37,6 +37,8 @@ These steps are defined in `conftest.py`, so any feature can use them.
 | `"C" fails with exit E and stderr "M" once` | Given | The same, and prints M on stderr. |
 | `the agent answers "A"` | Given | Adds a fake agent step that answers A and exits 0. |
 | `the agent writes a plan, then commits a change` | Given | Adds a plan answer, then a build step that commits `change.txt` and answers with a PR body: the template's five sections, with no `Closes` line. |
+| `the agent writes a plan, then stages every file and commits a change` | Given | The same, but the build step stages every file in the worktree, as `git add -A` does. |
+| `the config names an instruction folder holding "A" and "B"` | Given | Writes each named file in the world's `instructions/` folder and names that folder in `[agent] instructions`. |
 | `the engine's environment holds A, B and C` | Given | Sets each named variable in the engine's environment, so a scenario can check that the agent or the gate does not see it. |
 | `one pass runs` | When | Runs `cyclix run --once` and keeps it as `result`. |
 | `I run "cyclix ARGS"` | When | Runs `cyclix` with ARGS as a subprocess against the world. Its result is `result`. |

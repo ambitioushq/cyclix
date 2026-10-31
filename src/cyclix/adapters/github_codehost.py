@@ -90,6 +90,31 @@ class GitHubCodeHost:
                 f"origin/{self.base}")  # fmt: skip
         return Worktree(issue=issue, branch=branch, path=path)
 
+    def add_local_files(self, worktree, files):
+        """Write files into the worktree and keep them out of every commit.
+
+        If the repository tracks any of their paths, write nothing and return those paths.
+        """
+        paths = [path for path, _ in files]
+        listed = git(worktree.path, "ls-files", "-z", "--", *(f":(literal){p}" for p in paths))
+        if tracked := sorted(set(listed.split("\0")) & set(paths)):
+            return tracked
+        # The exclude file is shared by every worktree of the clone, so a path goes in it once.
+        exclude = worktree.path / git(worktree.path, "rev-parse", "--git-path", "info/exclude")
+        exclude.parent.mkdir(parents=True, exist_ok=True)
+        text = exclude.read_text() if exclude.exists() else ""
+        new = [p for p in map(exclude_pattern, paths) if p not in text.splitlines()]
+        if new:
+            with exclude.open("a") as out:
+                out.write(
+                    ("\n" if text and not text.endswith("\n") else "") + "\n".join(new) + "\n"
+                )
+        for path, content in files:
+            target = worktree.path / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+        return []
+
     def remove_worktree(self, worktree):
         if worktree.path.exists():
             git(self.clone, "worktree", "remove", "--force", str(worktree.path))
@@ -150,6 +175,13 @@ class GitHubCodeHost:
         )  # fmt: skip
         prs = sorted(prs, key=lambda pr: -pr["number"])
         return [PR(number=p["number"], url=p["url"], state=p["state"].lower()) for p in prs]
+
+
+def exclude_pattern(path):
+    """A git exclude line that matches this one path, from the top of the worktree."""
+    pattern = "/" + re.sub(r"[\\*?\[]", lambda match: "\\" + match[0], path)
+    # git drops a trailing space from a pattern unless it is escaped.
+    return pattern[:-1] + "\\ " if pattern.endswith(" ") else pattern
 
 
 def timestamp(value):

@@ -3,8 +3,8 @@
 The file is found in this order: the path given, then CYCLIX_CONFIG, then
 <tenant>.toml in the config folder when a tenant name is given. The config folder
 is $XDG_CONFIG_HOME/cyclix, else ~/.config/cyclix. Every key is required,
-apart from the [limits.wip] table, and an unknown key is an error, so a typo
-never passes silently.
+apart from the [limits.wip] table and [agent] instructions, and an unknown key
+is an error, so a typo never passes silently.
 """
 
 import hashlib
@@ -73,6 +73,16 @@ class AgentStage:
 
 
 @dataclass(frozen=True)
+class Instructions:
+    """The tenant's instruction folder, read when the config loads, and the hash of its files."""
+
+    folder: Path
+    # (path relative to the folder, content) for each file, in path order.
+    files: tuple[tuple[str, bytes], ...]
+    version: str
+
+
+@dataclass(frozen=True)
 class Agent:
     command: tuple[str, ...]
     timeout_minutes: int
@@ -80,6 +90,7 @@ class Agent:
     pass_env: tuple[str, ...]
     plan: AgentStage
     build: AgentStage
+    instructions: Instructions | None = None
 
 
 @dataclass(frozen=True)
@@ -181,6 +192,8 @@ def load(path=None, tenant=None):
         raise ConfigError(f"{path} is not valid TOML: {error}") from None
 
     wip = data.get("limits", {}).pop("wip", {})
+    agent = data.get("agent")
+    folder = agent.pop("instructions", None) if isinstance(agent, dict) else None
     check_table(data, SCHEMA, "")
     check_wip(wip)
     for table, kind in KINDS.items():
@@ -194,7 +207,6 @@ def load(path=None, tenant=None):
     check_pass_env(data["gate"]["pass_env"], "gate", (*CREDENTIALS, *environment.CLAUDE_LOGIN))
 
     tracker = data["tracker"]
-    agent = data["agent"]
     gate = data["gate"]
     return Config(
         tenant=Tenant(**data["tenant"]),
@@ -206,6 +218,7 @@ def load(path=None, tenant=None):
             pass_env=tuple(agent["pass_env"]),
             plan=agent_stage(agent["plan"]),
             build=agent_stage(agent["build"]),
+            instructions=None if folder is None else read_instructions(folder),
         ),
         gate=Gate(
             commands=tuple(tuple(c) for c in gate["commands"]),
@@ -226,6 +239,35 @@ def agent_stage(table):
             "tools": tuple(table["tools"]),
         }
     )
+
+
+def read_instructions(value):
+    """Read every file under the instruction folder, following symlinks."""
+    label = '[agent] "instructions"'
+    if not isinstance(value, str):
+        raise ConfigError(f"{label} must be a string")
+    folder = Path(value).expanduser()
+    if not folder.is_absolute():
+        raise ConfigError(f'{label} must be an absolute path or start with ~, not "{value}"')
+    if not folder.exists():
+        raise ConfigError(f"{label} names {folder}, which does not exist")
+    if not folder.is_dir():
+        raise ConfigError(f"{label} names {folder}, which is not a folder")
+    files = []
+    for top, _, names in os.walk(folder, followlinks=True):
+        for name in names:
+            path = Path(top, name)
+            try:
+                content = path.read_bytes()
+            except OSError as error:
+                raise ConfigError(f"{label} cannot read {path}: {error.strerror}") from None
+            files.append((path.relative_to(folder).as_posix(), content))
+    files.sort()
+    digest = hashlib.sha256()
+    for path, content in files:
+        # The length keeps one file's end from reading as the next file's start.
+        digest.update(f"{path}\0{len(content)}\0".encode() + content)
+    return Instructions(folder, tuple(files), "sha256:" + digest.hexdigest())
 
 
 # Names pass_env may not let through. The GitHub tokens and the SSH agent reach

@@ -1,3 +1,4 @@
+from conftest import quoted
 from fakes.world import operation_of
 from pytest_bdd import given, parsers, scenarios, then
 
@@ -111,3 +112,49 @@ def stays_in(world, result, issue, state):
 @then(parsers.parse('a line starts with "{text}"'))
 def line_starts_with(result, text):
     assert any(line.startswith(text) for line in result.stdout.splitlines()), result.stdout
+
+
+@given(
+    parsers.parse(
+        'the config names an instruction folder whose "{path}" is a symlink to a file outside it'
+    )
+)
+def instruction_symlink(world, path):
+    outside = world.root / "outside.md"
+    outside.write_text("The rules kept elsewhere.\n")
+    world.instructions.mkdir()
+    (world.instructions / path).symlink_to(outside)
+    world.name_instructions(world.instructions)
+
+
+@given(parsers.parse('the repository tracks "{path}"'))
+def repository_tracks(world, path):
+    world.add_to_remote(path, "The repository's own file.\n")
+
+
+@then(parsers.parse("the worktree for #{issue:d} holds {paths} as copies of the folder's files"))
+def worktree_holds_copies(world, result, issue, paths):
+    [worktree] = (world.state_dir / "runs" / "test" / str(issue)).glob("*/worktree")
+    for path in quoted(paths):
+        copy = worktree / path
+        assert copy.is_file() and not copy.is_symlink(), result.stdout + result.stderr
+        assert copy.read_bytes() == (world.instructions / path).read_bytes()
+
+
+@then(parsers.parse('the branch pushed for #{issue:d} holds "{kept}" and not "{left}"'))
+def branch_holds(world, result, issue, kept, left):
+    [pr] = world.prs_for(issue)
+    files = world.remote_files(pr["head"])
+    assert kept in files, result.stdout + result.stderr
+    assert left not in files, files
+
+
+@then(parsers.parse('the {stage} event\'s reason is "{reason}"'))
+def event_reason(world, stage, reason):
+    [event] = [e for e in world.events() if e["attributes"]["cyclix.stage"] == stage]
+    assert event["attributes"]["cyclix.outcome.reason"] == reason
+
+
+@then("the agent was never called")
+def agent_never_called(world):
+    assert world.agent_calls() == []

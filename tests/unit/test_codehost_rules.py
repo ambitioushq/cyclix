@@ -125,3 +125,36 @@ def test_the_clone_gets_the_network_time_limit(codehost, monkeypatch):
     [(args, kwargs)] = calls
     assert args[:2] == ("repo", "clone")
     assert kwargs == {"timeout": github_codehost.GIT_NETWORK_SECONDS}
+
+
+def test_a_local_file_goes_in_the_shared_exclude_file_once(world, codehost, tmp_path):
+    files = (("CLAUDE.md", b"rules\n"),)
+    first = codehost.new_worktree(1, "one", tmp_path / "r1")
+    second = codehost.new_worktree(2, "two", tmp_path / "r2")
+    assert codehost.add_local_files(first, files) == []
+    assert codehost.add_local_files(second, files) == []
+    exclude = world.state_dir / "repos" / "test" / ".git" / "info" / "exclude"
+    assert exclude.read_text().splitlines().count("/CLAUDE.md") == 1
+    assert (second.path / "CLAUDE.md").read_bytes() == b"rules\n"
+    assert git(second.path, "status", "--porcelain") == ""
+
+
+def test_a_tracked_clash_writes_nothing(world, codehost, tmp_path):
+    worktree = codehost.new_worktree(1, "one", tmp_path / "r1")
+    files = (("README.md", b"mine\n"), ("notes/a.md", b"a\n"))
+    assert codehost.add_local_files(worktree, files) == ["README.md"]
+    assert (worktree.path / "README.md").read_text() == "A test repository.\n"
+    assert not (worktree.path / "notes").exists()
+
+
+@pytest.mark.parametrize(
+    ("path", "pattern"),
+    [
+        ("CLAUDE.md", "/CLAUDE.md"),
+        ("docs/CLAUDE.md", "/docs/CLAUDE.md"),
+        ("a*b?[c].md", "/a\\*b\\?\\[c].md"),
+        ("trailing ", "/trailing\\ "),
+    ],
+)
+def test_an_exclude_pattern_matches_only_its_path(path, pattern):
+    assert github_codehost.exclude_pattern(path) == pattern

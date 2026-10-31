@@ -1,3 +1,4 @@
+import hashlib
 import json
 from decimal import Decimal
 
@@ -192,3 +193,30 @@ def plan_cost_is_rounded(world, result, key):
 def event_records_turns(world, result, stage, turns):
     [event] = [e for e in world.events() if e["attributes"]["cyclix.stage"] == stage]
     assert event["attributes"]["cyclix.agent.turns"] == turns
+
+
+def folder_version(folder):
+    """The rule in docs/design/v0.0.md: each file's relative path, its length and its content."""
+    digest = hashlib.sha256()
+    for path in sorted(p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file()):
+        content = (folder / path).read_bytes()
+        digest.update(f"{path}\0{len(content)}\0".encode() + content)
+    return "sha256:" + digest.hexdigest()
+
+
+@then(
+    parsers.parse(
+        'every stage_run event for #{issue:d} has "{key}" set to the instruction folder\'s version'
+    )
+)
+def events_carry_instructions_version(world, result, issue, key):
+    found = [e["attributes"] for e in world.events() if e["attributes"]["cyclix.issue.id"] == issue]
+    assert found, result.stdout + result.stderr
+    assert [a.get(key) for a in found] == [folder_version(world.instructions)] * len(found)
+
+
+@then(parsers.parse('every stage_run event for #{issue:d} has "{key}" set to null'))
+def events_carry_null(world, result, issue, key):
+    found = [e["attributes"] for e in world.events() if e["attributes"]["cyclix.issue.id"] == issue]
+    assert found, result.stdout + result.stderr
+    assert all(key in a and a[key] is None for a in found), found

@@ -21,6 +21,7 @@ OUTCOME_REASON = "cyclix.outcome.reason"
 ROUND = "cyclix.round"
 TRUST_LEVEL = "cyclix.trust_level"
 CONFIG_VERSION = "cyclix.config.version"
+INSTRUCTIONS_VERSION = "cyclix.agent.instructions.version"
 DURATION_MS = "cyclix.duration_ms"
 COST_USD = "cyclix.cost.usd"
 # The decimal places kept in COST_USD, as fixed in the design doc under "The event log, schema version 0".
@@ -46,6 +47,7 @@ STAGE_RUN_KEYS = (
     ROUND,
     TRUST_LEVEL,
     CONFIG_VERSION,
+    INSTRUCTIONS_VERSION,
     DURATION_MS,
     COST_USD,
     REPOSITORY_URL,

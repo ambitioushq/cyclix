@@ -14,3 +14,7 @@ dist/
 .coverage
 .coverage.*
 htmlcov/
+
+# Agent instructions are kept outside the repository.
+CLAUDE.md
+/.claude

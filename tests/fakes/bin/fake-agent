@@ -128,7 +128,10 @@ def main():
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content)
     if step["commit"] and step["files"]:
-        subprocess.run(["git", "add", "--", *step["files"]], check=True)
+        if step["add_all"]:
+            subprocess.run(["git", "add", "-A"], check=True)
+        else:
+            subprocess.run(["git", "add", "--", *step["files"]], check=True)
         subprocess.run(["git", "commit", "-q", "-m", "Work by the fake agent"], check=True)
 
     print(json.dumps(result(step, n)))

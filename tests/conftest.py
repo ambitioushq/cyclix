@@ -83,10 +83,25 @@ def agent_plans_and_builds(world):
     world.add_plan_and_commit()
 
 
+@given("the agent writes a plan, then stages every file and commits a change")
+def agent_plans_and_builds_everything(world):
+    world.add_plan_and_commit(add_all=True)
+
+
+@given(parsers.parse("the config names an instruction folder holding {paths}"))
+def instruction_folder(world, paths):
+    world.set_instructions({path: f"The rules in {path}.\n" for path in quoted(paths)})
+
+
 @given(parsers.parse("the engine's environment holds {names}"))
 def engine_environment_holds(monkeypatch, names):
     for name in name_list(names):
         monkeypatch.setenv(name, f"secret-{name.lower()}")
+
+
+def quoted(text):
+    """'"a" and "b"' -> ["a", "b"]."""
+    return re.findall(r'"([^"]*)"', text)
 
 
 def name_list(text):

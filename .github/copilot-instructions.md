@@ -4,12 +4,13 @@ Cyclix is an engine for an unattended issue-to-PR loop, written in Python 3.14 w
 
 Read these before reviewing:
 
-- `CLAUDE.md`: the rules every change follows. Where this file and `CLAUDE.md` differ, `CLAUDE.md` wins.
 - `docs/design/overview.md`: what Cyclix is, who owns each fact, and how the work is done.
 - `docs/design/v0.0.md`: the design of the parts built so far.
 - `tests/README.md`: how the tests are laid out.
 
 ## Check every PR for these
+
+This list holds every rule a change follows that a review can check.
 
 - The PR body follows `.github/pull_request_template.md`. When the PR resolves an issue, its first line is `Closes #<issue>`. A PR without an issue needs no issue line.
 - The runtime imports only the standard library. A new runtime dependency needs a written reason in the design docs.

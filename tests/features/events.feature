@@ -43,3 +43,16 @@ Feature: Each stage run writes one event to the event log
     When one pass runs
     Then the plan event records 7 agent turns
     And the build event records 12 agent turns
+
+  Scenario: Every stage-run event records the instruction folder's version
+    Given the config names an instruction folder holding "CLAUDE.md"
+    And an issue #7 in state "Ready" on the board
+    And the agent writes a plan, then commits a change
+    When one pass runs
+    Then every stage_run event for #7 has "cyclix.agent.instructions.version" set to the instruction folder's version
+
+  Scenario: With no instruction folder the version is null
+    Given an issue #7 in state "Ready" on the board
+    And the agent writes a plan, then commits a change
+    When one pass runs
+    Then every stage_run event for #7 has "cyclix.agent.instructions.version" set to null

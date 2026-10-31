@@ -27,6 +27,7 @@ base = "main"
 command = ["claude", "-p"]
 timeout_minutes = 60
 pass_env = []
+# instructions = "~/agent-rules/storefront"   # optional: files copied into each run
 
 [agent.plan]
 model = "claude-opus-5-5"

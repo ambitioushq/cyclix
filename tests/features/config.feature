@@ -153,3 +153,25 @@ Feature: The tenant config loads, or names what is wrong with it
       | command                                                   |
       | claude --print --effort high |
       | claude -p --effort=low       |
+
+  Scenario: A config without an instruction folder loads
+    Given the example tenant config
+    When the config is loaded
+    Then it names no instruction folder
+
+  Scenario: An instruction folder under the home folder is found
+    Given a folder "rules" in the home folder holding "CLAUDE.md"
+    And the example config names the instruction folder "~/rules"
+    When the config is loaded
+    Then the instruction folder is "rules" in the home folder
+
+  Scenario Outline: An instruction folder that cannot be used is refused
+    Given the example config names <folder> as its instruction folder
+    When the config is loaded
+    Then it fails with '<message>' about that folder
+
+    Examples:
+      | folder            | message                                                                          |
+      | a missing folder  | config: [agent] "instructions" names <folder>, which does not exist                |
+      | a file            | config: [agent] "instructions" names <folder>, which is not a folder               |
+      | a relative path   | config: [agent] "instructions" must be an absolute path or start with ~, not "<folder>" |

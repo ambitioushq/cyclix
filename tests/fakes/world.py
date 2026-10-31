@@ -10,6 +10,7 @@ A world lives in one directory per scenario:
     prompts/<n>.txt    the prompt the fake agent got on call n
     state/             the state directory Cyclix runs against
     remote.git         a bare git repository that stands in for the GitHub remote
+    instructions/      the instruction folder, when a scenario names one in the config
     config.toml        the tenant config Cyclix runs with
     xdg-config/        XDG_CONFIG_HOME, so systemd user units land in the world
     systemctl.jsonl    one line per fake systemctl call: {"argv": [...]}
@@ -73,6 +74,8 @@ STATES = [
 AGENT_DEFAULTS = {
     "files": {},
     "commit": False,
+    # Stage every file in the worktree, as `git add -A` does, not only the step's own files.
+    "add_all": False,
     "answer": "",
     "exit": 0,
     "input_tokens": 1000,
@@ -177,6 +180,7 @@ class World:
         self.state_dir = self.root / "state"
         self.remote = self.root / "remote.git"
         self.config = self.root / "config.toml"
+        self.instructions = self.root / "instructions"
         self.xdg_config = self.root / "xdg-config"
         self.units_dir = self.xdg_config / "systemd" / "user"
         self.systemctl_path = self.root / "systemctl.jsonl"
@@ -225,6 +229,36 @@ class World:
 
     def load(self):
         return json.loads(self.path.read_text())
+
+    def add_to_remote(self, path, content):
+        """Commit one file to main on the remote."""
+        work = self.root / "remote-work"
+        if not work.exists():
+            git(self.root, "clone", "-q", str(self.remote), str(work))
+        (work / path).parent.mkdir(parents=True, exist_ok=True)
+        (work / path).write_text(content)
+        git(work, "add", path)
+        git(work, "commit", "-q", "-m", f"Add {path}")
+        git(work, "push", "-q", "origin", "HEAD:main")
+
+    def remote_files(self, branch):
+        """The paths a branch on the remote holds."""
+        return git(self.remote, "ls-tree", "-r", "--name-only", branch).splitlines()
+
+    # The instruction folder
+
+    def set_instructions(self, files):
+        """Write the instruction folder and name it in the config's [agent] table."""
+        for path, content in files.items():
+            (self.instructions / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.instructions / path).write_text(content)
+        self.name_instructions(self.instructions)
+
+    def name_instructions(self, folder):
+        text = self.config.read_text()
+        self.config.write_text(
+            text.replace("[agent]\n", f'[agent]\ninstructions = "{folder}"\n', 1)
+        )
 
     def save(self, data):
         self.path.write_text(json.dumps(data, indent=2) + "\n")
@@ -372,13 +406,16 @@ class World:
         script.append({**AGENT_DEFAULTS, **step})
         self.agent_script_path.write_text(json.dumps(script, indent=2) + "\n")
 
-    def add_plan_and_commit(self):
+    def add_plan_and_commit(self, add_all=False):
         """Script a plan answer, then a build that commits one file and answers with a PR body.
 
         The body has the template's sections and no `Closes` line, so the PR stage must add it.
         """
         self.add_agent_step(answer=PLAN_ANSWER)
-        self.add_agent_step(files={"change.txt": "a change\n"}, commit=True, answer=PR_BODY_ANSWER)
+        self.add_agent_step(
+            files={"change.txt": "a change\n"}, commit=True, add_all=add_all,
+            answer=PR_BODY_ANSWER,
+        )  # fmt: skip
 
     def pr_template_headings(self):
         """The `## ` headings of the PR template seeded into the remote."""

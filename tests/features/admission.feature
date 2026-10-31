@@ -62,3 +62,34 @@ Feature: Admission takes a Ready issue from the board when there is room
       | in_progress | 2     |
       | in_review   | 0     |
       | in_review   | "5"   |
+
+  Scenario: The instruction files are copied into the run's worktree
+    Given the config names an instruction folder holding "CLAUDE.md" and "docs/CLAUDE.md"
+    And an issue #12 in state "Ready" on the board
+    And the agent writes a plan, then commits a change
+    When one pass runs
+    Then the worktree for #12 holds "CLAUDE.md" and "docs/CLAUDE.md" as copies of the folder's files
+
+  Scenario: A symlink in the instruction folder is copied as its content
+    Given the config names an instruction folder whose "CLAUDE.md" is a symlink to a file outside it
+    And an issue #12 in state "Ready" on the board
+    And the agent writes a plan, then commits a change
+    When one pass runs
+    Then the worktree for #12 holds "CLAUDE.md" as copies of the folder's files
+
+  Scenario: A commit the agent makes leaves the instruction files out
+    Given the config names an instruction folder holding "CLAUDE.md"
+    And an issue #12 in state "Ready" on the board
+    And the agent writes a plan, then stages every file and commits a change
+    When one pass runs
+    Then the branch pushed for #12 holds "change.txt" and not "CLAUDE.md"
+
+  Scenario: An instruction file the repository tracks parks the item
+    Given the repository tracks "CLAUDE.md"
+    And the config names an instruction folder holding "CLAUDE.md"
+    And an issue #12 in state "Ready" on the board
+    When one pass runs
+    Then the board shows #12 in "Parked"
+    And the admission event's outcome is "parked"
+    And the admission event's reason is "the repository tracks CLAUDE.md, which the instruction folder also holds"
+    And the agent was never called
