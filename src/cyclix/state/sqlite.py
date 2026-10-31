@@ -63,7 +63,9 @@ MIGRATIONS = [
     # UNIQUE key, so runs is rebuilt with the same ids. The checks that point at
     # those ids are set aside while it is, because dropping runs under them fails
     # the foreign key. An open row is ended later from its fields, so the dropped
-    # event keys leave those too.
+    # event keys leave those too. The review stage is gone from the event schema,
+    # so a run that died in it is moved to the PR stage, the one it would have
+    # entered next, or its crash event could never be written.
     """
     CREATE TEMP TABLE checks_kept AS SELECT * FROM checks;
     DELETE FROM checks;
@@ -80,6 +82,8 @@ MIGRATIONS = [
         fields_json TEXT NOT NULL,
         UNIQUE (run_id, stage)
     );
+    UPDATE runs SET stage = 'pr', fields_json = json_set(fields_json, '$."cyclix.stage"', 'pr')
+        WHERE stage = 'adversarial_review' AND ended_at IS NULL;
     INSERT INTO runs_new
         SELECT id, run_id, tenant, issue, stage, phase, started_at, ended_at, outcome,
             json_remove(fields_json, '$."cyclix.round"', '$."cyclix.trust_level"')

@@ -3,6 +3,9 @@
 The sweep runs in-process against the fake world, with fake stages in place of STAGES.
 """
 
+import json
+import sqlite3
+from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
@@ -11,6 +14,7 @@ import pytest
 from cyclix import config, runner
 from cyclix.adapters.github_tracker import GitHubTracker
 from cyclix.stages.base import StageResult
+from cyclix.state import sqlite as state_sqlite
 from cyclix.state.core import RunStart
 from cyclix.state.sqlite import SqliteStateCore
 from cyclix.workstate import State
@@ -171,6 +175,37 @@ def test_a_crashed_run_whose_item_a_human_moved_is_ended_but_not_moved(world, co
     assert world.comments(13) == []
     assert core.open_runs(TENANT) == []
     assert [c.issue for c in core.claims(TENANT)] == [12]
+
+
+def test_a_run_that_crashed_in_the_removed_review_stage_is_ended_after_the_upgrade(
+    world, monkeypatch
+):
+    with monkeypatch.context() as at_1:
+        at_1.setattr(state_sqlite, "MIGRATIONS", state_sqlite.MIGRATIONS[:1])
+        at_1.setattr(state_sqlite, "SCHEMA_VERSION", 1)
+        SqliteStateCore(world.state_dir).close()
+    fields = {
+        "cyclix.tenant": TENANT,
+        "cyclix.issue.id": 12,
+        "cyclix.run.id": "r-old",
+        "cyclix.stage": "adversarial_review",
+        "cyclix.round": 1,
+    }
+    with closing(sqlite3.connect(world.state_dir / "state.db")) as db, db:
+        db.execute(
+            "INSERT INTO claims VALUES (?, 12, 'r-old', '2026-10-02T10:00:00+00:00')", (TENANT,)
+        )
+        db.execute(
+            "INSERT INTO runs (run_id, tenant, issue, stage, round, started_at, fields_json)"
+            " VALUES ('r-old', ?, 12, 'adversarial_review', 1, '2026-10-02T10:06:00+00:00', ?)",
+            (TENANT, json.dumps(fields)),
+        )
+    world.add_issue(12, state="In progress")
+    assert sweep(world) == 0
+    [crashed] = events(world, 12)
+    assert (crashed["cyclix.stage"], crashed["cyclix.outcome"]) == ("pr", "crashed")
+    assert world.board_state(12) == "Parked"
+    assert world.comments(12) == ["Parked: run crashed in phase none"]
 
 
 def test_a_failed_board_read_fails_the_pass(world, capsys):
