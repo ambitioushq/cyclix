@@ -1,6 +1,8 @@
-"""Rules of the sweep that sweep.feature does not reach until #14 adds the real stages.
+"""Rules of the sweep that sweep.feature does not check.
 
-The sweep runs in-process against the fake world, with fake stages in place of STAGES.
+Each rule needs a stage outcome, a crash or a board state that the real stages and the fake
+agent cannot set up cheaply. Here the sweep runs in-process against the fake world, with fake
+stages in place of STAGES.
 """
 
 import json
