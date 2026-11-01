@@ -36,8 +36,10 @@ cyclix uninstall --tenant storefront
 
 ## Links
 
-- Design: [docs/design/overview.md](docs/design/overview.md)
-- v0.0, the first build: [docs/design/v0.0.md](docs/design/v0.0.md)
+- Documentation: [docs/README.md](docs/README.md)
+  - To run Cyclix: how it works, the config and the commands.
+  - To work on its code: the architecture, the engine, the tests and isolation.
+  - The decisions: one record for each settled call.
 - The functional spec: the Gherkin feature files in `tests/features/`
 
 ## Licence

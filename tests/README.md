@@ -2,7 +2,7 @@
 
 The `.feature` files in `features/` are Cyclix's functional spec. Each file covers one thing Cyclix does, and its `Feature:` title names that behaviour. A new scenario goes in the file for the capability it describes. Each feature file's steps are in the file of the same name in `steps/`, such as `steps/test_config.py` for `features/config.feature`. The sandbox feature is the exception: see "The sandbox".
 
-`harness/` holds the checks of the test footing and the repository, not of Cyclix's behaviour: the fakes, the recorded `gh` output shapes, the installed package and the README. Each feature file there sits beside its steps file, which names the feature by its path.
+`harness/` holds the checks of the test footing and the repository, not of Cyclix's behaviour: the fakes, the recorded `gh` output shapes, the installed package, the README and the links in the docs. Each feature file there sits beside its steps file, which names the feature by its path.
 
 `unit/` holds unit tests, kept for rules a scenario cannot reach cheaply.
 
@@ -18,7 +18,7 @@ A feature tagged `@live` is checked by hand against Cyclix's own repo and board,
 
 Each scenario gets a `world` fixture (`fakes/world.py`): a temporary directory holding the fake GitHub world, a state directory, a bare git remote with one commit on `main`, and a test config. Steps read and change it through methods such as `world.add_issue(...)`, `world.board_state(n)` and `world.add_fault(...)`.
 
-- `fakes/bin/gh` supports only the `gh` commands listed in `docs/design/v0.0.md`, "The adapters". Anything else exits 2 with "fake gh: unsupported command". Every call is appended to `calls.jsonl`.
+- `fakes/bin/gh` supports only the `gh` commands listed in `docs/design/engine.md`, "The adapters". Anything else exits 2 with "fake gh: unsupported command". Every call is appended to `calls.jsonl`.
 - `fakes/bin/fake-agent` follows `agent-script.json`, one entry per call, and prints the lines of `claude -p --output-format stream-json --verbose`: an init line, one assistant line per turn, then the result line. It records each call's arguments and environment in `agent-calls.jsonl`, with a value only for the `GIT_*` and `GH_CONFIG_DIR` names the engine sets, so no real login lands in the file. The agent sees only an allowed environment, so the test config lists `CYCLIX_FAKES_DIR` in `[agent] pass_env` for the fake to find its world.
 - `fakes/bin/systemctl` accepts only `--user daemon-reload`, `--user enable --now <unit>` and `--user disable --now <unit>`, and changes nothing. Every call is appended to `systemctl.jsonl`.
 - `fakes/runner.py` runs `cyclix` with `run_cyclix(world, *args)`. `PATH` finds the fakes first. `CYCLIX_CONFIG`, `CYCLIX_STATE_DIR` and `XDG_CONFIG_HOME` point into the world, so systemd units land in `xdg-config/systemd/user/`.
