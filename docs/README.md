@@ -12,6 +12,7 @@
 - [Engine](design/engine.md): the package layout, the state core, the adapters, the state directory, run folders and worktrees, the event log schema, and the sweep.
 - [Testing](design/testing.md): the fake GitHub, the fake agent, the shape check and the sandbox. [tests/README.md](../tests/README.md) covers the test layout.
 - [Isolation](design/isolation.md): what the agent and the gate can reach, what is built, and what is coming soon.
+- [The docs site](../site/README.md): how to preview the site that is built from these files.
 
 ## The decisions
 

@@ -14,3 +14,4 @@ A record is not edited to change a decision. A new record replaces it, and the o
 | [0003](0003-one-wide-event-per-stage-run-in-opentelemetry-shape.md) | Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines | Accepted |
 | [0004](0004-use-only-the-standard-library-unless-a-dependency-has-a-written-reason.md) | Use only the standard library unless a dependency has a written reason | Accepted |
 | [0005](0005-confine-the-agent-and-the-gate.md) | Confine the agent and the gate | Accepted |
+| [0006](0006-build-the-docs-site-with-astro-and-starlight.md) | Build the docs site with Astro and Starlight | Accepted |
