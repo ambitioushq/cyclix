@@ -355,23 +355,32 @@ def state_dir():
 def check_table(data, schema, name):
     """Check one table's keys and value types, naming the key on failure."""
     where = f"[{name}]" if name else "the top level"
-    for key in data:
-        if key not in schema:
-            if isinstance(data[key], dict):
-                raise ConfigError(f"unknown table [{qualify(name, key)}]")
-            raise ConfigError(f'unknown key "{key}" in {where}')
+    refuse_unknown_keys(data, schema, name, where)
     for key, expected in schema.items():
-        if key not in data:
-            if isinstance(expected, dict):
-                raise ConfigError(f"missing table [{qualify(name, key)}]")
-            raise ConfigError(f'{where} is missing "{key}"')
-        value = data[key]
+        check_key(data, key, expected, name, where)
+
+
+def refuse_unknown_keys(data, schema, name, where):
+    for key in data:
+        if key in schema:
+            continue
+        if isinstance(data[key], dict):
+            raise ConfigError(f"unknown table [{qualify(name, key)}]")
+        raise ConfigError(f'unknown key "{key}" in {where}')
+
+
+def check_key(data, key, expected, name, where):
+    if key not in data:
         if isinstance(expected, dict):
-            if not isinstance(value, dict):
-                raise ConfigError(f"{qualify(name, key)} must be a table")
-            check_table(value, expected, qualify(name, key))
-        else:
-            check_value(value, expected, f'[{name}] "{key}"')
+            raise ConfigError(f"missing table [{qualify(name, key)}]")
+        raise ConfigError(f'{where} is missing "{key}"')
+    value = data[key]
+    if not isinstance(expected, dict):
+        check_value(value, expected, f'[{name}] "{key}"')
+    elif not isinstance(value, dict):
+        raise ConfigError(f"{qualify(name, key)} must be a table")
+    else:
+        check_table(value, expected, qualify(name, key))
 
 
 def check_value(value, expected, label):
