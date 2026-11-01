@@ -27,3 +27,7 @@ Feature: The lint checks fail a function that is too complex to read
   Scenario: The source, the tests and the scripts pass both checks
     When ruff and complexipy check the repository
     Then both exit 0
+
+  Scenario: complexipy checks every script in the fakes folder
+    When I read the complexipy config
+    Then it names every file in "tests/fakes/bin"

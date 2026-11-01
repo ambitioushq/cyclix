@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 from pytest_bdd import given, parsers, scenarios, then, when
@@ -89,6 +90,11 @@ def both_check_repository():
     return [run([BIN / "ruff", "check"], ROOT), run([BIN / "complexipy"], ROOT)]
 
 
+@when("I read the complexipy config", target_fixture="complexipy_paths")
+def complexipy_paths():
+    return tomllib.loads(CONFIG.read_text())["tool"]["complexipy"]["paths"]
+
+
 @then(parsers.parse('the output names "{text}"'))
 def output_names(result, text):
     assert text in result.stdout + result.stderr
@@ -98,3 +104,10 @@ def output_names(result, text):
 def both_pass(results):
     for result in results:
         assert result.returncode == 0, result.stdout + result.stderr
+
+
+@then(parsers.parse('it names every file in "{folder}"'))
+def names_every_file(complexipy_paths, folder):
+    # complexipy skips a file with no .py extension when it scans a folder, so each is named.
+    files = {path.relative_to(ROOT).as_posix() for path in (ROOT / folder).iterdir()}
+    assert files <= set(complexipy_paths), files - set(complexipy_paths)
