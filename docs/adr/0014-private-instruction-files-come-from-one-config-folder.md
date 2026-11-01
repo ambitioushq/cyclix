@@ -6,24 +6,22 @@
 
 ## Context
 
-Claude Code reads instruction files such as `CLAUDE.md` from the folder it works in. Most tenants keep these files in their repository. A tenant with a public repository may not want its agent's rules there, so it needs a place outside the repository that the agent still reads.
+Claude Code reads instruction files such as `CLAUDE.md` from its working folder. Most tenants keep them in the repository. A tenant with a public repository may want its agent's rules kept out of it.
 
 ## Decision
 
-The optional key `[agent] instructions` names a folder, as an absolute path or a path that starts with `~`. The folder must exist. Cyclix reads every file under it when it loads the config, following symlinks, and hashes them for the event log.
+`[agent] instructions` names a folder, as an absolute path or a path starting with `~`. Cyclix reads every file under it when it loads the config and hashes them for the event log.
 
-Admission copies each file into the run's worktree at the same relative path, after it makes the worktree and before the plan stage. It copies the file's content, not a link. Admission adds each copied path, anchored at the top of the worktree, to the exclude file the worktree uses (the path `git rev-parse --git-path info/exclude` gives), so no commit includes the files, even after `git add -A`.
+Admission copies each file into the run's worktree at the same relative path, before the plan stage. It copies content, not a link. It adds each path to the worktree's git exclude file, so no commit includes the files.
 
-When the repository tracks a file at one of those paths, admission writes nothing and parks the item, and the reason names the file. Cyclix never overwrites a tracked file.
+If the repository tracks a file at one of those paths, admission writes nothing and parks the item, naming the file.
 
 ## Consequences
 
-- Each stage-run event records `cyclix.agent.instructions.version`, a hash over the folder's files, so a run shows which rules its agent was given.
-- A change to a file in the folder takes effect on the next run, with no change to the repository.
-- A tenant whose repository already tracks a file at one of those paths must rename one of them.
+- Each event records `cyclix.agent.instructions.version`, so a run shows which rules its agent was given.
+- A change to the folder takes effect on the next run.
+- A repository that tracks a file at one of those paths must rename one of them.
 
 ## Alternatives Considered
 
-**A symlink to the folder.** Rejected because Claude Code does not read a `CLAUDE.md` that is symlinked from outside its working folder, and a container could not follow a link to the host.
-
-**Keeping the files in the repository.** Still the normal choice, and needs no config. It does not suit a tenant that wants its agent's rules kept out of its repository.
+**A symlink to the folder.** Rejected. Claude Code does not read a `CLAUDE.md` symlinked from outside its working folder, and a container could not follow the link.

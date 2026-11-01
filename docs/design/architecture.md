@@ -11,7 +11,7 @@ Two principles settle the design calls that follow ([ADR-0000](../adr/0000-guidi
 1. Everything the loop does or hears is recorded, in one append-only log. The loop never reads the log to decide anything.
 2. A person's attention is the scarce resource.
 
-A third rule follows from them. Cyclix never merges. A person merges every PR ([ADR-0001](../adr/0001-cyclix-never-merges.md)).
+A third rule follows from them. The engine does not merge. A person merges every PR ([ADR-0001](../adr/0001-the-engine-does-not-merge.md)).
 
 ## Which part owns which data
 

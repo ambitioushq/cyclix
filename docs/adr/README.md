@@ -9,8 +9,8 @@ A record is not edited to change a decision. A new record replaces it, and the o
 | ADR | Decision | Status |
 | --- | --- | --- |
 | [0000](0000-guiding-principles.md) | Everything the loop does is recorded, and a person's attention is the scarce resource | Accepted |
-| [0001](0001-cyclix-never-merges.md) | Cyclix never merges, and a person merges every PR | Accepted |
-| [0002](0002-each-kind-of-data-has-one-owner.md) | Each kind of data has one owner, and the board wins over the state file | Accepted |
+| [0001](0001-the-engine-does-not-merge.md) | The engine does not merge, and a person merges every PR | Accepted |
+| [0002](0002-each-kind-of-data-has-one-owner.md) | Each kind of data has one owner | Accepted |
 | [0003](0003-the-event-log-is-never-read-to-decide.md) | The event log is a record the loop never reads to decide | Accepted |
 | [0004](0004-wide-events-in-opentelemetry-shape.md) | Wide events, shaped like OpenTelemetry, written to local JSON lines | Accepted |
 | [0005](0005-the-standard-library-by-default.md) | The standard library by default, with a written reason for each runtime dependency | Accepted |
