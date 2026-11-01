@@ -6,7 +6,7 @@
 
 ## Context
 
-Cyclix runs unattended on a host that has a GitHub login. Every package it imports runs with that access and needs updates. What the engine needs is small: TOML, a database, subprocesses, JSON lines and argument parsing.
+Cyclix runs unattended on a host that is logged in to the tracker and the code host. Every package it imports runs with that access and needs updates. What the engine needs is small: TOML, a database, subprocesses, JSON lines and argument parsing.
 
 ## Decision
 
