@@ -6,9 +6,9 @@ Cyclix is pre-release. Expect every interface to change.
 
 ## Principles
 
-Two principles settle the design calls that follow ([ADR-0000](../adr/0000-guiding-principles.md)):
+[ADR-0000](../adr/0000-guiding-principles.md) sets two principles for the design:
 
-1. Everything the loop does or hears is recorded, in one append-only log. The loop never reads the log to decide anything.
+1. Everything the loop does or hears is recorded, so a person can see what it did and why.
 2. A person's attention is the scarce resource.
 
 A third rule follows from them. A PR merges only on a person's approval or under a written rule ([ADR-0001](../adr/0001-merge-only-after-approval-or-under-a-written-rule.md)).

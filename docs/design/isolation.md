@@ -4,7 +4,7 @@ Cyclix runs a coding agent unattended, and then runs the code that agent wrote i
 
 ## The problem
 
-Everything the agent reads can carry instructions: the issue, the repository's files, review comments, web pages. Cyclix limits who can put work on the board, but a file that is already merged can still steer the agent. So the design assumes that an agent can be made to do anything its process is able to do. The question is what that process is able to do.
+Everything the agent reads can carry instructions: the issue, the repository's files, review comments, web pages. Cyclix limits who can put work on the board, but a file that is already merged can still carry instructions that the agent follows. So the design assumes that an agent can be made to do anything its process is able to do. The question is what that process is able to do.
 
 Today the process is limited in three ways, and it is not contained:
 
