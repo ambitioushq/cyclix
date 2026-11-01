@@ -19,6 +19,13 @@ on:
 permissions:
   contents: read
 
+# A run on main waits for the one before it to finish, and a newer push replaces a
+# waiting run, so a deploy never replaces a newer site with an older one. A newer
+# push to a PR cancels the older run.
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -51,10 +58,8 @@ jobs:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'ambitioushq/cyclix'
     runs-on: ubuntu-latest
-    # Two deploys at once could finish out of order and leave an older site live.
-    concurrency:
-      group: docs-deploy
-      cancel-in-progress: false
+    # The artifact comes from this run, so the download needs no token permission.
+    permissions: {}
     steps:
       - uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
