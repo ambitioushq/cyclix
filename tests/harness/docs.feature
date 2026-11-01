@@ -34,6 +34,16 @@ Feature: The links in the docs lead somewhere
     When the links in that folder are checked
     Then the report is empty
 
+  Scenario: A link to a page whose source file starts with an underscore is reported
+    Given a docs folder where "README.md" links to the site page "https://docs.cyclix.dev/_draft/"
+    When the links in that folder are checked
+    Then the report names "README.md" and "https://docs.cyclix.dev/_draft/"
+
+  Scenario: A link to a docs site page with a query string passes
+    Given a docs folder where "README.md" links to the site page "https://docs.cyclix.dev/b/?from=readme#the-second-part"
+    When the links in that folder are checked
+    Then the report is empty
+
   Scenario: A link to the docs site's home page passes
     Given a docs folder where "README.md" links to the site page "https://docs.cyclix.dev/"
     When the links in that folder are checked

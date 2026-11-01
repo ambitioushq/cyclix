@@ -54,12 +54,15 @@ def anchors(path):
 
 
 def site_page(pages, route):
-    """The file in the pages folder that the docs site builds the page at this route from."""
-    route = route.strip("/")
+    """The file in the pages folder for the page at this route, or None when that file builds no page."""
+    route = route.partition("?")[0].strip("/")
     if not route:
         return pages / "index.md"
     file = pages / f"{route}.md"
-    return file if file.exists() else pages / route / "index.md"
+    if not file.exists():
+        file = pages / route / "index.md"
+    # Starlight builds no page from a file whose name starts with an underscore.
+    return None if file.name.startswith("_") else file
 
 
 def broken_links(files, root):
@@ -79,7 +82,7 @@ def broken_links(files, root):
                     name, _, heading = target.partition("#")
                     linked = path if not name else (path.parent / name).resolve()
                 shown = path.relative_to(root)
-                if not linked.exists():
+                if linked is None or not linked.exists():
                     problems.append(f"{shown}: {target} does not exist")
                 elif heading and (linked.suffix != ".md" or heading not in anchors(linked)):
                     problems.append(f"{shown}: {target} has no such heading")
@@ -111,6 +114,7 @@ def folder_with_site_link(tmp_path, name, target):
     pages.mkdir(parents=True)
     (pages / "index.md").write_text("---\ntitle: Home\n---\n")
     (pages / "b.md").write_text("# The first part\n\n## The second part\n")
+    (pages / "_draft.md").write_text("# A draft\n")
     (tmp_path / name).write_text(f"See [it]({target}).\n")
     return tmp_path
 
