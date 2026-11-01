@@ -14,6 +14,11 @@ from importlib.metadata import version
 
 from cyclix import checks, config, install, runner
 
+try:
+    import argcomplete
+except ImportError:  # the optional extras group is not installed, so there is no completion
+    argcomplete = None
+
 logger = logging.getLogger(__name__)
 
 OK, FAILED, USAGE = 0, 1, 2
@@ -21,6 +26,8 @@ OK, FAILED, USAGE = 0, 1, 2
 
 def main(argv=None):
     parser = build_parser()
+    if argcomplete is not None:
+        argcomplete.autocomplete(parser)
     try:
         args = parser.parse_args(argv)
     except SystemExit as exit:  # argparse exits 2 on bad usage, 0 after --version

@@ -8,6 +8,10 @@ license-files = ["LICENSE"]
 requires-python = ">=3.14"
 dependencies = []
 
+[project.optional-dependencies]
+# Shell completion. ADR-0008 gives the reason for this dependency.
+extras = ["argcomplete>=3"]
+
 [project.scripts]
 cyclix = "cyclix.cli:main"
 
@@ -16,7 +20,7 @@ requires = ["uv_build>=0.10,<0.13"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = ["pytest", "pytest-bdd", "ruff", "coverage", "zizmor"]
+dev = ["argcomplete>=3", "pytest", "pytest-bdd", "ruff", "coverage", "zizmor"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

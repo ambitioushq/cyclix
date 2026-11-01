@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from fakes.runner import BIN, environment, run_cyclix
+from fakes.runner import BIN, environment, run, run_cyclix
 
 from cyclix import cli
 
@@ -192,3 +192,28 @@ def test_a_board_without_the_status_field_fails(world):
         'add a single-select field "Stage" to the board, '
         f"or change [tracker] status_field in {world.config}",
     ), result.stdout
+
+
+def test_cyclix_runs_without_argcomplete(world):
+    # None in sys.modules makes the import fail, as it does when the extras group is not installed.
+    code = (
+        "import sys; sys.modules['argcomplete'] = None; from cyclix import cli; "
+        "assert cli.argcomplete is None; sys.exit(cli.main(['--help']))"
+    )
+    result = run(world, [sys.executable, "-c", code])
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.startswith("usage: cyclix")
+
+
+def test_with_argcomplete_the_shell_completes_a_command(world, tmp_path):
+    completions = tmp_path / "completions"
+    env = {
+        **environment(world),
+        "_ARGCOMPLETE": "1",
+        "COMP_LINE": "cyclix ch",
+        "COMP_POINT": "9",
+        "_ARGCOMPLETE_STDOUT_FILENAME": str(completions),
+    }
+    result = subprocess.run(["cyclix"], env=env, capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr
+    assert completions.read_text() == "check "  # the space ends a whole word
