@@ -24,6 +24,7 @@ Cyclix turns issues into pull requests (PRs) without a person at the keyboard. I
 - A GitHub repository. Its base branch must be protected by a ruleset (see step 5 of [Get started](#get-started)). GitHub offers rulesets on a free plan only for public repositories.
 - A GitHub Projects board for the repository. Its Status field needs one option for each of Cyclix's six work states.
 - For `cyclix install`: Linux with a systemd user session.
+- A separate user account on the host, holding only the tokens Cyclix needs. Run Cyclix as that user. The agent and the gate run as the same user, and code they run can read any file that user can read, such as a saved GitHub login. A passing `cyclix check` does not change this. [Isolation](docs/design/isolation.md) explains.
 
 ## Install Cyclix
 
@@ -95,6 +96,8 @@ A **tenant** is one repository, its board and one config file. These steps set u
    ```sh
    cyclix install --tenant storefront
    ```
+
+   The timer does not use your shell's `PATH`. It gets systemd's default `PATH` for user services. So `gh`, `git`, `claude` and your gate commands must be in a directory on that path, or a pass that works by hand can fail on the timer. [Commands](docs/reference/commands.md#cyclix-install) explains.
 
 ## When `cyclix check` fails
 
