@@ -12,7 +12,7 @@ Today the process is limited in three ways, and it is not contained:
 - **The environment is limited.** The agent and the gate see an allow-list of environment variables, and git and `gh` find no credential in it ([ADR-0013](../adr/0013-the-agent-and-the-gate-get-no-github-credential.md)).
 - **The process is not contained.** The agent and the gate still run as the host user, with the real `HOME`. Code they run can read any file that user can read. Python started through `Bash(uv run *)` can read `~/.config/gh/hosts.yml` or `~/.netrc` by its full path. The agent's Read tool cannot, because `--restricted` confines it to the working directory. The agent can also write files that the engine later runs, such as hooks in the tenant's clone.
 
-So "the engine does not merge" ([ADR-0001](../adr/0001-the-engine-does-not-merge.md)) holds against an agent that follows its tool list. It does not yet hold against an agent that runs Python to read a token. Run Cyclix as a dedicated user that holds only the tokens the loop needs. If the operator's GitHub identity opens the PRs and may bypass branch protection, a leaked token can merge a PR or push to the base branch past the rules.
+So the merge rule ([ADR-0001](../adr/0001-merges-need-approval-or-a-written-rule.md)) holds against an agent that follows its tool list. It does not yet hold against an agent that runs Python to read a token. Run Cyclix as a dedicated user that holds only the tokens the loop needs. If the operator's GitHub identity opens the PRs and may bypass branch protection, a leaked token can merge a PR or push to the base branch past the rules.
 
 ## What comparable agent runners do
 

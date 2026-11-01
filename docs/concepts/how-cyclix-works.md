@@ -1,6 +1,6 @@
 # How Cyclix works
 
-Cyclix takes an issue that a person has marked Ready and carries it to a pull request (PR). It plans the change, builds it, runs your checks on it, and opens the PR. It then waits for a person to review and merge it. The engine does not merge.
+Cyclix takes an issue that a person has marked Ready and carries it to a pull request (PR). It plans the change, builds it, runs your checks on it, and opens the PR. It then waits for a person to review and merge it.
 
 A **tenant** is one repository together with its project board and one config file. One Cyclix install can run several tenants, and each has its own timer, state and event log.
 
@@ -107,4 +107,4 @@ The event log is a record of what happened. Cyclix writes to it and never reads 
 3. Reads the comment on the issue when an item is Parked.
 4. Reviews the PR, and merges it or closes it.
 
-Cyclix asks for nothing else. [ADR-0001](../adr/0001-the-engine-does-not-merge.md) explains why a person merges every PR.
+Cyclix asks for nothing else. [ADR-0001](../adr/0001-merges-need-approval-or-a-written-rule.md) covers when Cyclix may merge.

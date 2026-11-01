@@ -6,7 +6,7 @@
 
 ## Context
 
-A tenant could build several issues at once. A person reviews every PR ([ADR-0001](0001-the-engine-does-not-merge.md)), and a person's attention is the scarce resource ([ADR-0000](0000-guiding-principles.md)).
+A tenant could build several issues at once. A person reviews every PR ([ADR-0001](0001-merges-need-approval-or-a-written-rule.md)), and a person's attention is the scarce resource ([ADR-0000](0000-guiding-principles.md)).
 
 ## Decision
 
