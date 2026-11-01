@@ -1,10 +1,12 @@
-"""The checks behind `cyclix check`: is a tenant ready to run?"""
+"""The checks behind `cyclix check`: is a tenant ready to run?
 
-import shutil
+The config and the state directory belong to no adapter, so their checks are
+here. Each adapter checks its own outside system.
+"""
+
 import tempfile
 
 from cyclix import config
-from cyclix.adapters import gh
 from cyclix.adapters.claude_code import ClaudeCode
 from cyclix.adapters.github_codehost import GitHubCodeHost
 from cyclix.adapters.github_tracker import GitHubTracker
@@ -16,39 +18,40 @@ def run(path, cfg, error=None):
 
     path is the config file, or None when no file was named. cfg is the loaded
     config, or None when loading it raised error.
+
+    The prerequisites that the adapters share run once, after the config check.
+    An adapter whose config or prerequisite failed is skipped. Without a config
+    the adapters are not known, so the prerequisites of every adapter run.
     """
-    results, failed = [], set()
     if cfg is None:
-        failed.add("the config")
-        results.append(config_failure(error, path))
+        failed = {"the config"}
+        results = [config_failure(error, path)]
+        adapters = [(adapter, None) for adapter in (ClaudeCode, GitHubTracker, GitHubCodeHost)]
     else:
-        results.append(Result(f"config for tenant {cfg.tenant.name}"))
+        failed = set()
+        results = [Result(f"config for tenant {cfg.tenant.name}")]
+        adapters = [
+            (ClaudeCode(cfg.agent), cfg.agent),
+            (GitHubTracker(cfg), cfg.tracker),
+            (GitHubCodeHost(cfg), cfg.codehost),
+        ]
 
-    gh_result = check_gh()
-    if gh_result.failure is not None:
-        failed.add("gh signed in")
-    results.append(gh_result)
+    # dict.fromkeys drops a prerequisite that a second adapter shares, and keeps the order.
+    for prerequisite in dict.fromkeys(p for adapter, _ in adapters for p in adapter.needs):
+        result = prerequisite.check()
+        if result.failure is not None:
+            failed.add(prerequisite.name)
+        results.append(result)
     results.append(check_state_dir(config.state_dir()))
-    if cfg is None:
-        results.append(skipped("agent command", failed & {"the config"}))
-    else:
-        results.extend(ClaudeCode(cfg.agent).readiness(path))
-    # Reading the board and the branch needs both the config and a signed-in gh.
-    if failed:
-        board = "board" if cfg is None else f"board {cfg.tracker.owner}/{cfg.tracker.project}"
-        protection = "protection of the base branch"
-        if cfg is not None:
-            protection += f' "{cfg.codehost.base}"'
-        results += [skipped(board, failed), skipped(protection, failed)]
-    else:
-        results.extend(GitHubTracker(cfg).readiness(path))
-        results.extend(GitHubCodeHost(cfg).readiness(path))
+    for adapter, table in adapters:
+        needs = [
+            need for need in ("the config", *(p.name for p in adapter.needs)) if need in failed
+        ]
+        if needs:
+            results.append(Result(adapter.readiness_label(table), needs=" and ".join(needs)))
+        else:
+            results.extend(adapter.readiness(path))
     return results
-
-
-def skipped(what, failed):
-    needs = [need for need in ("the config", "gh signed in") if need in failed]
-    return Result(what, needs=" and ".join(needs))
 
 
 def config_failure(error, path):
@@ -60,16 +63,6 @@ def config_failure(error, path):
     else:
         fix = f"edit {path}"
     return Result("config", reason, fix)
-
-
-def check_gh():
-    if shutil.which("gh") is None:
-        return Result("gh", "not on PATH", "install gh, the GitHub CLI, and put it on PATH")
-    try:
-        gh.run("auth", "status")
-    except gh.GhError:
-        return Result("gh", "not signed in", 'run "gh auth login"')
-    return Result("gh is signed in")
 
 
 def check_state_dir(path):

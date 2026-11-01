@@ -71,7 +71,10 @@ def gh_call(call, *args):
 
 
 class GitHubCodeHost:
+    needs = (gh.SIGNED_IN,)
+
     def __init__(self, config):
+        self.codehost = config.codehost
         self.repo = config.codehost.repo
         self.base = config.codehost.base
         self.clone = config.state_dir / "repos" / config.tenant.name
@@ -175,6 +178,11 @@ class GitHubCodeHost:
             closed_at=timestamp(pr["closedAt"]),
         )
 
+    @staticmethod
+    def readiness_label(table=None):
+        what = "protection of the base branch"
+        return what if table is None else f'{what} "{table.base}"'
+
     def readiness(self, config_path):
         """Does the base branch require a pull request and refuse force-pushes and deletion?
 
@@ -183,7 +191,7 @@ class GitHubCodeHost:
         ruleset alone is enough when it holds every rule.
         """
         base, repo = self.base, self.repo
-        what = f'protection of the base branch "{base}"'
+        what = self.readiness_label(self.codehost)
         found, unreadable = set(), None
         try:
             classic = gh.json("api", f"repos/{repo}/branches/{base}/protection")

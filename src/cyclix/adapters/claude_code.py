@@ -37,6 +37,8 @@ CAP_REASONS = {
 
 
 class ClaudeCode:
+    needs = ()
+
     def __init__(self, agent_config, timeout_seconds=None, grace_seconds=GRACE_SECONDS):
         """timeout_seconds, when given, takes the place of the config's timeout."""
         self.command = agent_config.command
@@ -46,6 +48,11 @@ class ClaudeCode:
         self.timeout_seconds = timeout_seconds
         self.grace_seconds = grace_seconds
         self.pass_env = agent_config.pass_env
+
+    @staticmethod
+    def readiness_label(table=None):
+        # Only a config that did not load skips this check, so the label never has a table.
+        return "agent command"
 
     def readiness(self, config_path):
         """Is the agent command on PATH?"""
