@@ -10,9 +10,9 @@ Each PR needs a body that follows the repository's template and says what change
 
 ## Decision
 
-The build agent writes the body as its final answer. The build prompt includes the repository's `.github/pull_request_template.md` and asks the agent to end with it filled in. If there is no template, the agent writes `Closes #<issue>` and a short summary.
+The build agent writes the body as its final answer. The build prompt includes the repository's PR template and asks the agent to end with it filled in. If there is no template, the agent writes a line that closes the issue and a short summary. On GitHub the template is `.github/pull_request_template.md` and the line is `Closes #<issue>`.
 
-The PR stage makes sure the first line is `Closes #<issue>`. The plan does not go into the PR. The PR title is the issue's title.
+The PR stage makes sure the first line is that closing line. The plan does not go into the PR. The PR title is the issue's title.
 
 ## Consequences
 

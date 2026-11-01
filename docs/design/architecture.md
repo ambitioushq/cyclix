@@ -44,7 +44,7 @@ A crash cannot lose an event. The stage-run event builds up in the SQLite file w
 - **Adapters wrap the vendor's own tool.** An adapter is the module that talks to one outside system behind a narrow interface. Cyclix builds no HTTP layer. The GitHub adapters call the `gh` command-line program, and the agent adapter runs the agent's own command-line program, `claude` today ([ADR-0006](../adr/0006-talk-to-outside-systems-through-their-command-line-programs.md)).
 - **The host's service manager does the scheduling.** `cyclix run` makes one pass and exits. On Linux, `cyclix install` writes systemd units that start it on a timer ([ADR-0007](../adr/0007-run-one-pass-at-a-time-from-the-service-manager.md)).
 - **One item in progress for each tenant** ([ADR-0008](../adr/0008-work-on-one-item-at-a-time-per-tenant.md)).
-- **The agent is Claude Code.** It runs with a tool list for each stage ([ADR-0012](../adr/0012-run-the-agent-in-dontask-mode-with-a-tool-list-per-stage.md)). It and the gate get no GitHub credential through their environment ([ADR-0013](../adr/0013-keep-github-credentials-out-of-the-agent-and-the-gate.md)). [Isolation](isolation.md) describes what that does not stop and the container that is coming soon.
+- **The agent is Claude Code.** It runs with a tool list for each stage ([ADR-0012](../adr/0012-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md)). It and the gate get no GitHub credential through their environment ([ADR-0013](../adr/0013-keep-code-host-credentials-out-of-the-agent-and-the-gate.md)). [Isolation](isolation.md) describes what that does not stop and the container that is coming soon.
 
 ## The feature files are the functional spec
 

@@ -17,9 +17,9 @@ A record is not edited to change a decision. A new record replaces it, and the o
 | [0006](0006-talk-to-outside-systems-through-their-command-line-programs.md) | Talk to outside systems through their command-line programs, not their HTTP APIs | Accepted |
 | [0007](0007-run-one-pass-at-a-time-from-the-service-manager.md) | Run one pass at a time from the host's service manager, with no long-running process | Accepted |
 | [0008](0008-work-on-one-item-at-a-time-per-tenant.md) | Work on one item at a time for each tenant | Accepted |
-| [0009](0009-test-against-a-fake-github-that-keeps-state.md) | Test against a fake GitHub that keeps state, not recorded answers | Accepted |
-| [0010](0010-read-the-board-with-narrow-graphql-queries.md) | Read the board with narrow GraphQL queries | Accepted |
+| [0009](0009-test-against-fake-outside-systems-that-keep-state.md) | Test against fake outside systems that keep state, not recorded answers | Accepted |
+| [0010](0010-read-the-tracker-with-queries-for-only-the-fields-cyclix-uses.md) | Read the tracker with queries that ask for only the fields Cyclix uses | Accepted |
 | [0011](0011-the-build-agent-writes-the-pr-body.md) | The build agent writes the PR body | Accepted |
-| [0012](0012-run-the-agent-in-dontask-mode-with-a-tool-list-per-stage.md) | Run the agent in dontAsk mode with a tool list for each stage, and allow only listed flags in its command | Accepted |
-| [0013](0013-keep-github-credentials-out-of-the-agent-and-the-gate.md) | Keep GitHub credentials out of the agent's and the gate's environment | Accepted |
+| [0012](0012-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) | Run the agent without approval prompts, with a tool list for each stage, and allow only listed flags in its command | Accepted |
+| [0013](0013-keep-code-host-credentials-out-of-the-agent-and-the-gate.md) | Keep code host credentials out of the agent's and the gate's environment | Accepted |
 | [0014](0014-copy-private-instruction-files-from-one-configured-folder.md) | Copy a tenant's private instruction files from one configured folder into each run's worktree | Accepted |

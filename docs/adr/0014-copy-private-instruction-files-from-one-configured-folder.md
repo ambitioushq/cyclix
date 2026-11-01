@@ -6,7 +6,7 @@
 
 ## Context
 
-Claude Code reads instruction files such as `CLAUDE.md` from the folder it works in. Most tenants keep them in the repository. A tenant with a public repository may want its agent's rules kept out of it.
+An agent reads instruction files from the folder it works in. Claude Code reads `CLAUDE.md`, for example. Most tenants keep them in the repository. A tenant with a public repository may want its agent's rules kept out of it.
 
 ## Decision
 
@@ -24,4 +24,4 @@ If the repository already tracks a file at one of those paths, admission writes 
 
 ## Alternatives Considered
 
-**A symlink to the folder.** Rejected. Claude Code does not read a `CLAUDE.md` that is symlinked from outside its working folder, and a container could not follow the link.
+**A symlink to the folder.** Rejected. Some agents, Claude Code among them, do not read an instruction file that is symlinked from outside the working folder, and a container could not follow the link.
