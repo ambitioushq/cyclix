@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { posix, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { glob } from 'astro/loaders';
+import { markdownToMdast } from 'satteri';
 
 /** The docs folder at the top of the repository: the only copy of the pages. */
 export const docsDir = fileURLToPath(new URL('../../docs/', import.meta.url));
@@ -25,22 +26,19 @@ function route(id) {
 	return id === 'index' ? '/' : `/${id}/`;
 }
 
-/** The text of the first level-one heading outside a code block, with inline Markdown removed. */
-function firstHeading(text) {
-	let fence = null;
-	for (const line of text.split('\n')) {
-		const [, marker, rest] = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/) ?? [];
-		if (fence) {
-			// A fence closes only with its own character, at least as long, and nothing after it.
-			if (marker && marker[0] === fence[0] && marker.length >= fence.length && !rest.trim()) fence = null;
-		} else if (marker) {
-			fence = marker;
-		} else {
-			const heading = line.match(/^# +(.*?)[ #]*$/)?.[1];
-			if (heading) return heading.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replaceAll('`', '');
-		}
-	}
-	return undefined;
+/** Whether a top-level node is the page's title: its first level-one heading. */
+function isTitle(node) {
+	return node.type === 'heading' && node.depth === 1;
+}
+
+function plainText(node) {
+	return node.value ?? (node.children ?? []).map(plainText).join('');
+}
+
+/** The page's title, read with the parser that renders the page, so it names the heading the plugin removes. */
+function title(text) {
+	const heading = markdownToMdast(text).children.find(isTitle);
+	return heading && plainText(heading);
 }
 
 /**
@@ -62,7 +60,7 @@ export function docsFolderLoader() {
 					context.parseData({
 						...rest,
 						filePath,
-						data: { title: firstHeading(readFileSync(filePath, 'utf8')), ...data },
+						data: { title: title(readFileSync(filePath, 'utf8')), ...data },
 					}),
 			}),
 	};
@@ -90,8 +88,8 @@ export function docsFolderPlugin({ fileURL }) {
 	return {
 		name: 'cyclix-docs-folder',
 		before(root, ctx) {
-			const title = root.children.find((node) => node.type === 'heading' && node.depth === 1);
-			if (title) ctx.removeNode(title);
+			const heading = root.children.find(isTitle);
+			if (heading) ctx.removeNode(heading);
 			// The links validator finds a page by its path under src/content/docs, unless the
 			// frontmatter names a slug. These pages live outside that folder, so the slug names
 			// the page. An empty slug is ignored, so the home page cannot be named this way.
