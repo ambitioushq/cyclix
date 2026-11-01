@@ -23,3 +23,18 @@ Feature: The links in the docs lead somewhere
     Given a docs folder where "a.md" shows the link "missing.md" in a code block
     When the links in that folder are checked
     Then the report is empty
+
+  Scenario: A broken link with a title is reported
+    Given a docs folder where "a.md" links to "missing.md" with a title
+    When the links in that folder are checked
+    Then the report names "a.md" and "missing.md"
+
+  Scenario: A broken reference link is reported
+    Given a docs folder where "a.md" links to "missing.md" through a reference definition
+    When the links in that folder are checked
+    Then the report names "a.md" and "missing.md"
+
+  Scenario: A link inside a code block that shows a shorter fence is not checked
+    Given a docs folder where "a.md" shows the link "missing.md" inside a fence example in a longer code block
+    When the links in that folder are checked
+    Then the report is empty

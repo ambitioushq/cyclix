@@ -7,19 +7,30 @@ scenarios(str(Path(__file__).parent / "docs.feature"))
 
 ROOT = Path(__file__).resolve().parents[2]
 
-LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)")
+LINK = re.compile(r"""(?<!!)\[[^\]]*\]\(<?([^)\s>]+)>?(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)""")
+REFERENCE = re.compile(r"^ {0,3}\[[^\]]+\]:\s*<?([^\s>]+)>?")
 HEADING = re.compile(r"^#{1,6}\s+(.*?)\s*#*\s*$")
-FENCE = re.compile(r"^\s*(```|~~~)")
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 
 
 def prose_lines(path):
     """The lines of a Markdown file outside its fenced code blocks."""
-    in_code = False
+    fence = None
     for line in path.read_text().splitlines():
-        if FENCE.match(line):
-            in_code = not in_code
-        elif not in_code:
-            yield line
+        match = FENCE.match(line)
+        if fence is None:
+            if match:
+                fence = match[1]
+            else:
+                yield line
+        elif (
+            match
+            and match[1][0] == fence[0]
+            and len(match[1]) >= len(fence)
+            and not match[2].strip()
+        ):
+            # A fence closes only with its own character, at least as long, and nothing after it.
+            fence = None
 
 
 def slug(heading):
@@ -45,7 +56,7 @@ def broken_links(files, root):
     problems = []
     for path in files:
         for line in prose_lines(path):
-            for target in LINK.findall(line):
+            for target in [*LINK.findall(line), *REFERENCE.findall(line)]:
                 if re.match(r"[a-z][a-z0-9+.-]*:", target):
                     continue  # a URL, not a file in the repository
                 name, _, heading = target.partition("#")
@@ -78,6 +89,37 @@ def folder_with_link(tmp_path, name, target):
 )
 def folder_with_fenced_link(tmp_path, name, target):
     (tmp_path / name).write_text(f"```\n[it]({target})\n```\n")
+    return tmp_path
+
+
+@given(
+    parsers.parse('a docs folder where "{name}" links to "{target}" with a title'),
+    target_fixture="docs_folder",
+)
+def folder_with_titled_link(tmp_path, name, target):
+    (tmp_path / name).write_text(f'See [it]({target} "Title").\n')
+    return tmp_path
+
+
+@given(
+    parsers.parse(
+        'a docs folder where "{name}" links to "{target}" through a reference definition'
+    ),
+    target_fixture="docs_folder",
+)
+def folder_with_reference_link(tmp_path, name, target):
+    (tmp_path / name).write_text(f"See [it][ref].\n\n[ref]: {target}\n")
+    return tmp_path
+
+
+@given(
+    parsers.parse(
+        'a docs folder where "{name}" shows the link "{target}" inside a fence example in a longer code block'
+    ),
+    target_fixture="docs_folder",
+)
+def folder_with_nested_fence(tmp_path, name, target):
+    (tmp_path / name).write_text(f"````\n```\n[it]({target})\n```\n````\n")
     return tmp_path
 
 
