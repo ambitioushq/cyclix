@@ -24,6 +24,7 @@ This list holds every rule a change follows that a review can check.
 - A docstring states the contract a caller relies on: what the code does, returns, raises or changes. Flag a docstring that walks through how the code works, or states a behaviour promise no test checks.
 - A code comment says why the code does something a reader could not work out from the code. Flag a comment that describes the change, or names a line number, a count or version history. Flag commented-out code. The version beside a pinned action's SHA is required (see "Workflow files").
 - Flag an issue or PR number in a comment or docstring, except in `TODO(#123): reason` or in a regression test's docstring that states the behaviour in words first. An issue in another repo uses the full name (`owner/repo#123`).
+- Flag a `noqa` for a complexity rule (`C901`, `PLR0911`, `PLR0912`, `PLR0915`), a complexipy ignore, or a raised complexity limit, unless the PR gives a reason. ADR-0009 sets the limits.
 
 ## Workflow files
 

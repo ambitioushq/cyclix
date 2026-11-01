@@ -83,6 +83,35 @@ def turns(step, n):
     return [*lines, lines[-1]]
 
 
+def on_interrupt(step, n):
+    """Set what the fake does on SIGINT, as the step says."""
+    if step["on_interrupt"] == "ignore":
+        # A child inherits an ignored signal, so the step's sleep ignores it too.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+    else:
+        # Claude Code in stream-json mode ends on SIGINT with an error result line.
+        def interrupted(signum, frame):
+            line = {**result(step, n), "subtype": "error_during_execution", "is_error": True}
+            print(json.dumps(line), flush=True)
+            os._exit(1)
+
+        signal.signal(signal.SIGINT, interrupted)
+
+
+def do_work(step):
+    """Write the step's files, and commit them when the step says so."""
+    for path, content in step["files"].items():
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content)
+    if step["commit"] and step["files"]:
+        if step["add_all"]:
+            subprocess.run(["git", "add", "-A"], check=True)
+        else:
+            subprocess.run(["git", "add", "--", *step["files"]], check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "Work by the fake agent"], check=True)
+
+
 def main():
     world = World.from_env()
     prompt = sys.stdin.read()
@@ -97,17 +126,7 @@ def main():
     world.record_agent_pid(os.getpid())
     world.record_agent_call(sys.argv[1:], recorded_env())
 
-    if step["on_interrupt"] == "ignore":
-        # A child inherits an ignored signal, so the sleep below ignores it too.
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-    else:
-        # Claude Code in stream-json mode ends on SIGINT with an error result line.
-        def interrupted(signum, frame):
-            line = {**result(step, n), "subtype": "error_during_execution", "is_error": True}
-            print(json.dumps(line), flush=True)
-            os._exit(1)
-
-        signal.signal(signal.SIGINT, interrupted)
+    on_interrupt(step, n)
 
     if step["stdout"] is None:
         for line in turns(step, n):
@@ -123,17 +142,7 @@ def main():
         sys.stdout.write(step["stdout"])
         return step["exit"]
 
-    for path, content in step["files"].items():
-        target = Path(path)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content)
-    if step["commit"] and step["files"]:
-        if step["add_all"]:
-            subprocess.run(["git", "add", "-A"], check=True)
-        else:
-            subprocess.run(["git", "add", "--", *step["files"]], check=True)
-        subprocess.run(["git", "commit", "-q", "-m", "Work by the fake agent"], check=True)
-
+    do_work(step)
     print(json.dumps(result(step, n)))
     return step["exit"]
 

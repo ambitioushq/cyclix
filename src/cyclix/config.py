@@ -355,63 +355,95 @@ def state_dir():
 def check_table(data, schema, name):
     """Check one table's keys and value types, naming the key on failure."""
     where = f"[{name}]" if name else "the top level"
-    for key in data:
-        if key not in schema:
-            if isinstance(data[key], dict):
-                raise ConfigError(f"unknown table [{qualify(name, key)}]")
-            raise ConfigError(f'unknown key "{key}" in {where}')
+    refuse_unknown_keys(data, schema, name, where)
     for key, expected in schema.items():
-        if key not in data:
-            if isinstance(expected, dict):
-                raise ConfigError(f"missing table [{qualify(name, key)}]")
-            raise ConfigError(f'{where} is missing "{key}"')
-        value = data[key]
+        check_key(data, key, expected, name, where)
+
+
+def refuse_unknown_keys(data, schema, name, where):
+    for key in data:
+        if key in schema:
+            continue
+        if isinstance(data[key], dict):
+            raise ConfigError(f"unknown table [{qualify(name, key)}]")
+        raise ConfigError(f'unknown key "{key}" in {where}')
+
+
+def check_key(data, key, expected, name, where):
+    if key not in data:
         if isinstance(expected, dict):
-            if not isinstance(value, dict):
-                raise ConfigError(f"{qualify(name, key)} must be a table")
-            check_table(value, expected, qualify(name, key))
-        else:
-            check_value(value, expected, f'[{name}] "{key}"')
+            raise ConfigError(f"missing table [{qualify(name, key)}]")
+        raise ConfigError(f'{where} is missing "{key}"')
+    value = data[key]
+    if not isinstance(expected, dict):
+        check_value(value, expected, f'[{name}] "{key}"')
+    elif not isinstance(value, dict):
+        raise ConfigError(f"{qualify(name, key)} must be a table")
+    else:
+        check_table(value, expected, qualify(name, key))
 
 
 def check_value(value, expected, label):
-    if expected is ARGV:
-        if not is_argv(value):
-            raise ConfigError(f"{label} must be a non-empty list of strings")
-    elif expected is ARGV_LIST:
-        if not isinstance(value, list) or not value:
-            raise ConfigError(f"{label} must list at least one command")
-        if not all(is_argv(command) for command in value):
-            raise ConfigError(f"{label} must hold commands, each a non-empty list of strings")
-    elif expected is NAMES:
-        if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
-            raise ConfigError(f"{label} must be a list of names")
-        for name in value:
-            if not ENV_NAME.fullmatch(name):
-                raise ConfigError(
-                    f'{label} must be a list of environment variable names, not "{name}"'
-                )
-    elif expected is WHOLE:
-        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-            raise ConfigError(f"{label} must be a whole number of 0 or more")
-    elif isinstance(expected, Form):
-        if not isinstance(value, str):
-            raise ConfigError(f"{label} must be a string")
-        if not expected.pattern.fullmatch(value):
-            raise ConfigError(f'{label} must be {expected.description}, not "{value}"')
-    elif expected is COUNT:
-        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
-            raise ConfigError(f"{label} must be a whole number of 1 or more")
-    elif expected is NUMBER:
-        # TOML allows nan and inf, and nan fails every comparison, so test the range directly.
-        if (
-            not isinstance(value, int | float)
-            or isinstance(value, bool)
-            or not 0 < value < math.inf
-        ):
-            raise ConfigError(f"{label} must be a finite number above 0")
+    """Raise ConfigError, naming label, when value is not of the expected type."""
+    if isinstance(expected, Form):
+        check_form(value, expected, label)
+    elif expected in VALUE_CHECKS:
+        VALUE_CHECKS[expected](value, label)
     elif not isinstance(value, expected):
         raise ConfigError(f"{label} must be a string")
+
+
+def check_form(value, form, label):
+    if not isinstance(value, str):
+        raise ConfigError(f"{label} must be a string")
+    if not form.pattern.fullmatch(value):
+        raise ConfigError(f'{label} must be {form.description}, not "{value}"')
+
+
+def check_argv(value, label):
+    if not is_argv(value):
+        raise ConfigError(f"{label} must be a non-empty list of strings")
+
+
+def check_argv_list(value, label):
+    if not isinstance(value, list) or not value:
+        raise ConfigError(f"{label} must list at least one command")
+    if not all(is_argv(command) for command in value):
+        raise ConfigError(f"{label} must hold commands, each a non-empty list of strings")
+
+
+def check_names(value, label):
+    if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+        raise ConfigError(f"{label} must be a list of names")
+    for name in value:
+        if not ENV_NAME.fullmatch(name):
+            raise ConfigError(f'{label} must be a list of environment variable names, not "{name}"')
+
+
+def check_whole(value, label):
+    if not is_int(value) or value < 0:
+        raise ConfigError(f"{label} must be a whole number of 0 or more")
+
+
+def check_count(value, label):
+    if not is_int(value) or value < 1:
+        raise ConfigError(f"{label} must be a whole number of 1 or more")
+
+
+def check_number(value, label):
+    # TOML allows nan and inf, and nan fails every comparison, so test the range directly.
+    if not isinstance(value, int | float) or isinstance(value, bool) or not 0 < value < math.inf:
+        raise ConfigError(f"{label} must be a finite number above 0")
+
+
+VALUE_CHECKS = {
+    ARGV: check_argv,
+    ARGV_LIST: check_argv_list,
+    NAMES: check_names,
+    WHOLE: check_whole,
+    COUNT: check_count,
+    NUMBER: check_number,
+}
 
 
 def check_wip(wip):
@@ -429,6 +461,11 @@ def check_wip(wip):
         raise ConfigError(
             '[limits.wip] "in_progress" can only be 1 until the engine runs items side by side'
         )
+
+
+def is_int(value):
+    """True for an int that is not a bool, which Python counts as an int."""
+    return isinstance(value, int) and not isinstance(value, bool)
 
 
 def is_argv(value):

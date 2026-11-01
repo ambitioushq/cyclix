@@ -20,7 +20,7 @@ requires = ["uv_build>=0.10,<0.13"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = ["argcomplete>=3", "pytest", "pytest-bdd", "ruff", "coverage", "zizmor"]
+dev = ["argcomplete>=3", "pytest", "pytest-bdd", "ruff", "coverage", "zizmor", "complexipy"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -32,7 +32,16 @@ line-length = 100
 extend-include = ["tests/fakes/bin/*"]
 
 [tool.ruff.lint]
-extend-select = ["I", "UP", "B", "TD003", "ERA001"]
+extend-select = ["I", "UP", "B", "TD003", "ERA001", "C901", "PLR0911", "PLR0912", "PLR0915"]
+
+# Ruff's defaults, written out so a reader sees the limits. ADR-0009 gives the reasons.
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-returns = 6
+max-branches = 12
+max-statements = 50
 
 [tool.ruff.lint.per-file-ignores]
 # A test comment may show worked arithmetic, which ERA001 reads as commented-out code.
@@ -45,3 +54,16 @@ patch = ["subprocess"]
 
 [tool.coverage.report]
 fail_under = 98
+
+# complexipy skips a file with no .py extension when it scans a folder, so each fake is named.
+[tool.complexipy]
+paths = [
+    "src",
+    "tests",
+    "scripts",
+    "tests/fakes/bin/fake-agent",
+    "tests/fakes/bin/gh",
+    "tests/fakes/bin/systemctl",
+]
+# Sonar's default limit for cognitive complexity. ADR-0009 gives the reason.
+max-complexity-allowed = 15

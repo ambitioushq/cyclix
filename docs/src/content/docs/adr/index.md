@@ -19,3 +19,4 @@ A record is not edited to change a decision. A new record replaces it, and the o
 | [0006](/adr/0006-build-the-docs-site-with-astro-and-starlight/) | Build the docs site with Astro and Starlight | Accepted, deploy replaced by 0007 |
 | [0007](/adr/0007-deploy-the-docs-site-through-the-hosts-git-integration/) | Deploy the docs site through the host's Git integration | Accepted |
 | [0008](/adr/0008-offer-shell-completion-through-an-optional-argcomplete-extra/) | Offer shell completion through an optional argcomplete extra | Accepted |
+| [0009](/adr/0009-fail-the-build-on-a-function-over-the-complexity-limits/) | Fail the build on a function over the complexity limits | Accepted |
