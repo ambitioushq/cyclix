@@ -30,9 +30,9 @@ def example():
     return EXAMPLE.read_text()
 
 
-def test_the_example_matches_the_design_doc():
-    design = (ROOT / "docs" / "design" / "v0.0.md").read_text()
-    section = design.split("## The config file")[1]
+def test_the_example_matches_the_reference():
+    reference = (ROOT / "docs" / "reference" / "configuration.md").read_text()
+    section = reference.split("## The full example")[1]
     block = re.search(r"```toml\n(.*?)```", section, re.DOTALL)[1]
     assert block == example()
 

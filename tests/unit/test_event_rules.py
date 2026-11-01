@@ -8,7 +8,7 @@ import pytest
 from cyclix.events.log import EventError, write_stage_run
 from cyclix.events.schema import MAX_STRING
 
-DESIGN = Path(__file__).resolve().parents[2] / "docs" / "design" / "v0.0.md"
+DESIGN = Path(__file__).resolve().parents[2] / "docs" / "design" / "engine.md"
 
 
 def fields(**extra):
@@ -29,8 +29,8 @@ def lines(state_dir):
 
 
 def doc_example():
-    """The example event in the design doc's "The event log, schema version 1"."""
-    section = DESIGN.read_text().split("## The event log, schema version 1", 1)[1]
+    """The example event in the design doc's "The event log schema"."""
+    section = DESIGN.read_text().split("## The event log schema", 1)[1]
     return json.loads(re.search(r"```json\n(.*?)```", section, re.DOTALL)[1])
 
 
