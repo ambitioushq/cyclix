@@ -17,3 +17,20 @@ npm run dev
 ```
 
 The site is served at `http://localhost:4321` and reloads when a page changes. `npm run build` writes the site to `docs/dist/` and fails when a link reaches no page or heading.
+
+## How the site is deployed
+
+Cloudflare's Git integration for Workers, Workers Builds, builds the site from `main` and deploys it as the Worker `cyclix-docs`, which serves only static files. [`wrangler.jsonc`](wrangler.jsonc) names the Worker and the built site folder. Cloudflare keeps the build settings in its dashboard, under the Worker's Settings → Build:
+
+- Root directory: `docs`
+- Build command: `npm ci && npm run build`
+- Deploy command: `npx wrangler deploy`, which runs the Wrangler version in `package-lock.json`
+- Build watch paths: include `docs/*`, so a change elsewhere in the repository starts no build
+
+GitHub CI builds the site on every pull request that touches `docs/`, so a broken link fails the pull request before Cloudflare deploys anything. A change to these settings in the dashboard must change this list too.
+
+[ADR-0007](src/content/docs/adr/0007-deploy-the-docs-site-through-the-hosts-git-integration.md) records why the host's Git integration deploys the site, not a CI job. The Cloudflare-specific choices have these reasons:
+
+- The site deploys as a Worker, not as a Pages project. Cloudflare now treats Pages as part of Workers, and Wrangler, Cloudflare's command-line tool, calls Pages "the previous version".
+- The Worker serves only the built files and runs no code, because the site is static.
+- Wrangler is a development package of the site, so the deploy runs the version pinned in `package-lock.json`, and Dependabot updates it with the site's other packages.

@@ -16,4 +16,5 @@ A record is not edited to change a decision. A new record replaces it, and the o
 | [0003](/adr/0003-one-wide-event-per-stage-run-in-opentelemetry-shape/) | Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines | Accepted |
 | [0004](/adr/0004-use-only-the-standard-library-unless-a-dependency-has-a-written-reason/) | Use only the standard library unless a dependency has a written reason | Accepted |
 | [0005](/adr/0005-confine-the-agent-and-the-gate/) | Confine the agent and the gate | Accepted |
-| [0006](/adr/0006-build-the-docs-site-with-astro-and-starlight/) | Build the docs site with Astro and Starlight | Accepted |
+| [0006](/adr/0006-build-the-docs-site-with-astro-and-starlight/) | Build the docs site with Astro and Starlight | Accepted, deploy replaced by 0007 |
+| [0007](/adr/0007-deploy-the-docs-site-through-the-hosts-git-integration/) | Deploy the docs site through the host's Git integration | Accepted |

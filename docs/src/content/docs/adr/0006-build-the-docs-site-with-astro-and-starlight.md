@@ -2,7 +2,7 @@
 title: "ADR-0006: Build the docs site with Astro and Starlight"
 ---
 
-**Status:** Accepted
+**Status:** Accepted. [ADR-0007](/adr/0007-deploy-the-docs-site-through-the-hosts-git-integration/) replaces how the site is deployed.
 
 **Date:** November 2026
 

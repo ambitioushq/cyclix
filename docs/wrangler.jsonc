@@ -1,0 +1,10 @@
+// Cloudflare's Git integration (Workers Builds) deploys the built site from main as
+// a Worker that serves only static files. See docs/README.md.
+{
+	"name": "cyclix-docs",
+	"compatibility_date": "2026-11-01",
+	"assets": {
+		"directory": "./dist",
+		"not_found_handling": "404-page"
+	}
+}
