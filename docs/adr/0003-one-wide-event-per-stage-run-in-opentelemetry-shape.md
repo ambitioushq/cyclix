@@ -1,4 +1,4 @@
-# ADR-0004: Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines
+# ADR-0003: Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines
 
 **Status:** Accepted
 

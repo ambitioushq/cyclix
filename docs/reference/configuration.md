@@ -192,7 +192,7 @@ The agent and the gate do not get Cyclix's own environment. They get an allow-li
 - Set by Cyclix: `GH_CONFIG_DIR` pointing at an empty folder, so `gh` finds no login. `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1`, so git reads no credential helper. `GIT_TERMINAL_PROMPT=0`. And the author and committer name and email, so commits carry the identity git would have used.
 - The names in `pass_env`.
 
-The config is refused if `pass_env` names a GitHub token (`GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN` or `GITHUB_ENTERPRISE_TOKEN`), `GH_CONFIG_DIR`, `SSH_AUTH_SOCK`, a program that git or SSH would ask for a credential (`GIT_ASKPASS`, `SSH_ASKPASS`, `GIT_SSH` or `GIT_SSH_COMMAND`), `GIT_TERMINAL_PROMPT`, or any name that starts with `GIT_CONFIG`. The gate's list also may not name the Claude login. A tenant whose tests need `DATABASE_URL`, for example, lists it in `[gate] pass_env`. [ADR-0008](../adr/0008-keep-code-host-credentials-out-of-the-agent-and-the-gate.md) has the reasons.
+The config is refused if `pass_env` names a GitHub token (`GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN` or `GITHUB_ENTERPRISE_TOKEN`), `GH_CONFIG_DIR`, `SSH_AUTH_SOCK`, a program that git or SSH would ask for a credential (`GIT_ASKPASS`, `SSH_ASKPASS`, `GIT_SSH` or `GIT_SSH_COMMAND`), `GIT_TERMINAL_PROMPT`, or any name that starts with `GIT_CONFIG`. The gate's list also may not name the Claude login. A tenant whose tests need `DATABASE_URL`, for example, lists it in `[gate] pass_env`. [ADR-0007](../adr/0007-keep-code-host-credentials-out-of-the-agent-and-the-gate.md) has the reasons.
 
 ## Values Cyclix checks for form
 

@@ -30,21 +30,21 @@ When the SQLite file and the board disagree, the board wins and the sweep correc
 
 ## The event log
 
-The event log is a record of wide events. A **wide event** covers one unit of work and holds everything needed to understand it. It is written once, when the work ends. [ADR-0004](../adr/0004-one-wide-event-per-stage-run-in-opentelemetry-shape.md) gives the rules, and [Engine](engine.md#the-event-log-schema) gives the fields. There are three kinds of event:
+The event log is a record of wide events. A **wide event** covers one unit of work and holds everything needed to understand it. It is written once, when the work ends. [ADR-0003](../adr/0003-one-wide-event-per-stage-run-in-opentelemetry-shape.md) gives the rules, and [Engine](engine.md#the-event-log-schema) gives the fields. There are three kinds of event:
 
 1. **One for each stage run:** admission, plan, build, gate, PR or the reconciler, on one issue. It holds the issue, the PR, the commit SHA, the stage, the outcome and its reason, each gate check's result, the model, tokens, cost, duration, and the engine and config versions. This kind is built.
 2. **One for each human act** (coming soon): a merge, a close with its reason, a review round, a card move. It would carry which stage produced the work and how long the work waited on a person.
 3. **One when an issue closes** (coming soon): a summary of the issue's whole life.
 
-The stage-run event builds up in the SQLite file while the run goes. If the run dies while its row is open, the next sweep writes it with the outcome `crashed`. The runner marks the row ended before it writes the event, so a crash between those two steps loses that one event ([ADR-0003](../adr/0003-the-loop-writes-the-event-log-but-never-reads-it.md)).
+The stage-run event builds up in the SQLite file while the run goes. If the run dies while its row is open, the next sweep writes it with the outcome `crashed`. The runner marks the row ended before it writes the event, so a crash between those two steps loses that one event.
 
 ## How Cyclix is built
 
-- **Python 3.14, and the standard library by default.** A new runtime dependency needs a written reason in these docs and approval in the PR that adds it ([ADR-0005](../adr/0005-use-only-the-standard-library-unless-a-dependency-has-a-written-reason.md)). The development tools (pytest, pytest-bdd, ruff, coverage and zizmor) are dev dependencies.
+- **Python 3.14, and the standard library by default.** A new runtime dependency needs a written reason in these docs and approval in the PR that adds it ([ADR-0004](../adr/0004-use-only-the-standard-library-unless-a-dependency-has-a-written-reason.md)). The development tools (pytest, pytest-bdd, ruff, coverage and zizmor) are dev dependencies.
 - **Each adapter chooses how it talks to its system.** An adapter is the module that talks to one outside system behind a narrow interface. The GitHub adapters call the `gh` command-line program, and the agent adapter runs `claude` today. Another adapter could use an HTTP API.
 - **The host's service manager does the scheduling.** `cyclix run` makes one pass and exits. On Linux, `cyclix install` writes systemd units that start it on a timer. Cyclix has no long-running process today, so it has no scheduler, restart logic or hang detection of its own.
 - **One item in progress for each tenant.** A pass runs its item through every stage while it holds the tenant's lock, so the config refuses an In progress limit other than 1.
-- **The agent is Claude Code.** It runs with a tool list for each stage ([ADR-0007](../adr/0007-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md)). It and the gate get no GitHub credential through their environment ([ADR-0008](../adr/0008-keep-code-host-credentials-out-of-the-agent-and-the-gate.md)). [Isolation](isolation.md) describes what that does not stop and the container that is coming soon.
+- **The agent is Claude Code.** It runs with a tool list for each stage ([ADR-0006](../adr/0006-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md)). It and the gate get no GitHub credential through their environment ([ADR-0007](../adr/0007-keep-code-host-credentials-out-of-the-agent-and-the-gate.md)). [Isolation](isolation.md) describes what that does not stop and the container that is coming soon.
 
 ## The feature files are the functional spec
 

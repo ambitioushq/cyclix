@@ -1,4 +1,4 @@
-# ADR-0005: Use only the standard library unless a dependency has a written reason
+# ADR-0004: Use only the standard library unless a dependency has a written reason
 
 **Status:** Accepted
 

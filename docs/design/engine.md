@@ -131,7 +131,7 @@ Every git call has a time limit, and sets `GIT_TERMINAL_PROMPT=0`, so git never 
 
 The `Agent` protocol has one method, `run(prompt, cwd, stage, run_dir)`, where `stage` is the stage's model, caps and tools from the config. The result holds the text answer, whether the call failed and why, the exit code, the model, the input and output tokens, the cost, the duration and the number of turns.
 
-The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds the flags of [ADR-0007](../adr/0007-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) after the command, including `--output-format stream-json --verbose`. In that mode Claude Code prints each assistant message as it comes, with that message's token counts, and a result line at the end. The engine reads the result line.
+The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds the flags of [ADR-0006](../adr/0006-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) after the command, including `--output-format stream-json --verbose`. In that mode Claude Code prints each assistant message as it comes, with that message's token counts, and a result line at the end. The engine reads the result line.
 
 **A call that runs past its timeout** gets SIGINT, which lets Claude Code stop its own tools and print a result line of subtype `error_during_execution` that holds the cost so far. After 30 seconds the whole process group is killed. Claude Code's plain `--output-format json` prints nothing when it is interrupted, so a timed-out call would lose its cost. This is why the engine uses stream-json.
 
@@ -167,7 +167,9 @@ The worktree is on the branch `cyclix/<issue>-<slug>`, made from the remote base
 
 ## The event log schema
 
-Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an OpenTelemetry log record ([ADR-0004](../adr/0004-one-wide-event-per-stage-run-in-opentelemetry-shape.md)). The schema version is 1. Any change to the schema is made here first, and then in `src/cyclix/events/schema.py`.
+The engine writes the event log and never reads it. It decides from the tracker, the code host and the state file, so anyone can query, copy, rotate or delete the log without changing what the loop does next.
+
+Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an OpenTelemetry log record ([ADR-0003](../adr/0003-one-wide-event-per-stage-run-in-opentelemetry-shape.md)). The schema version is 1. Any change to the schema is made here first, and then in `src/cyclix/events/schema.py`.
 
 ```json
 {
@@ -230,4 +232,4 @@ Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an 
 
 **Admission and the reconciler are stages like the others.** Each is a class with a `name` and a `run(ctx)` method, and the runner runs every stage the same way. When the runner claims an item, it makes one `RunContext` for the run: the adapters, the run ID, the issue number and the run folder. Admission fills in the issue's details and the worktree, and plan, build, gate and PR read them, so the context is not frozen. The reconciler is made for one item and its ended PR, and its context has no worktree. Two frozen contexts were considered and left out: a small one for admission and the reconciler, with admission returning the full one in its result. That needs a second context type, and a result field that only admission sets.
 
-**The PR body comes from the build stage** ([ADR-0006](../adr/0006-the-build-agent-writes-the-pr-body.md)). The PR stage reads `pr.md`, makes sure its first line is `Closes #<issue>`, and opens the PR with the issue's title.
+**The PR body comes from the build stage** ([ADR-0005](../adr/0005-the-build-agent-writes-the-pr-body.md)). The PR stage reads `pr.md`, makes sure its first line is `Closes #<issue>`, and opens the PR with the issue's title.
