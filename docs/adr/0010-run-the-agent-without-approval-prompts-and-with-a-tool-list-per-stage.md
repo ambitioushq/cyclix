@@ -6,7 +6,7 @@
 
 ## Context
 
-An unattended agent cannot stop to ask before it edits a file or runs `git`. The first version let the agent make every tool call. The agent reads text that can carry instructions, so something it reads can steer it.
+An unattended agent cannot stop to ask before it edits a file or runs `git`. The first version let the agent make every tool call. The agent reads text that can carry instructions, so whoever wrote that text can direct what the agent does.
 
 ## Decision
 

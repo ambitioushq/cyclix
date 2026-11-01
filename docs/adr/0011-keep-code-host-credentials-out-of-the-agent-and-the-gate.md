@@ -6,7 +6,7 @@
 
 ## Context
 
-The agent writes code and the gate runs it, and text they read can steer them. With a code host credential, either one could merge a PR or push to the base branch.
+The agent writes code from text that can carry instructions, and the gate runs that code. With a code host credential, either one could merge a PR or push to the base branch.
 
 ## Decision
 

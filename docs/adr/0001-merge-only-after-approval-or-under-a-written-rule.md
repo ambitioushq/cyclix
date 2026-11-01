@@ -6,7 +6,7 @@
 
 ## Context
 
-The loop writes code with nobody watching, from text that others can influence. A merge puts that code on the base branch. A person's attention is the scarce resource ([ADR-0000](0000-guiding-principles.md)), so routine PRs should not all wait for one.
+The agent writes code unattended. It reads issues, comments and repository files, and anyone who can write those can put instructions in them for the agent to follow. This is called prompt injection. A merge puts the agent's code on the base branch. A person's attention is the scarce resource ([ADR-0000](0000-guiding-principles.md)), so routine PRs should not all wait for one.
 
 ## Decision
 

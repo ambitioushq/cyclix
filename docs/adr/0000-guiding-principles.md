@@ -6,7 +6,7 @@
 
 ## Context
 
-Cyclix runs a loop with nobody watching. Each design call has to balance two things: how well a person can see what the loop did, and how much of a person's time it takes.
+Cyclix runs unattended. Each design call has to balance two things: how well a person can see what the loop did, and how much of a person's time it takes.
 
 ## Decision
 

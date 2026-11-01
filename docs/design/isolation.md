@@ -1,6 +1,6 @@
 # Isolation: what the agent and the gate can reach
 
-Cyclix runs a coding agent with nobody watching, and then runs the code that agent wrote in the gate. Both must be kept away from the host's credentials and from the world outside the run. Part of that is built. Part is coming soon, and the last section lists which.
+Cyclix runs a coding agent unattended, and then runs the code that agent wrote in the gate. Both must be kept away from the host's credentials and from the world outside the run. Part of that is built. Part is coming soon, and the last section lists which.
 
 ## The problem
 
