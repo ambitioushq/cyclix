@@ -26,6 +26,25 @@ class InstallError(Exception):
 
 def install(tenant, every="10min", dry_run=False, force=False):
     """Write the units and start the timer. Raise InstallError if anything stops it."""
+    config_path = checked_config_path(tenant, every)
+    units = {
+        service_name(tenant): service_unit(tenant, cyclix_path(), config_path),
+        timer_name(tenant): timer_unit(tenant, every),
+    }
+    commands = [["daemon-reload"], ["enable", "--now", timer_name(tenant)]]
+    if dry_run:
+        show_plan(units, commands)
+    if not force:
+        refuse_changed_units(units)
+    if dry_run:
+        return
+    write_units(units)
+    for command in commands:
+        systemctl(*command)
+
+
+def checked_config_path(tenant, every):
+    """The absolute path of the tenant's config, once the arguments and the config check out."""
     check_tenant(tenant)
     if not TIME_SPAN.fullmatch(every):
         raise InstallError(f'--every must be a time span such as "10min" or "1h", not "{every}"')
@@ -38,38 +57,36 @@ def install(tenant, every="10min", dry_run=False, force=False):
         raise InstallError(
             f'{config_path} is the config for tenant "{cfg.tenant.name}", not "{tenant}"'
         )
+    return config_path
 
-    units = {
-        service_name(tenant): service_unit(tenant, cyclix_path(), config_path),
-        timer_name(tenant): timer_unit(tenant, every),
-    }
-    commands = [["daemon-reload"], ["enable", "--now", timer_name(tenant)]]
+
+def show_plan(units, commands):
+    for name, text in units.items():
+        print(f"# would write {units_dir() / name}")
+        print(text)
+    for command in commands:
+        print("would run: " + " ".join(["systemctl", "--user", *command]))
+
+
+def refuse_changed_units(units):
+    """Print the diff and raise InstallError when an installed unit differs from its text."""
     differences = []
     for name, text in units.items():
         path = units_dir() / name
         if path.exists() and path.read_text() != text:
             differences.append(diff(path, text))
-
-    if dry_run:
-        for name, text in units.items():
-            print(f"# would write {units_dir() / name}")
-            print(text)
-        for command in commands:
-            print("would run: " + " ".join(["systemctl", "--user", *command]))
-    if differences and not force:
+    if differences:
         print("".join(differences), end="")
         raise InstallError(
             "a unit differs from the one Cyclix would write: pass --force to replace it"
         )
-    if dry_run:
-        return
 
+
+def write_units(units):
     units_dir().mkdir(parents=True, exist_ok=True)
     for name, text in units.items():
         (units_dir() / name).write_text(text)
         print(f"wrote {units_dir() / name}")
-    for command in commands:
-        systemctl(*command)
 
 
 def uninstall(tenant):
