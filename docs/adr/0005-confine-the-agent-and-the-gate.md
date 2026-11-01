@@ -30,15 +30,17 @@ Inside the boundary, a second layer limits what the agent asks to do:
 
 ## Consequences
 
-- The second layer and the branch protection check are built. The boundary, the network rules, the fresh environment for each run and the push from a repository the agent never touched are coming soon. Today the engine pushes from the worktree the agent wrote. [Isolation](../design/isolation.md#what-is-built-and-what-is-coming-soon) tracks each part.
-- Until the boundary is built, the agent and the gate run as the host user, with the real `HOME`. Code they run can read a credential file by its full path, and can write files that the engine runs later. Run Cyclix as its own user, with only the tokens the loop needs.
+- The host needs a container runtime or a VM tool, and each agent call and gate run pays to start a fresh environment.
+- The engine cannot push from the directory the agent wrote. It has to take the agent's commits out as plain data first.
+- The gate has no network, so the tenant's dependencies are installed in a separate setup step before it runs.
+- A host the agent needs that is not on the list is refused, and the run fails until a person adds it.
 - The tool list is not a boundary. A rule such as `Bash(uv run *)` lets the agent run any Python it writes.
 - A useful command that is missing from a list is refused, and the run fails until a person adds it to the tenant config.
 - The agent can still send out what it can read, through the model's API. A private repository's code goes to the model provider in any case.
 
 ## Alternatives Considered
 
-**The second layer alone.** Rejected as the end state, though it is what is built today. It limits what the agent asks to do, not what the code it writes can do once a tool or the gate runs it.
+**The second layer alone.** Rejected. It limits what the agent asks to do, not what the code it writes can do once a tool or the gate runs it.
 
 **Allow every tool call.** Replaced. Anything the agent reads could direct it to any action.
 
