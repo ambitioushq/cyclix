@@ -1,4 +1,6 @@
-# ADR-0002: Each kind of data has one owner
+---
+title: "ADR-0002: Each kind of data has one owner"
+---
 
 **Status:** Accepted
 

@@ -1,6 +1,8 @@
-# Configuration
+---
+title: Configuration
+---
 
-Each tenant has one TOML file. A tenant is one repository with its project board (see [How Cyclix works](../concepts/how-cyclix-works.md)). Run `cyclix check` after you edit the file. It reports a missing key, an unknown key, or a board option name that is not on the board.
+Each tenant has one TOML file. A tenant is one repository with its project board (see [How Cyclix works](/concepts/how-cyclix-works/)). Run `cyclix check` after you edit the file. It reports a missing key, an unknown key, or a board option name that is not on the board.
 
 ## Where Cyclix finds the file
 
@@ -16,7 +18,7 @@ The config holds a tenant's settings. The data Cyclix builds up while it runs li
 
 ## The full example
 
-Every key is required, except the `[limits.wip]` table and `[agent] instructions`. An unknown key is an error, so a typo never passes silently. The same file is in [`docs/examples/tenant.toml`](../examples/tenant.toml).
+Every key is required, except the `[limits.wip]` table and `[agent] instructions`. An unknown key is an error, so a typo never passes silently. The same file is in [`docs/examples/tenant.toml`](https://github.com/ambitioushq/cyclix/blob/main/docs/examples/tenant.toml).
 
 ```toml
 [tenant]
@@ -44,7 +46,7 @@ base = "main"
 [agent]
 # The engine adds the model, the caps and the permission flags for each stage. The
 # agent runs in dontAsk mode: a tool call outside the stage's list is refused.
-# See docs/reference/configuration.md.
+# See the Configuration page of the Cyclix docs.
 command = ["claude", "-p"]
 timeout_minutes = 60
 pass_env = []
@@ -97,7 +99,7 @@ Cyclix keeps only items whose issue belongs to `[codehost] repo`. It ignores a d
 
 ### `[tracker.states]`
 
-Each key is one of Cyclix's six work states (see [the work states](../concepts/how-cyclix-works.md#the-six-work-states)). Each value is the name of the option on the board's Status field. `cyclix check` reports any name that is not on the board.
+Each key is one of Cyclix's six work states (see [the work states](/concepts/how-cyclix-works/#the-six-work-states)). Each value is the name of the option on the board's Status field. `cyclix check` reports any name that is not on the board.
 
 | Key | Example value |
 | --- | --- |
@@ -142,7 +144,7 @@ Each stage that calls the agent has its own table.
 
 The caps stop a run that has gone wrong. They are not meant to squeeze a normal run. A call that hits a cap ends with the reason "turn cap reached" or "budget cap reached". With a Claude subscription login, the budget is what the tokens would cost at API prices, not a charge, but the tokens still use up the subscription's limits. Claude Code checks the budget when a turn ends, so a call can go past it by the cost of one turn.
 
-A useful command that is missing from `tools` is refused, and the run fails until you add it. The list is not a security boundary: `Bash(uv run *)` lets the agent run any Python it writes. [Isolation](../design/isolation.md) explains.
+A useful command that is missing from `tools` is refused, and the run fails until you add it. The list is not a security boundary: `Bash(uv run *)` lets the agent run any Python it writes. [Isolation](/design/isolation/) explains.
 
 ### `instructions`
 
@@ -172,7 +174,7 @@ Make the gate match your CI, so a PR that passes the gate passes CI. The gate ha
 
 ### `[limits.wip]`
 
-This table is optional. It sets limits on work in progress (WIP): the most items a column may hold. When any column is full, admission waits (see [How Cyclix works](../concepts/how-cyclix-works.md#what-happens-in-one-pass)). A state left out has no limit.
+This table is optional. It sets limits on work in progress (WIP): the most items a column may hold. When any column is full, admission waits (see [How Cyclix works](/concepts/how-cyclix-works/#what-happens-in-one-pass)). A state left out has no limit.
 
 | Key | Meaning |
 | --- | --- |
@@ -192,7 +194,7 @@ The agent and the gate do not get Cyclix's own environment. They get an allow-li
 - Set by Cyclix: `GH_CONFIG_DIR` pointing at an empty folder, so `gh` finds no login. `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1`, so git reads no credential helper. `GIT_TERMINAL_PROMPT=0`. And the author and committer name and email, so commits carry the identity git would have used.
 - The names in `pass_env`.
 
-The config is refused if `pass_env` names a GitHub token (`GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN` or `GITHUB_ENTERPRISE_TOKEN`), `GH_CONFIG_DIR`, `SSH_AUTH_SOCK`, a program that git or SSH would ask for a credential (`GIT_ASKPASS`, `SSH_ASKPASS`, `GIT_SSH` or `GIT_SSH_COMMAND`), `GIT_TERMINAL_PROMPT`, or any name that starts with `GIT_CONFIG`. The gate's list also may not name the Claude login. A tenant whose tests need `DATABASE_URL`, for example, lists it in `[gate] pass_env`. [ADR-0005](../adr/0005-confine-the-agent-and-the-gate.md) has the reasons.
+The config is refused if `pass_env` names a GitHub token (`GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN` or `GITHUB_ENTERPRISE_TOKEN`), `GH_CONFIG_DIR`, `SSH_AUTH_SOCK`, a program that git or SSH would ask for a credential (`GIT_ASKPASS`, `SSH_ASKPASS`, `GIT_SSH` or `GIT_SSH_COMMAND`), `GIT_TERMINAL_PROMPT`, or any name that starts with `GIT_CONFIG`. The gate's list also may not name the Claude login. A tenant whose tests need `DATABASE_URL`, for example, lists it in `[gate] pass_env`. [ADR-0005](/adr/0005-confine-the-agent-and-the-gate/) has the reasons.
 
 ## Values Cyclix checks for form
 

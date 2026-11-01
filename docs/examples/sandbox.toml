@@ -25,7 +25,7 @@ base = "main"
 
 [agent]
 # The engine adds the model, the caps and the permission flags for each stage.
-# See docs/reference/configuration.md.
+# See the Configuration page of the Cyclix docs.
 command = ["claude", "-p"]
 timeout_minutes = 20
 pass_env = []

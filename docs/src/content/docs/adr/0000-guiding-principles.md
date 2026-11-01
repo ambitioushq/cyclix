@@ -1,4 +1,6 @@
-# ADR-0000: Guiding principles
+---
+title: "ADR-0000: Guiding principles"
+---
 
 **Status:** Accepted
 
@@ -10,7 +12,7 @@ Cyclix runs unattended. Each design call has to balance two things: how well a p
 
 ## Decision
 
-1. Record everything the loop does or hears, so a person can see what it did and why ([ADR-0003](0003-one-wide-event-per-stage-run-in-opentelemetry-shape.md)).
+1. Record everything the loop does or hears, so a person can see what it did and why ([ADR-0003](/adr/0003-one-wide-event-per-stage-run-in-opentelemetry-shape/)).
 2. A person's attention is the scarce resource. Ask a person only for a call that needs one.
 
 ## Consequences

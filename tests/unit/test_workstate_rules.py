@@ -7,7 +7,7 @@ import pytest
 
 from cyclix.workstate import STAGES, TRANSITIONS, IllegalMove, State, Writer, allowed, move
 
-DOC = Path(__file__).resolve().parents[2] / "docs" / "concepts" / "how-cyclix-works.md"
+DOC = Path(__file__).resolve().parents[2] / "docs/src/content/docs/concepts/how-cyclix-works.md"
 SECTION = "## The work states and who moves them"
 
 # The doc's "Written by" names for each writer.

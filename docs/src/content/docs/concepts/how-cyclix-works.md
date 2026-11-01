@@ -1,4 +1,6 @@
-# How Cyclix works
+---
+title: How Cyclix works
+---
 
 Cyclix takes an issue that a person has marked Ready and carries it to a pull request (PR). It plans the change, builds it, runs your checks on it, and opens the PR. It then waits for a person to review and merge it.
 
@@ -42,11 +44,11 @@ If an earlier run on the same issue left its branch, the new run goes on from th
 
 ### What the agent can do
 
-The plan and build stages run Claude Code with a list of tools for each stage, set in the config. A call outside the list is refused. The agent gets no GitHub login. Cyclix does every push and every PR call itself. [ADR-0005](../adr/0005-confine-the-agent-and-the-gate.md) gives the reasons, and [Isolation](../design/isolation.md) says what the setup does not stop.
+The plan and build stages run Claude Code with a list of tools for each stage, set in the config. A call outside the list is refused. The agent gets no GitHub login. Cyclix does every push and every PR call itself. [ADR-0005](/adr/0005-confine-the-agent-and-the-gate/) gives the reasons, and [Isolation](/design/isolation/) says what the setup does not stop.
 
 ## The six work states
 
-An item on your board is always in one of six work states. These are Cyclix's own names. The config maps each one to an option of the board's Status field, so your board can use other words. See [Configuration](../reference/configuration.md).
+An item on your board is always in one of six work states. These are Cyclix's own names. The config maps each one to an option of the board's Status field, so your board can use other words. See [Configuration](/reference/configuration/).
 
 | State | What it means |
 | --- | --- |
@@ -96,9 +98,9 @@ Each kind of data has one owner. Cyclix reads a kind of data from its owner, and
 
 The state directory is `CYCLIX_STATE_DIR` when set, else `$XDG_STATE_HOME/cyclix`, else `~/.local/state/cyclix`.
 
-When the state file and the board disagree about an item, the board is right, and the sweep corrects the state file. People act on the board, so a second copy of their decisions in the state file would drift. The state file holds only facts that the board has no field for and that no person edits. [ADR-0002](../adr/0002-each-kind-of-data-has-one-owner.md) has the reasoning.
+When the state file and the board disagree about an item, the board is right, and the sweep corrects the state file. People act on the board, so a second copy of their decisions in the state file would drift. The state file holds only facts that the board has no field for and that no person edits. [ADR-0002](/adr/0002-each-kind-of-data-has-one-owner/) has the reasoning.
 
-The event log is a record of what happened. Cyclix writes to it and never reads it to decide anything. Each line is one stage run, with the issue, the stage, the outcome and its reason, the model, tokens and cost, the duration, and each gate check's result. It holds IDs and numbers, never prompts, code or issue text. Any tool that reads JSON lines can query it. [Engine](../design/engine.md) lists every field.
+The event log is a record of what happened. Cyclix writes to it and never reads it to decide anything. Each line is one stage run, with the issue, the stage, the outcome and its reason, the model, tokens and cost, the duration, and each gate check's result. It holds IDs and numbers, never prompts, code or issue text. Any tool that reads JSON lines can query it. [Engine](/design/engine/) lists every field.
 
 ## What a person does
 
@@ -107,4 +109,4 @@ The event log is a record of what happened. Cyclix writes to it and never reads 
 3. Reads the comment on the issue when an item is Parked.
 4. Reviews the PR, and merges it or closes it.
 
-Cyclix asks for nothing else. [ADR-0001](../adr/0001-merge-only-after-approval-or-under-a-written-rule.md) covers when Cyclix may merge.
+Cyclix asks for nothing else. [ADR-0001](/adr/0001-merge-only-after-approval-or-under-a-written-rule/) covers when Cyclix may merge.

@@ -1,18 +1,19 @@
 # Cyclix documentation
 
-## For people who run Cyclix
+This folder is the source of the Cyclix docs site, built with Astro and Starlight. Read the docs on the site: it has the navigation, the search and the links between pages.
 
-- [How Cyclix works](concepts/how-cyclix-works.md): what Cyclix does, the stages an issue goes through, the work states, and where Cyclix keeps its data.
-- [Configuration](reference/configuration.md): every key of the tenant config. [`examples/tenant.toml`](examples/tenant.toml) is the full example.
-- [Commands](reference/commands.md): each command and its flags, what it prints, its exit codes, every `cyclix check` line with its fix, and what `cyclix install` puts in the service.
+The pages are Markdown files in [`src/content/docs/`](src/content/docs/), one file for each page. A page's path in that folder is its path on the site, so `design/engine.md` is the page `/design/engine/`. Each page names its title in frontmatter, and links to other pages by their site path. GitHub shows each page, but those links work only on the site.
 
-## For people who work on Cyclix's code
+[`examples/`](examples/) holds the example tenant configs that the pages and the README link to.
 
-- [Architecture](design/architecture.md): the principles, which part owns which data, and how the engine is built.
-- [Engine](design/engine.md): the package layout, the state core, the adapters, the state directory, run folders and worktrees, the event log schema, and the sweep.
-- [Testing](design/testing.md): the fake GitHub, the fake agent, the shape check and the sandbox. [tests/README.md](../tests/README.md) covers the test layout.
-- [Isolation](design/isolation.md): what the agent and the gate can reach, what is built, and what is coming soon.
+## Preview the site
 
-## The decisions
+Use the Node version named in `.nvmrc`, and run:
 
-- [Architecture decision records](adr/README.md): one short file for each settled call, with the options that were weighed.
+```sh
+cd docs
+npm ci
+npm run dev
+```
+
+The site is served at `http://localhost:4321` and reloads when a page changes. `npm run build` writes the site to `docs/dist/` and fails when a link reaches no page or heading.

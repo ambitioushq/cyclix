@@ -31,7 +31,7 @@ def example():
 
 
 def test_the_example_matches_the_reference():
-    reference = (ROOT / "docs" / "reference" / "configuration.md").read_text()
+    reference = (ROOT / "docs/src/content/docs/reference/configuration.md").read_text()
     section = reference.split("## The full example")[1]
     block = re.search(r"```toml\n(.*?)```", section, re.DOTALL)[1]
     assert block == example()
