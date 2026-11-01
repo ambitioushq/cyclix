@@ -44,7 +44,7 @@ A crash cannot lose an event. The stage-run event builds up in the SQLite file w
 - **Each adapter chooses how it talks to its system.** An adapter is the module that talks to one outside system behind a narrow interface. The GitHub adapters call the `gh` command-line program, and the agent adapter runs `claude` today. Another adapter could use an HTTP API.
 - **The host's service manager does the scheduling.** `cyclix run` makes one pass and exits. On Linux, `cyclix install` writes systemd units that start it on a timer. Cyclix has no long-running process today, so it has no scheduler, restart logic or hang detection of its own.
 - **One item in progress for each tenant.** A pass runs its item through every stage while it holds the tenant's lock, so the config refuses an In progress limit other than 1.
-- **The agent is Claude Code.** It runs with a tool list for each stage ([ADR-0008](../adr/0008-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md)). It and the gate get no GitHub credential through their environment ([ADR-0009](../adr/0009-keep-code-host-credentials-out-of-the-agent-and-the-gate.md)). [Isolation](isolation.md) describes what that does not stop and the container that is coming soon.
+- **The agent is Claude Code.** It runs with a tool list for each stage ([ADR-0007](../adr/0007-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md)). It and the gate get no GitHub credential through their environment ([ADR-0008](../adr/0008-keep-code-host-credentials-out-of-the-agent-and-the-gate.md)). [Isolation](isolation.md) describes what that does not stop and the container that is coming soon.
 
 ## The feature files are the functional spec
 

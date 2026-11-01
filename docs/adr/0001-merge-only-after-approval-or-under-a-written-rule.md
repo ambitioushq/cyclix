@@ -15,7 +15,7 @@ Cyclix merges a PR in two cases:
 1. A designated person has approved it.
 2. A written rule covers it. The rule names a class of PR, such as a lockfile refresh or a dependency bot's PR, and its conditions, such as CI green and the review approved.
 
-Every other PR waits for a person to merge it. Only the engine merges. The agent and the gate never do ([ADR-0009](0009-keep-code-host-credentials-out-of-the-agent-and-the-gate.md)).
+Every other PR waits for a person to merge it. Only the engine merges. The agent and the gate never do ([ADR-0008](0008-keep-code-host-credentials-out-of-the-agent-and-the-gate.md)).
 
 ## Consequences
 
