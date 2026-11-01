@@ -9,8 +9,8 @@ and `gh project field-list` fetch every field of every item, and cost about 100 
 of the hourly GraphQL limit each. A narrow page of 100 items costs 1.
 """
 
-from cyclix import config as configlib
 from cyclix.adapters import gh
+from cyclix.adapters.readiness import Result
 from cyclix.adapters.tracker import Issue, Item, TrackerError
 from cyclix.workstate import State
 
@@ -71,7 +71,7 @@ class GitHubTracker:
         self.tracker = config.tracker
         self.repo = config.codehost.repo
         # Board option name -> Cyclix state. An option not in the map is no state.
-        self.states = {getattr(self.tracker.states, key): State(key) for key in configlib.STATES}
+        self.states = {getattr(self.tracker.states, state): state for state in State}
         self._board = None
         self._items = None
 
@@ -129,6 +129,40 @@ class GitHubTracker:
 
     def comment(self, issue, body):
         gh.run("issue", "comment", str(issue), "-R", self.repo, "--body", body)
+
+    def readiness(self, config_path):
+        """One result per Cyclix state: is its option on the board's Status field?"""
+        tracker = self.tracker
+        board = f"board {tracker.owner}/{tracker.project}"
+        try:
+            listing = gh.json(
+                "project", "field-list", str(tracker.project),
+                "--owner", tracker.owner, "--format", "json",
+            )  # fmt: skip
+        except gh.GhError as error:
+            fix = (
+                f"check [tracker] owner and project in {config_path}; "
+                'if they are right, run "gh auth refresh -s read:project"'
+            )
+            return [Result(board, f"cannot read it: {error.stderr}", fix)]
+        field = next((f for f in listing["fields"] if f["name"] == tracker.status_field), None)
+        if field is None or "options" not in field:
+            name = tracker.status_field
+            fix = f'add a single-select field "{name}" to the board, '
+            fix += f"or change [tracker] status_field in {config_path}"
+            return [Result(board, f'no single-select field "{name}"', fix)]
+        options = {option["name"] for option in field["options"]}
+        results = []
+        for state in State:
+            name = getattr(tracker.states, state)
+            what = f'board option "{name}" for {state}'
+            if name in options:
+                results.append(Result(what))
+            else:
+                fix = f'add "{name}" to the board\'s {tracker.status_field} field, '
+                fix += f"or change [tracker.states] {state} in {config_path}"
+                results.append(Result(what, f"not on the {tracker.status_field} field", fix))
+        return results
 
     def board(self):
         """The project ID, the Status field ID and its option IDs by name, read once."""
