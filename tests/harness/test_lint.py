@@ -10,12 +10,31 @@ ROOT = Path(__file__).resolve().parents[2]
 CONFIG = ROOT / "pyproject.toml"
 BIN = Path(sys.executable).parent
 
-# Ten conditions give eleven paths through the function.
-ELEVEN_PATHS = (
-    "def branchy(x):\n"
-    + "".join(f"    if x == {k}:\n        return {k}\n" for k in range(10))
-    + "    return -1\n"
-)
+
+def returning_ifs(n):
+    """A function with n paths and n returns: n - 1 conditions that each return, then a return."""
+    body = "".join(f"    if x == {k}:\n        return {k}\n" for k in range(n - 1))
+    return f"def branchy(x):\n{body}    return -1\n"
+
+
+def plain_ifs(n):
+    """A function with n branches, none of which returns."""
+    body = "".join(f"    if x == {k}:\n        x += {k}\n" for k in range(n))
+    return f"def branchy(x):\n{body}    return x\n"
+
+
+def statements(n):
+    """A function with n statements, each an assignment."""
+    body = "".join(f"    x = {k}\n" for k in range(n))
+    return f"def branchy():\n{body}"
+
+
+FUNCTIONS = {
+    "paths": returning_ifs,
+    "returns": returning_ifs,
+    "branches": plain_ifs,
+    "statements": statements,
+}
 
 # Each loop and condition adds one, plus one for each level it is nested in:
 # 1 + 2 + 3 + 4 + 1 (elif) + 1 (else) + 1 (while) + 2 (if in while) = 15, and the
@@ -43,9 +62,9 @@ def run(argv, cwd):
     return subprocess.run(argv, cwd=cwd, capture_output=True, text=True, check=False)
 
 
-@given("a file holding a function with 11 paths", target_fixture="source")
-def eleven_paths(tmp_path):
-    (tmp_path / "branchy.py").write_text(ELEVEN_PATHS)
+@given(parsers.parse("a file holding a function with {count:d} {kind}"), target_fixture="source")
+def function_with(tmp_path, count, kind):
+    (tmp_path / "branchy.py").write_text(FUNCTIONS[kind](count))
     return tmp_path / "branchy.py"
 
 
