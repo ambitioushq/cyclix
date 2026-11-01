@@ -40,6 +40,7 @@ Run the same checks CI runs before you open a pull request:
 ```sh
 uv run ruff check
 uv run ruff format --check
+uv run complexipy
 uv run coverage run -m pytest
 uv run coverage report
 (cd docs && npm ci && npm run build)
