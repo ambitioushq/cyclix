@@ -85,7 +85,7 @@ The file opens in WAL mode (write-ahead logging, which lets readers work while a
 
 ## The adapters
 
-An **adapter** is the module that talks to one outside system behind a narrow interface ([ADR-0006](../adr/0006-talk-to-vendors-through-their-command-line-programs.md)).
+An **adapter** is the module that talks to one outside system behind a narrow interface ([ADR-0006](../adr/0006-talk-to-outside-systems-through-their-command-line-programs.md)).
 
 ### The `gh` module
 

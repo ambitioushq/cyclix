@@ -14,7 +14,7 @@ A record is not edited to change a decision. A new record replaces it, and the o
 | [0003](0003-the-loop-writes-the-event-log-but-never-reads-it.md) | The loop writes the event log but never reads it | Accepted |
 | [0004](0004-one-wide-event-per-stage-run-in-opentelemetry-shape.md) | Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines | Accepted |
 | [0005](0005-use-only-the-standard-library-unless-a-dependency-has-a-written-reason.md) | Use only the standard library unless a dependency has a written reason | Accepted |
-| [0006](0006-talk-to-vendors-through-their-command-line-programs.md) | Talk to GitHub and Claude through their command-line programs, not their HTTP APIs | Accepted |
+| [0006](0006-talk-to-outside-systems-through-their-command-line-programs.md) | Talk to outside systems through their command-line programs, not their HTTP APIs | Accepted |
 | [0007](0007-run-one-pass-at-a-time-from-the-service-manager.md) | Run one pass at a time from the host's service manager, with no long-running process | Accepted |
 | [0008](0008-work-on-one-item-at-a-time-per-tenant.md) | Work on one item at a time for each tenant | Accepted |
 | [0009](0009-test-against-a-fake-github-that-keeps-state.md) | Test against a fake GitHub that keeps state, not recorded answers | Accepted |
