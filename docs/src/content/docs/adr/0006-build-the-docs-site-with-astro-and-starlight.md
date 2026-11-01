@@ -16,7 +16,7 @@ Cyclix is an engine that operators run, not a library that programmers import, s
 
 We build the docs site with Astro and its docs theme, Starlight, in Starlight's standard layout and with no custom code. The Starlight project is the `docs/` folder of this repository. The pages are Markdown files in `docs/src/content/docs/`. Each page names its title in frontmatter and links to other pages by their site path. The site is the place to read the docs. GitHub shows each page as its source.
 
-The build fails when a link reaches no page or heading. A workflow builds the site on every pull request that touches the docs, and deploys it from `main`.
+The build fails when a link reaches no page or heading. CI builds the site on every pull request that touches the docs, and the site is deployed from `main`.
 
 ## Consequences
 
