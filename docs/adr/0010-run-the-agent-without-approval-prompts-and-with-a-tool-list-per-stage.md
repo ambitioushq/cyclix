@@ -25,7 +25,7 @@ With Claude Code, the mode is `--permission-mode dontAsk --permission-prompts no
 
 ## Consequences
 
-- A useful command that is missing from a list is refused, and the run fails until someone adds it.
+- A useful command that is missing from a list is refused, and the run fails until a person adds it to the tenant config.
 - The list is not the security boundary. A rule such as `Bash(uv run *)` lets the agent run any Python it writes. The list is a second layer.
 - The build prompt lists the stage's tools and asks for one shell command at a time. A joined command is refused whole if any part of it is off the list.
 - With Claude Code, `--bare` stays off, because it needs an API key and not a subscription login.

@@ -6,7 +6,7 @@
 
 ## Context
 
-Cyclix handles work item status, code and PRs, its own working state, and a history of events. People change some of these directly, such as by moving a card on the board. When two places hold the same fact, they end up disagreeing.
+Cyclix reads and writes four kinds of data: work item status, code and PRs, its own working state, and a history of events. People change some of these directly, such as by moving a card on the board. When two places hold the same fact, they end up disagreeing.
 
 ## Decision
 

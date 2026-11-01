@@ -6,7 +6,7 @@
 
 ## Context
 
-People need to query the record afterwards, for example to see which stage costs the most or why runs stop at the gate. Cyclix handles tens of issues a week, and an issue can take days to reach a merge.
+People need to query the record afterwards, for example to see which stage costs the most or why runs stop at the gate. Cyclix takes tens of issues a week, and an issue can take days to reach a merge.
 
 ## Decision
 
@@ -28,6 +28,6 @@ People need to query the record afterwards, for example to see which stage costs
 
 **Many small events, one per step the code takes.** Rejected. The log should say what happened to the work, not what the code did.
 
-**One trace per issue.** Rejected. Tracing tools handle spans that stay open for days badly.
+**One trace per issue.** Rejected. Tracing tools are built for spans that last seconds or minutes, not days.
 
 **Sampling.** Rejected. At tens of issues a week, keeping every event costs little.
