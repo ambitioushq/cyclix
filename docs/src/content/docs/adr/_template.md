@@ -1,4 +1,6 @@
-# ADR-NNNN: Title
+---
+title: "ADR-NNNN: Title"
+---
 
 **Status:** Proposed | Accepted | Deprecated | Superseded by ADR-XXXX
 

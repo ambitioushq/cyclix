@@ -184,7 +184,7 @@ def plan_cost_is_rounded(world, result, key):
     plans = [e["attributes"] for e in world.events() if e["attributes"]["cyclix.stage"] == "plan"]
     assert len(plans) == 1, result.stdout + result.stderr
     cost = plans[0][key]
-    # 6 places is the rule in docs/design/engine.md, "The event log schema".
+    # 6 places is the rule in docs/src/content/docs/design/engine.md, "The event log schema".
     assert Decimal(repr(cost)).as_tuple().exponent >= -6, cost
     assert cost == 0.366166
 
@@ -196,7 +196,7 @@ def event_records_turns(world, result, stage, turns):
 
 
 def folder_version(folder):
-    """The rule in docs/design/engine.md: each file's relative path, its length and its content."""
+    """The rule in docs/src/content/docs/design/engine.md: each file's relative path, its length and its content."""
     digest = hashlib.sha256()
     for path in sorted(p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file()):
         content = (folder / path).read_bytes()

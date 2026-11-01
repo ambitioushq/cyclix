@@ -1,15 +1,17 @@
-# Testing
+---
+title: Testing
+---
 
-This page describes what the tests run against: a fake GitHub, a fake agent, a check on the fake's output shapes, and a sandbox on real GitHub. [tests/README.md](../../tests/README.md) describes how the test folders are laid out and the shared steps.
+This page describes what the tests run against: a fake GitHub, a fake agent, a check on the fake's output shapes, and a sandbox on real GitHub. [tests/README.md](https://github.com/ambitioushq/cyclix/blob/main/tests/README.md) describes how the test folders are laid out and the shared steps.
 
-The scenarios in `tests/features/` are Cyclix's functional spec (see [Architecture](architecture.md#the-feature-files-are-the-functional-spec)). They run through pytest-bdd, which reads Gherkin feature files. A **scenario** is one example of behaviour written as Given, When and Then steps. The engine runs as a subprocess, the way systemd runs it.
+The scenarios in `tests/features/` are Cyclix's functional spec (see [Architecture](/design/architecture/#the-feature-files-are-the-functional-spec)). They run through pytest-bdd, which reads Gherkin feature files. A **scenario** is one example of behaviour written as Given, When and Then steps. The engine runs as a subprocess, the way systemd runs it.
 
 ## The fake GitHub is a world model
 
 The fake GitHub is a model of GitHub's state, not a set of replayed recordings. A new scenario needs no new recording, and a scenario can make any one call fail.
 
 - **The fake world** (`tests/fakes/world.py`) is a JSON file that holds issues, a board with items and states, and PRs and their states. A scenario's Given steps write it, and its Then steps read it.
-- **The fake `gh`** is an executable placed first on `PATH`. It supports only the `gh` commands that [Engine](engine.md#the-adapters) lists, reads and changes the world, prints output in the same JSON shape as the real `gh`, and appends each call to a calls file. A scenario can inject a fault for one call: an exit code, a stderr message or a stale read.
+- **The fake `gh`** is an executable placed first on `PATH`. It supports only the `gh` commands that [Engine](/design/engine/#the-adapters) lists, reads and changes the world, prints output in the same JSON shape as the real `gh`, and appends each call to a calls file. A scenario can inject a fault for one call: an exit code, a stderr message or a stale read.
 - **The fake agent** is an executable named in the test config's `agent.command`. A scenario gives it a script: files to write, commits to make, the text to answer, the exit code, and the token and cost numbers to report. It prints the lines that `claude -p --output-format stream-json --verbose` prints.
 - **The fake `systemctl`** accepts only the calls that `cyclix install` and `uninstall` make, and changes nothing.
 - **The git remote** is a local bare repository, so pushes are real.
@@ -24,7 +26,7 @@ A scenario runs the fake `gh` on the same commands and fails if its output has o
 
 ## The sandbox runs against real GitHub
 
-The sandbox is a private repository and a private board, whose Status field holds the six option names. Its tenant config is [`docs/examples/sandbox.toml`](../examples/sandbox.toml).
+The sandbox is a private repository and a private board, whose Status field holds the six option names. Its tenant config is [`docs/examples/sandbox.toml`](https://github.com/ambitioushq/cyclix/blob/main/docs/examples/sandbox.toml).
 
 Scenarios tagged `@sandbox` run against it with the real `gh` and the real agent, and only when `CYCLIX_SANDBOX=1`. The workflow `sandbox.yml` runs them by hand and weekly, never on a PR.
 

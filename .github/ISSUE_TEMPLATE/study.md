@@ -19,4 +19,4 @@ The area covers:
 
 ## The design
 
-The area's open questions are settled with the maintainer, one at a time. The result is `docs/design/<area>.md` and the area's scenarios in `tests/features/`. The build issues are filed after that, not before.
+The area's open questions are settled with the maintainer, one at a time. The result is `docs/src/content/docs/design/<area>.md` and the area's scenarios in `tests/features/`. The build issues are filed after that, not before.

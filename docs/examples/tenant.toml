@@ -23,7 +23,7 @@ base = "main"
 [agent]
 # The engine adds the model, the caps and the permission flags for each stage. The
 # agent runs in dontAsk mode: a tool call outside the stage's list is refused.
-# See docs/reference/configuration.md.
+# See the Configuration page of the Cyclix docs.
 command = ["claude", "-p"]
 timeout_minutes = 60
 pass_env = []

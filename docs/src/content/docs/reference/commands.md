@@ -1,4 +1,6 @@
-# Commands
+---
+title: Commands
+---
 
 `cyclix` has four commands: `check`, `run`, `install` and `uninstall`. `cyclix --version` prints the version, such as `cyclix 0.0.1`.
 
@@ -10,7 +12,7 @@ Every command exits with one of three codes:
 | 1 | A check or a run failed. |
 | 2 | The command was used wrongly, such as an unknown command or a missing flag. |
 
-`--tenant NAME` picks the tenant. Cyclix then reads `~/.config/cyclix/NAME.toml`, or the file in `CYCLIX_CONFIG`. See [Configuration](configuration.md).
+`--tenant NAME` picks the tenant. Cyclix then reads `~/.config/cyclix/NAME.toml`, or the file in `CYCLIX_CONFIG`. See [Configuration](/reference/configuration/).
 
 ## `cyclix check`
 
@@ -85,7 +87,7 @@ The board check and the branch check need both the config and a signed-in `gh`. 
 cyclix run [--tenant NAME] [--verbose]
 ```
 
-Makes one pass for one tenant (see [How Cyclix works](../concepts/how-cyclix-works.md#what-happens-in-one-pass)). A file lock at `<state directory>/<tenant>.lock` keeps two passes from overlapping. A pass that finds the lock held logs `another pass is running` and exits 0.
+Makes one pass for one tenant (see [How Cyclix works](/concepts/how-cyclix-works/#what-happens-in-one-pass)). A file lock at `<state directory>/<tenant>.lock` keeps two passes from overlapping. A pass that finds the lock held logs `another pass is running` and exits 0.
 
 **What it prints.** Nothing to stdout. It writes log records to stderr, one line each. At the default level, INFO, a line is the message alone, and a pass that carries an item to a PR writes nothing. The messages you may see are:
 

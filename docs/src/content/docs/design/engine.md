@@ -1,6 +1,8 @@
-# Engine
+---
+title: Engine
+---
 
-This page describes the parts of the engine: the state core, the adapters, the run folders, the event log schema and the sweep. [Architecture](architecture.md) covers the design as a whole. [How Cyclix works](../concepts/how-cyclix-works.md) covers the stages and the work states from the operator's side, and [Configuration](../reference/configuration.md) covers the config keys.
+This page describes the parts of the engine: the state core, the adapters, the run folders, the event log schema and the sweep. [Architecture](/design/architecture/) covers the design as a whole. [How Cyclix works](/concepts/how-cyclix-works/) covers the stages and the work states from the operator's side, and [Configuration](/reference/configuration/) covers the config keys.
 
 ## How the code is laid out
 
@@ -40,7 +42,7 @@ scripts/
 
 ## The work states and the transition table
 
-`src/cyclix/workstate.py` holds the table of moves from [How Cyclix works](../concepts/how-cyclix-works.md#the-work-states-and-who-moves-them) as data. The function `move` refuses any move that is not in it. A unit test reads the table in that page and fails if the two differ, so a change to one needs the same change to the other. Rows that only a person writes are left out of the code, because the engine never makes them.
+`src/cyclix/workstate.py` holds the table of moves from [How Cyclix works](/concepts/how-cyclix-works/#the-work-states-and-who-moves-them) as data. The function `move` refuses any move that is not in it. A unit test reads the table in that page and fails if the two differ, so a change to one needs the same change to the other. Rows that only a person writes are left out of the code, because the engine never makes them.
 
 Each writer may make only its own moves, so a stage cannot put an item in a state that another writer owns. A stage with no writer of its own (build and gate) moves as "any stage".
 
@@ -89,7 +91,7 @@ An **adapter** is the module that talks to one outside system behind a narrow in
 
 ### The `gh` module
 
-All GitHub calls go through `adapters/gh.py`. It runs `gh` with `--json` output where the command supports it, parses the JSON, and raises `GhError` with the exit code and stderr on failure. Nothing else in the engine calls `gh`. A call that runs past its time limit is a `GhError` with exit code 124. There are no retries: the next timer run makes the pass again. [Configuration](../reference/configuration.md#time-limits-that-are-not-in-the-config) lists the limits.
+All GitHub calls go through `adapters/gh.py`. It runs `gh` with `--json` output where the command supports it, parses the JSON, and raises `GhError` with the exit code and stderr on failure. Nothing else in the engine calls `gh`. A call that runs past its time limit is a `GhError` with exit code 124. There are no retries: the next timer run makes the pass again. [Configuration](/reference/configuration/#time-limits-that-are-not-in-the-config) lists the limits.
 
 ### The tracker
 
@@ -131,7 +133,7 @@ Every git call has a time limit, and sets `GIT_TERMINAL_PROMPT=0`, so git never 
 
 The `Agent` protocol has one method, `run(prompt, cwd, stage, run_dir)`, where `stage` is the stage's model, caps and tools from the config. The result holds the text answer, whether the call failed and why, the exit code, the model, the input and output tokens, the cost, the duration and the number of turns.
 
-The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds the flags that [Isolation](isolation.md#what-is-built) lists after the command, including `--output-format stream-json --verbose`. In that mode Claude Code prints each assistant message as it comes, with that message's token counts, and a result line at the end. The engine reads the result line.
+The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds the flags that [Isolation](/design/isolation/#what-is-built) lists after the command, including `--output-format stream-json --verbose`. In that mode Claude Code prints each assistant message as it comes, with that message's token counts, and a result line at the end. The engine reads the result line.
 
 **A call that runs past its timeout** gets SIGINT, which lets Claude Code stop its own tools and print a result line of subtype `error_during_execution` that holds the cost so far. After 30 seconds the whole process group is killed. Claude Code's plain `--output-format json` prints nothing when it is interrupted, so a timed-out call would lose its cost. This is why the engine uses stream-json.
 
@@ -145,7 +147,7 @@ The prompt and the full answer are saved in the run folder as `prompt-<n>.txt` a
 
 ## The state directory
 
-Cyclix keeps everything it builds up while running in one state directory (how it is found: [How Cyclix works](../concepts/how-cyclix-works.md#where-cyclix-keeps-its-data)). It holds:
+Cyclix keeps everything it builds up while running in one state directory (how it is found: [How Cyclix works](/concepts/how-cyclix-works/#where-cyclix-keeps-its-data)). It holds:
 
 | Path | Contents |
 | --- | --- |
@@ -169,7 +171,7 @@ The worktree is on the branch `cyclix/<issue>-<slug>`, made from the remote base
 
 The engine writes the event log and never reads it. It decides from the tracker, the code host and the state file, so anyone can query, copy, rotate or delete the log without changing what the loop does next.
 
-Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an OpenTelemetry log record ([ADR-0003](../adr/0003-one-wide-event-per-stage-run-in-opentelemetry-shape.md)). The schema version is 1. Any change to the schema is made here first, and then in `src/cyclix/events/schema.py`.
+Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an OpenTelemetry log record ([ADR-0003](/adr/0003-one-wide-event-per-stage-run-in-opentelemetry-shape/)). The schema version is 1. Any change to the schema is made here first, and then in `src/cyclix/events/schema.py`.
 
 ```json
 {
@@ -203,7 +205,7 @@ Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an 
 }
 ```
 
-- `cyclix.stage` is one of `admission`, `plan`, `build`, `gate`, `pr`, `reconciler`, one for each stage in [How Cyclix works](../concepts/how-cyclix-works.md#the-stages-an-issue-goes-through).
+- `cyclix.stage` is one of `admission`, `plan`, `build`, `gate`, `pr`, `reconciler`, one for each stage in [How Cyclix works](/concepts/how-cyclix-works/#the-stages-an-issue-goes-through).
 - `cyclix.outcome` is one of `passed`, `parked`, `stopped`, `failed`, `crashed`.
 - `trace_id` is new for each stage run, and `span_id` names the stage's span. An issue can take days to reach a merge, so every event also carries `cyclix.issue.id`, and grouping by it rebuilds an issue's life.
 - A field with no value is written as `null`, so every line has the same keys. `cyclix.gate.checks` is on every line, and is `null` for stages other than the gate.
@@ -216,7 +218,7 @@ Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an 
 
 ## The sweep
 
-`cyclix run` makes one pass for one tenant, under a file lock so two passes never overlap. [How Cyclix works](../concepts/how-cyclix-works.md#what-happens-in-one-pass) lists the four steps. `src/cyclix/runner.py` holds the sweep and the order of the stages. This section gives the rules behind them.
+`cyclix run` makes one pass for one tenant, under a file lock so two passes never overlap. [How Cyclix works](/concepts/how-cyclix-works/#what-happens-in-one-pass) lists the four steps. `src/cyclix/runner.py` holds the sweep and the order of the stages. This section gives the rules behind them.
 
 **The lock decides which runs crashed.** The lock is an `flock` on `<state directory>/<tenant>.lock`. Only the pass that holds it runs stages for the tenant, so any run still open when a pass takes the lock was left by a pass that died. The sweep ends it as `crashed`, writes its event, and parks its item with the reason "run crashed in phase <phase>". A pass that is alive but hung keeps the lock, and later passes exit without doing anything until it ends.
 

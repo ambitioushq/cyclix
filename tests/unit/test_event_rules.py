@@ -8,7 +8,7 @@ import pytest
 from cyclix.events.log import EventError, write_stage_run
 from cyclix.events.schema import MAX_STRING
 
-DESIGN = Path(__file__).resolve().parents[2] / "docs" / "design" / "engine.md"
+DESIGN = Path(__file__).resolve().parents[2] / "docs/src/content/docs/design/engine.md"
 
 
 def fields(**extra):

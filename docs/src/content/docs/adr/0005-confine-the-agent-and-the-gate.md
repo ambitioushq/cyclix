@@ -1,4 +1,6 @@
-# ADR-0005: Confine the agent and the gate
+---
+title: "ADR-0005: Confine the agent and the gate"
+---
 
 **Status:** Accepted
 
@@ -8,7 +10,7 @@
 
 The agent writes code unattended. It reads issues, comments and repository files, and anyone who can write those can put instructions in them for the agent to follow. The gate then runs the code the agent wrote. With a write credential, either one could merge a PR or push to the base branch. With network access, either one could send out what it can read.
 
-Anthropic's cloud sessions of Claude Code, GitHub's Copilot coding agent and OpenAI's Codex cloud all confine their agents by the same rules. [Isolation](../design/isolation.md#what-comparable-agent-runners-do) gives the details and the sources.
+Anthropic's cloud sessions of Claude Code, GitHub's Copilot coding agent and OpenAI's Codex cloud all confine their agents by the same rules. [Isolation](/design/isolation/#what-comparable-agent-runners-do) gives the details and the sources.
 
 ## Decision
 
@@ -18,7 +20,7 @@ The engine is the trusted part. It holds the code host credential and makes ever
 2. No credential that can write to the repository enters the boundary. The agent gets only the login it needs to reach the model, and the gate gets no credential. The engine never runs git with its credential in a directory the agent could write.
 3. Outgoing traffic is blocked, except to a listed set of hosts, such as the model's API and the package index.
 4. Each run gets a fresh environment, removed when the run ends.
-5. The code host is the final gate: branch protection on the base branch, and the merge rule in [ADR-0001](0001-merge-only-after-approval-or-under-a-written-rule.md).
+5. The code host is the final gate: branch protection on the base branch, and the merge rule in [ADR-0001](/adr/0001-merge-only-after-approval-or-under-a-written-rule/).
 
 Inside the boundary, a second layer limits what the agent asks to do:
 

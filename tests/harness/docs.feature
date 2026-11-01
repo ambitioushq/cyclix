@@ -14,6 +14,16 @@ Feature: The links in the docs lead somewhere
     When the links in that folder are checked
     Then the report names "a.md" and "b.md#nowhere"
 
+  Scenario: A link to a page on the docs site is left to the site build
+    Given a docs folder where "a.md" links to "/reference/commands/#cyclix-check"
+    When the links in that folder are checked
+    Then the report is empty
+
+  Scenario: Markdown files of installed packages are not checked
+    Given a docs folder where "node_modules/pkg/a.md" links to "missing.md"
+    When the links in that folder are checked
+    Then the report is empty
+
   Scenario: A link to a heading that exists passes
     Given a docs folder where "a.md" links to "b.md#the-second-part"
     When the links in that folder are checked

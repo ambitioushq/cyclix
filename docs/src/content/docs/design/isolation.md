@@ -1,4 +1,6 @@
-# Isolation: what the agent and the gate can reach
+---
+title: "Isolation: what the agent and the gate can reach"
+---
 
 Cyclix runs a coding agent unattended, and then runs the code that agent wrote in the gate. Both must be kept away from the host's credentials and from the world outside the run. Part of that is built. Part is coming soon, and the last section lists which.
 
@@ -12,7 +14,7 @@ Today the process is limited in three ways, and it is not contained:
 - **The environment is limited.** The agent and the gate see an allow-list of environment variables, and git and `gh` find no credential in it.
 - **The process is not contained.** The agent and the gate still run as the host user, with the real `HOME`. Code they run can read any file that user can read. Python started through `Bash(uv run *)` can read `~/.config/gh/hosts.yml` or `~/.netrc` by its full path. The agent's Read tool cannot, because `--restricted` confines it to the working directory. The agent can also write files that the engine later runs, such as hooks in the tenant's clone.
 
-So the merge rule ([ADR-0001](../adr/0001-merge-only-after-approval-or-under-a-written-rule.md)) holds against an agent that follows its tool list. It does not yet hold against an agent that runs Python to read a token. Run Cyclix as a dedicated user that holds only the tokens the loop needs. If the operator's GitHub identity opens the PRs and may bypass branch protection, a leaked token can merge a PR or push to the base branch past the rules.
+So the merge rule ([ADR-0001](/adr/0001-merge-only-after-approval-or-under-a-written-rule/)) holds against an agent that follows its tool list. It does not yet hold against an agent that runs Python to read a token. Run Cyclix as a dedicated user that holds only the tokens the loop needs. If the operator's GitHub identity opens the PRs and may bypass branch protection, a leaked token can merge a PR or push to the base branch past the rules.
 
 ## What comparable agent runners do
 
@@ -36,15 +38,15 @@ Sources:
 
 ## The design
 
-Cyclix follows the same five rules ([ADR-0005](../adr/0005-confine-the-agent-and-the-gate.md)). The engine is the trusted part: it holds the GitHub credential and does every action that reaches GitHub. The agent and the gate are the untrusted part. They get the run's repository, a Claude login, and nothing else.
+Cyclix follows the same five rules ([ADR-0005](/adr/0005-confine-the-agent-and-the-gate/)). The engine is the trusted part: it holds the GitHub credential and does every action that reaches GitHub. The agent and the gate are the untrusted part. They get the run's repository, a Claude login, and nothing else.
 
 ### What is built
 
 - **The agent may use only the tools its stage needs.** The engine runs Claude Code with `--permission-mode dontAsk --permission-prompts none`, so a tool call outside the stage's list is refused, and adds `--restricted`, `--strict-mcp-config`, `--tools`, `--max-turns` and `--max-budget-usd`. The plan stage may use `Read`, `Grep` and `Glob`. The build stage may also use `Edit`, `Write`, some `git` commands and the tenant's test commands. The agent command in the config may hold only `-p`, `--print` and `--effort <level>`, and no config value that goes into a command or a path may start with `-`. The build prompt lists the stage's tools and asks for one shell command at a time, because a joined command is refused whole if any part of it is off the list. `--bare` stays off, because it needs an API key and not a subscription login. The `dontAsk` mode with `--permission-prompts none` needs Claude Code 2.1.259 or later. In a test with a subscription login, a build-style call wrote and committed a file. It was refused `ls /` (which only the repository's own settings file allowed), a read of `/etc/hosts`, and a write to `.git/hooks/pre-push`. The agent still reads the repository's `CLAUDE.md`, which is not a settings file. It no longer loads the host user's own `~/.claude` settings, plugins or hooks.
-- **Every agent call has limits on time, turns and cost.** Each stage sets `max_turns` and `max_budget_usd`, and the agent has a timeout. See [Configuration](../reference/configuration.md#agentplan-and-agentbuild). The event records the turn count beside the cost, so the caps can be checked against real runs. In a small sample of runs, plans took 6 to 10 turns and $0.37 to $0.76, and builds took 6 to 33 turns and $0.23 to $1.82. The caps in the example config are about three times those figures.
-- **The agent and the gate get an allow-list of environment variables, with no credential in it**. The lists are in [Configuration](../reference/configuration.md#what-the-agent-and-the-gate-see). Before it hides the user's git config, the engine runs `git var GIT_AUTHOR_IDENT` and `git var GIT_COMMITTER_IDENT` in the worktree and passes the names and emails in as `GIT_AUTHOR_*` and `GIT_COMMITTER_*`. `git var` resolves each role the way a commit would: the engine's own `GIT_*` variables first, then the repository's config, `author.*` and `committer.*`, `user.*`, and finally `EMAIL` and the system's defaults. So a tenant repository with its own `user.name` keeps it.
-- **The gate and every git call have time limits**, and a call past its limit has its whole process group killed ([Configuration](../reference/configuration.md#time-limits-that-are-not-in-the-config)).
-- **`cyclix check` confirms that the base branch is protected.** It fails unless the base branch requires a pull request and refuses force-pushes and deletion ([Commands](../reference/commands.md#the-checks-with-the-fix-for-each-failure)). It does not yet require an approving review, because the operator's GitHub identity opens the PRs, and GitHub does not let an author approve their own PR.
+- **Every agent call has limits on time, turns and cost.** Each stage sets `max_turns` and `max_budget_usd`, and the agent has a timeout. See [Configuration](/reference/configuration/#agentplan-and-agentbuild). The event records the turn count beside the cost, so the caps can be checked against real runs. In a small sample of runs, plans took 6 to 10 turns and $0.37 to $0.76, and builds took 6 to 33 turns and $0.23 to $1.82. The caps in the example config are about three times those figures.
+- **The agent and the gate get an allow-list of environment variables, with no credential in it**. The lists are in [Configuration](/reference/configuration/#what-the-agent-and-the-gate-see). Before it hides the user's git config, the engine runs `git var GIT_AUTHOR_IDENT` and `git var GIT_COMMITTER_IDENT` in the worktree and passes the names and emails in as `GIT_AUTHOR_*` and `GIT_COMMITTER_*`. `git var` resolves each role the way a commit would: the engine's own `GIT_*` variables first, then the repository's config, `author.*` and `committer.*`, `user.*`, and finally `EMAIL` and the system's defaults. So a tenant repository with its own `user.name` keeps it.
+- **The gate and every git call have time limits**, and a call past its limit has its whole process group killed ([Configuration](/reference/configuration/#time-limits-that-are-not-in-the-config)).
+- **`cyclix check` confirms that the base branch is protected.** It fails unless the base branch requires a pull request and refuses force-pushes and deletion ([Commands](/reference/commands/#the-checks-with-the-fix-for-each-failure)). It does not yet require an approving review, because the operator's GitHub identity opens the PRs, and GitHub does not let an author approve their own PR.
 
 ### 1. Coming soon: the agent and the gate run in a container
 
@@ -57,7 +59,7 @@ Each agent call and each gate run starts a fresh container with rootless Podman,
 
 Why Podman: it runs without a root daemon, works under the systemd user manager that already runs the timer, and uses the standard container image format, so a tenant can build its image with any tool. Docker's daemon runs as root by default. A full VM for each run (Firecracker, for example) gives a stronger boundary, but it costs much more to set up on one host. Anthropic's sandbox runtime (`@anthropic-ai/sandbox-runtime`) wraps a process without containers, but it is a beta research preview, its config format may change, and on Linux it builds its list of protected paths only once, at start.
 
-Podman is a host requirement, like `git` and `gh`. It is not a Python dependency, so the rule "standard library only at runtime" still holds ([ADR-0004](../adr/0004-use-only-the-standard-library-unless-a-dependency-has-a-written-reason.md)). `cyclix check` would confirm that Podman is installed and can run a rootless container.
+Podman is a host requirement, like `git` and `gh`. It is not a Python dependency, so the rule "standard library only at runtime" still holds ([ADR-0004](/adr/0004-use-only-the-standard-library-unless-a-dependency-has-a-written-reason/)). `cyclix check` would confirm that Podman is installed and can run a rootless container.
 
 ### 2. Coming soon: the only credential inside is the Claude login
 

@@ -59,6 +59,8 @@ def broken_links(files, root):
             for target in [*LINK.findall(line), *REFERENCE.findall(line)]:
                 if re.match(r"[a-z][a-z0-9+.-]*:", target):
                     continue  # a URL, not a file in the repository
+                if target.startswith("/"):
+                    continue  # a page on the docs site, which the site build checks
                 name, _, heading = target.partition("#")
                 linked = path if not name else (path.parent / name).resolve()
                 shown = path.relative_to(root)
@@ -70,7 +72,8 @@ def broken_links(files, root):
 
 
 def markdown_files(top):
-    return sorted(p for p in top.rglob("*.md") if ".git" not in p.parts)
+    skipped = {".git", "node_modules"}
+    return sorted(p for p in top.rglob("*.md") if not skipped & set(p.parts))
 
 
 @given(
@@ -78,6 +81,7 @@ def markdown_files(top):
     target_fixture="docs_folder",
 )
 def folder_with_link(tmp_path, name, target):
+    (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
     (tmp_path / name).write_text(f"See [it]({target}).\n")
     (tmp_path / "b.md").write_text("# The first part\n\n## The second part\n")
     return tmp_path

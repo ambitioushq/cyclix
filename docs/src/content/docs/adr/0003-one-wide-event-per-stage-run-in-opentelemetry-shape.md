@@ -1,4 +1,6 @@
-# ADR-0003: Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines
+---
+title: "ADR-0003: Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines"
+---
 
 **Status:** Accepted
 
@@ -21,7 +23,7 @@ People need to query the record afterwards, for example to see which stage costs
 
 - One query follows an issue through the stages.
 - Tools built for OpenTelemetry can read the events with little change.
-- The writer refuses a key that is not in the schema. Add a new key to [Engine](../design/engine.md#the-event-log-schema) first, then to `events/schema.py`.
+- The writer refuses a key that is not in the schema. Add a new key to [Engine](/design/engine/#the-event-log-schema) first, then to `events/schema.py`.
 - A change to the schema raises the version.
 
 ## Alternatives Considered

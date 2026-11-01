@@ -4,7 +4,7 @@ Both run code the engine does not trust, so neither may reach a GitHub credentia
 Only the names below pass through, plus the names a tenant lists in pass_env.
 git and gh are pointed away from the host user's config, where credentials live,
 and git gets the identity it would have used in the worktree through variables
-instead, so commits still carry it. The design is in docs/design/isolation.md.
+instead, so commits still carry it. The design is in docs/src/content/docs/design/isolation.md.
 """
 
 import os
