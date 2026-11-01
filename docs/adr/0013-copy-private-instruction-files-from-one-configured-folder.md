@@ -1,4 +1,4 @@
-# ADR-0014: Copy a tenant's private instruction files from one configured folder into each run's worktree
+# ADR-0013: Copy a tenant's private instruction files from one configured folder into each run's worktree
 
 **Status:** Accepted
 

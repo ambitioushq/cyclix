@@ -1,4 +1,4 @@
-# ADR-0010: Read the tracker with queries that ask for only the fields Cyclix uses
+# ADR-0009: Read the tracker with queries that ask for only the fields Cyclix uses
 
 **Status:** Accepted
 

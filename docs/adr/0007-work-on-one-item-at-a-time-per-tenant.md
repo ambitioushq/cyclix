@@ -1,4 +1,4 @@
-# ADR-0008: Work on one item at a time for each tenant
+# ADR-0007: Work on one item at a time for each tenant
 
 **Status:** Accepted
 

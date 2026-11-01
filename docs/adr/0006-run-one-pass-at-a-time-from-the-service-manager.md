@@ -1,4 +1,4 @@
-# ADR-0007: Run one pass at a time from the host's service manager, with no long-running process
+# ADR-0006: Run one pass at a time from the host's service manager, with no long-running process
 
 **Status:** Accepted
 
@@ -19,5 +19,5 @@ A lock file at `<state directory>/<tenant>.lock` stops two passes from overlappi
 - The service manager does the scheduling and the restarts.
 - The lock shows which runs crashed. Only the pass that holds the lock runs stages. So a run still open when a pass takes the lock was left by a pass that died, and the sweep ends it as `crashed`.
 - A pass that is alive but hung keeps the lock, and later passes wait behind it.
-- Every pass reads the board again ([ADR-0010](0010-read-the-tracker-with-queries-for-only-the-fields-cyclix-uses.md)).
+- Every pass reads the board again ([ADR-0009](0009-read-the-tracker-with-queries-for-only-the-fields-cyclix-uses.md)).
 - `cyclix install` supports systemd only. Another service manager needs its own installer.

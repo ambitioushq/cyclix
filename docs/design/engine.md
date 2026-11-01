@@ -85,7 +85,7 @@ The file opens in WAL mode (write-ahead logging, which lets readers work while a
 
 ## The adapters
 
-An **adapter** is the module that talks to one outside system behind a narrow interface ([ADR-0006](../adr/0006-each-adapter-chooses-how-it-talks-to-its-system.md)).
+An **adapter** is the module that talks to one outside system behind a narrow interface: `Tracker`, `CodeHost` or `Agent`. Nothing else talks to that system. The adapter parses what it gets back, raises one kind of error, and keeps its credentials to itself. Each adapter picks how it talks to its system, through a command-line program or an HTTP API. The current adapters run `gh` and `claude`, because each program handles login, protocol and output format.
 
 ### The `gh` module
 
@@ -104,7 +104,7 @@ The `Tracker` protocol has five methods: `items()`, `item_state(issue)`, `set_st
 
 The tracker keeps only items whose issue belongs to `[codehost] repo`. A draft, a PR or another repository's issue is ignored, and so is an item whose option is not mapped in `[tracker.states]`.
 
-The board is read with narrow queries for the reasons in [ADR-0010](../adr/0010-read-the-tracker-with-queries-for-only-the-fields-cyclix-uses.md). All three start from `repositoryOwner(login: $owner) { ... on ProjectV2Owner { projectV2(number: $number) { ... } } }`, which works for a user or an organization. `BoardItems` reads `items(first: 100, after: $after)` and pages while `pageInfo.hasNextPage` is true, passing `endCursor` as `after` for the next page. `BoardFields` reads the project `id` and `field(name: <status_field>)` as a single-select field with its `options`. A Status field that is missing, or is not single-select, is a `TrackerError`.
+The board is read with narrow queries for the reasons in [ADR-0009](../adr/0009-read-the-tracker-with-queries-for-only-the-fields-cyclix-uses.md). All three start from `repositoryOwner(login: $owner) { ... on ProjectV2Owner { projectV2(number: $number) { ... } } }`, which works for a user or an organization. `BoardItems` reads `items(first: 100, after: $after)` and pages while `pageInfo.hasNextPage` is true, passing `endCursor` as `after` for the next page. `BoardFields` reads the project `id` and `field(name: <status_field>)` as a single-select field with its `options`. A Status field that is missing, or is not single-select, is a `TrackerError`.
 
 One tracker object serves one pass. It reads the board's fields and items once, on first use, and `items()`, `item_state()` and `set_state()` use that read. `set_state()` writes the new option into the tracker's copy after the move succeeds, so a later `items()` on the same tracker agrees with the board. An item added to the board during a pass is seen on the next pass.
 
@@ -131,7 +131,7 @@ Every git call has a time limit, and sets `GIT_TERMINAL_PROMPT=0`, so git never 
 
 The `Agent` protocol has one method, `run(prompt, cwd, stage, run_dir)`, where `stage` is the stage's model, caps and tools from the config. The result holds the text answer, whether the call failed and why, the exit code, the model, the input and output tokens, the cost, the duration and the number of turns.
 
-The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds the flags of [ADR-0012](../adr/0012-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) after the command, including `--output-format stream-json --verbose`. In that mode Claude Code prints each assistant message as it comes, with that message's token counts, and a result line at the end. The engine reads the result line.
+The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds the flags of [ADR-0011](../adr/0011-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) after the command, including `--output-format stream-json --verbose`. In that mode Claude Code prints each assistant message as it comes, with that message's token counts, and a result line at the end. The engine reads the result line.
 
 **A call that runs past its timeout** gets SIGINT, which lets Claude Code stop its own tools and print a result line of subtype `error_during_execution` that holds the cost so far. After 30 seconds the whole process group is killed. Claude Code's plain `--output-format json` prints nothing when it is interrupted, so a timed-out call would lose its cost. This is why the engine uses stream-json.
 
@@ -216,11 +216,11 @@ Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an 
 
 `cyclix run` makes one pass for one tenant, under a file lock so two passes never overlap. [How Cyclix works](../concepts/how-cyclix-works.md#what-happens-in-one-pass) lists the four steps. `src/cyclix/runner.py` holds the sweep and the order of the stages. This section gives the rules behind them.
 
-**The lock decides which runs crashed.** The lock is an `flock` on `<state directory>/<tenant>.lock` ([ADR-0007](../adr/0007-run-one-pass-at-a-time-from-the-service-manager.md)). Only the pass that holds it runs stages for the tenant, so any run still open when a pass takes the lock was left by a pass that died. The sweep ends it as `crashed`, writes its event, and parks its item with the reason "run crashed in phase <phase>".
+**The lock decides which runs crashed.** The lock is an `flock` on `<state directory>/<tenant>.lock` ([ADR-0006](../adr/0006-run-one-pass-at-a-time-from-the-service-manager.md)). Only the pass that holds it runs stages for the tenant, so any run still open when a pass takes the lock was left by a pass that died. The sweep ends it as `crashed`, writes its event, and parks its item with the reason "run crashed in phase <phase>".
 
 **A claim lasts while the engine holds the item.** The engine holds an item while it is In progress or In review. A claim on an item in any other state is released, with the run's worktree. This covers a person's move and the engine's own move to Parked or Needs decision. The reconciler releases the claim when it moves an item out of In review.
 
-**A full column stops admission.** A column is full when it holds as many items as its WIP limit, or more. The count takes every item in the column, including items a person moved there. While any column is full, the sweep admits nothing and writes no event ([ADR-0008](../adr/0008-work-on-one-item-at-a-time-per-tenant.md)).
+**A full column stops admission.** A column is full when it holds as many items as its WIP limit, or more. The count takes every item in the column, including items a person moved there. While any column is full, the sweep admits nothing and writes no event ([ADR-0007](../adr/0007-work-on-one-item-at-a-time-per-tenant.md)).
 
 **The reconciler writes an event only when it acts.** The sweep runs on every timer tick, so an open PR is seen many times. An item whose PR is still open, or has no PR on its branch, stays In review and writes nothing. When the PR has merged or closed, the reconciler moves the item and writes one `reconciler` event under the run ID of the item's claim. An item with no claim, such as one a person moved to In review, gets a new run ID, and that run counts toward `limits.runs_per_day`. The claim is released after the reconciler's row, whether it passed or failed, so a failed reconciler tries again on the next pass under a new run.
 
@@ -230,4 +230,4 @@ Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an 
 
 **Admission and the reconciler are stages like the others.** Each is a class with a `name` and a `run(ctx)` method, and the runner runs every stage the same way. When the runner claims an item, it makes one `RunContext` for the run: the adapters, the run ID, the issue number and the run folder. Admission fills in the issue's details and the worktree, and plan, build, gate and PR read them, so the context is not frozen. The reconciler is made for one item and its ended PR, and its context has no worktree. Two frozen contexts were considered and left out: a small one for admission and the reconciler, with admission returning the full one in its result. That needs a second context type, and a result field that only admission sets.
 
-**The PR body comes from the build stage** ([ADR-0011](../adr/0011-the-build-agent-writes-the-pr-body.md)). The PR stage reads `pr.md`, makes sure its first line is `Closes #<issue>`, and opens the PR with the issue's title.
+**The PR body comes from the build stage** ([ADR-0010](../adr/0010-the-build-agent-writes-the-pr-body.md)). The PR stage reads `pr.md`, makes sure its first line is `Closes #<issue>`, and opens the PR with the issue's title.
