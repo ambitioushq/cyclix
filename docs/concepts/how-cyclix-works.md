@@ -42,7 +42,7 @@ If an earlier run on the same issue left its branch, the new run goes on from th
 
 ### What the agent can do
 
-The plan and build stages run Claude Code with a list of tools for each stage, set in the config. A call outside the list is refused. The agent gets no GitHub login. Cyclix does every push and every PR call itself. [ADR-0012](../adr/0012-the-agent-runs-in-dontask-mode-with-stage-tool-lists.md) and [ADR-0013](../adr/0013-the-agent-and-the-gate-get-no-github-credential.md) give the reasons, and [Isolation](../design/isolation.md) says what the setup does not stop.
+The plan and build stages run Claude Code with a list of tools for each stage, set in the config. A call outside the list is refused. The agent gets no GitHub login. Cyclix does every push and every PR call itself. [ADR-0012](../adr/0012-run-the-agent-in-dontask-mode-with-a-tool-list-per-stage.md) and [ADR-0013](../adr/0013-keep-github-credentials-out-of-the-agent-and-the-gate.md) give the reasons, and [Isolation](../design/isolation.md) says what the setup does not stop.
 
 ## The six work states
 
@@ -98,7 +98,7 @@ The state directory is `CYCLIX_STATE_DIR` when set, else `$XDG_STATE_HOME/cyclix
 
 When the state file and the board disagree about an item, the board is right, and the sweep corrects the state file. People act on the board, so a second copy of their decisions in the state file would drift. The state file holds only facts that the board has no field for and that no person edits. [ADR-0002](../adr/0002-each-kind-of-data-has-one-owner.md) has the reasoning.
 
-The event log is a record of what happened. Cyclix writes to it and never reads it to decide anything ([ADR-0003](../adr/0003-the-event-log-is-never-read-to-decide.md)). Each line is one stage run, with the issue, the stage, the outcome and its reason, the model, tokens and cost, the duration, and each gate check's result. It holds IDs and numbers, never prompts, code or issue text. Any tool that reads JSON lines can query it. [Engine](../design/engine.md) lists every field.
+The event log is a record of what happened. Cyclix writes to it and never reads it to decide anything ([ADR-0003](../adr/0003-the-loop-writes-the-event-log-but-never-reads-it.md)). Each line is one stage run, with the issue, the stage, the outcome and its reason, the model, tokens and cost, the duration, and each gate check's result. It holds IDs and numbers, never prompts, code or issue text. Any tool that reads JSON lines can query it. [Engine](../design/engine.md) lists every field.
 
 ## What a person does
 
@@ -107,4 +107,4 @@ The event log is a record of what happened. Cyclix writes to it and never reads 
 3. Reads the comment on the issue when an item is Parked.
 4. Reviews the PR, and merges it or closes it.
 
-Cyclix asks for nothing else. [ADR-0001](../adr/0001-merges-need-approval-or-a-written-rule.md) covers when Cyclix may merge.
+Cyclix asks for nothing else. [ADR-0001](../adr/0001-merge-only-after-approval-or-under-a-written-rule.md) covers when Cyclix may merge.

@@ -6,7 +6,7 @@ The scenarios in `tests/features/` are Cyclix's functional spec (see [Architectu
 
 ## The fake GitHub is a world model
 
-The fake GitHub is a model of GitHub's state, not a set of replayed recordings ([ADR-0009](../adr/0009-the-fake-github-is-a-world-model.md)).
+The fake GitHub is a model of GitHub's state, not a set of replayed recordings ([ADR-0009](../adr/0009-test-against-a-fake-github-that-keeps-state.md)).
 
 - **The fake world** (`tests/fakes/world.py`) is a JSON file that holds issues, a board with items and states, and PRs and their states. A scenario's Given steps write it, and its Then steps read it.
 - **The fake `gh`** is an executable placed first on `PATH`. It supports only the `gh` commands that [Engine](engine.md#the-adapters) lists, reads and changes the world, prints output in the same JSON shape as the real `gh`, and appends each call to a calls file. A scenario can inject a fault for one call: an exit code, a stderr message or a stale read.

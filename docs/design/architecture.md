@@ -11,7 +11,7 @@ Two principles settle the design calls that follow ([ADR-0000](../adr/0000-guidi
 1. Everything the loop does or hears is recorded, in one append-only log. The loop never reads the log to decide anything.
 2. A person's attention is the scarce resource.
 
-A third rule follows from them. A PR merges only on a person's approval or under a written rule ([ADR-0001](../adr/0001-merges-need-approval-or-a-written-rule.md)).
+A third rule follows from them. A PR merges only on a person's approval or under a written rule ([ADR-0001](../adr/0001-merge-only-after-approval-or-under-a-written-rule.md)).
 
 ## Which part owns which data
 
@@ -30,21 +30,21 @@ When the SQLite file and the board disagree, the board wins and the sweep correc
 
 ## The event log
 
-The event log is a record of wide events. A **wide event** covers one unit of work and holds everything needed to understand it. It is written once, when the work ends. [ADR-0004](../adr/0004-wide-events-in-opentelemetry-shape.md) gives the rules, and [Engine](engine.md#the-event-log-schema) gives the fields. There are three kinds of event:
+The event log is a record of wide events. A **wide event** covers one unit of work and holds everything needed to understand it. It is written once, when the work ends. [ADR-0004](../adr/0004-one-wide-event-per-stage-run-in-opentelemetry-shape.md) gives the rules, and [Engine](engine.md#the-event-log-schema) gives the fields. There are three kinds of event:
 
 1. **One for each stage run:** admission, plan, build, gate, PR or the reconciler, on one issue. It holds the issue, the PR, the commit SHA, the stage, the outcome and its reason, each gate check's result, the model, tokens, cost, duration, and the engine and config versions. This kind is built.
 2. **One for each human act** (coming soon): a merge, a close with its reason, a review round, a card move. It would carry which stage produced the work and how long the work waited on a person.
 3. **One when an issue closes** (coming soon): a summary of the issue's whole life.
 
-A crash cannot lose an event. The stage-run event builds up in the SQLite file while the run goes. If the run dies, the next sweep writes it with the outcome `crashed` ([ADR-0003](../adr/0003-the-event-log-is-never-read-to-decide.md)).
+A crash cannot lose an event. The stage-run event builds up in the SQLite file while the run goes. If the run dies, the next sweep writes it with the outcome `crashed` ([ADR-0003](../adr/0003-the-loop-writes-the-event-log-but-never-reads-it.md)).
 
 ## How Cyclix is built
 
-- **Python 3.14, and the standard library by default.** A new runtime dependency needs a written reason in these docs and approval in the PR that adds it ([ADR-0005](../adr/0005-the-standard-library-by-default.md)). The development tools (pytest, pytest-bdd, ruff, coverage and zizmor) are dev dependencies.
-- **Adapters wrap the vendor's own tool.** An adapter is the module that talks to one outside system behind a narrow interface. Cyclix builds no HTTP layer. The GitHub adapters call the `gh` command-line program, and the agent adapter runs `claude` ([ADR-0006](../adr/0006-adapters-wrap-the-vendors-cli.md)).
-- **The host's service manager does the scheduling.** `cyclix run` makes one pass and exits. On Linux, `cyclix install` writes systemd units that start it on a timer ([ADR-0007](../adr/0007-the-service-manager-runs-one-pass-at-a-time.md)).
-- **One item in progress for each tenant** ([ADR-0008](../adr/0008-one-item-in-progress-per-tenant.md)).
-- **The agent is Claude Code.** It runs with a tool list for each stage ([ADR-0012](../adr/0012-the-agent-runs-in-dontask-mode-with-stage-tool-lists.md)). It and the gate get no GitHub credential through their environment ([ADR-0013](../adr/0013-the-agent-and-the-gate-get-no-github-credential.md)). [Isolation](isolation.md) describes what that does not stop and the container that is coming soon.
+- **Python 3.14, and the standard library by default.** A new runtime dependency needs a written reason in these docs and approval in the PR that adds it ([ADR-0005](../adr/0005-use-only-the-standard-library-unless-a-dependency-has-a-written-reason.md)). The development tools (pytest, pytest-bdd, ruff, coverage and zizmor) are dev dependencies.
+- **Adapters wrap the vendor's own tool.** An adapter is the module that talks to one outside system behind a narrow interface. Cyclix builds no HTTP layer. The GitHub adapters call the `gh` command-line program, and the agent adapter runs `claude` ([ADR-0006](../adr/0006-talk-to-vendors-through-their-command-line-programs.md)).
+- **The host's service manager does the scheduling.** `cyclix run` makes one pass and exits. On Linux, `cyclix install` writes systemd units that start it on a timer ([ADR-0007](../adr/0007-run-one-pass-at-a-time-from-the-service-manager.md)).
+- **One item in progress for each tenant** ([ADR-0008](../adr/0008-work-on-one-item-at-a-time-per-tenant.md)).
+- **The agent is Claude Code.** It runs with a tool list for each stage ([ADR-0012](../adr/0012-run-the-agent-in-dontask-mode-with-a-tool-list-per-stage.md)). It and the gate get no GitHub credential through their environment ([ADR-0013](../adr/0013-keep-github-credentials-out-of-the-agent-and-the-gate.md)). [Isolation](isolation.md) describes what that does not stop and the container that is coming soon.
 
 ## The feature files are the functional spec
 

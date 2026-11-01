@@ -8,18 +8,18 @@ A record is not edited to change a decision. A new record replaces it, and the o
 
 | ADR | Decision | Status |
 | --- | --- | --- |
-| [0000](0000-guiding-principles.md) | Everything the loop does is recorded, and a person's attention is the scarce resource | Accepted |
-| [0001](0001-merges-need-approval-or-a-written-rule.md) | A PR merges only on a person's approval or under a written rule | Accepted |
+| [0000](0000-guiding-principles.md) | Guiding principles | Accepted |
+| [0001](0001-merge-only-after-approval-or-under-a-written-rule.md) | Cyclix merges a PR only after a person approves it or a written rule allows it | Accepted |
 | [0002](0002-each-kind-of-data-has-one-owner.md) | Each kind of data has one owner | Accepted |
-| [0003](0003-the-event-log-is-never-read-to-decide.md) | The event log is a record the loop never reads to decide | Accepted |
-| [0004](0004-wide-events-in-opentelemetry-shape.md) | Wide events, shaped like OpenTelemetry, written to local JSON lines | Accepted |
-| [0005](0005-the-standard-library-by-default.md) | The standard library by default, with a written reason for each runtime dependency | Accepted |
-| [0006](0006-adapters-wrap-the-vendors-cli.md) | Adapters wrap the vendor's CLI, with no HTTP layer | Accepted |
-| [0007](0007-the-service-manager-runs-one-pass-at-a-time.md) | The host's service manager runs one pass at a time, with no long-running process | Accepted |
-| [0008](0008-one-item-in-progress-per-tenant.md) | One item in progress per tenant | Accepted |
-| [0009](0009-the-fake-github-is-a-world-model.md) | The fake GitHub is a world model built for the tests, with no replayed recordings | Accepted |
-| [0010](0010-the-board-is-read-with-narrow-graphql-queries.md) | The board is read with narrow GraphQL queries | Accepted |
+| [0003](0003-the-loop-writes-the-event-log-but-never-reads-it.md) | The loop writes the event log but never reads it | Accepted |
+| [0004](0004-one-wide-event-per-stage-run-in-opentelemetry-shape.md) | Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines | Accepted |
+| [0005](0005-use-only-the-standard-library-unless-a-dependency-has-a-written-reason.md) | Use only the standard library unless a dependency has a written reason | Accepted |
+| [0006](0006-talk-to-vendors-through-their-command-line-programs.md) | Talk to GitHub and Claude through their command-line programs, not their HTTP APIs | Accepted |
+| [0007](0007-run-one-pass-at-a-time-from-the-service-manager.md) | Run one pass at a time from the host's service manager, with no long-running process | Accepted |
+| [0008](0008-work-on-one-item-at-a-time-per-tenant.md) | Work on one item at a time for each tenant | Accepted |
+| [0009](0009-test-against-a-fake-github-that-keeps-state.md) | Test against a fake GitHub that keeps state, not recorded answers | Accepted |
+| [0010](0010-read-the-board-with-narrow-graphql-queries.md) | Read the board with narrow GraphQL queries | Accepted |
 | [0011](0011-the-build-agent-writes-the-pr-body.md) | The build agent writes the PR body | Accepted |
-| [0012](0012-the-agent-runs-in-dontask-mode-with-stage-tool-lists.md) | The agent runs in `dontAsk` mode with a tool list for each stage, and its command takes only allow-listed flags | Accepted |
-| [0013](0013-the-agent-and-the-gate-get-no-github-credential.md) | The agent and the gate get no GitHub credential through their environment | Accepted |
-| [0014](0014-private-instruction-files-come-from-one-config-folder.md) | A tenant's private instruction files come from one folder named in its config, copied into each run's worktree | Accepted |
+| [0012](0012-run-the-agent-in-dontask-mode-with-a-tool-list-per-stage.md) | Run the agent in dontAsk mode with a tool list for each stage, and allow only listed flags in its command | Accepted |
+| [0013](0013-keep-github-credentials-out-of-the-agent-and-the-gate.md) | Keep GitHub credentials out of the agent's and the gate's environment | Accepted |
+| [0014](0014-copy-private-instruction-files-from-one-configured-folder.md) | Copy a tenant's private instruction files from one configured folder into each run's worktree | Accepted |

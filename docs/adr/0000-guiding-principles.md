@@ -6,15 +6,15 @@
 
 ## Context
 
-Cyclix runs a loop with no person watching. Design calls in it trade how well a person can see what the loop did against how much of a person's time it uses.
+Cyclix runs a loop with nobody watching. Each design call has to balance two things: how well a person can see what the loop did, and how much of a person's time it takes.
 
 ## Decision
 
-1. Everything the loop does or hears is recorded in one append-only log of wide events. The loop never reads the log to decide anything ([ADR-0003](0003-the-event-log-is-never-read-to-decide.md), [ADR-0004](0004-wide-events-in-opentelemetry-shape.md)).
-2. A person's attention is the scarce resource. The loop asks a person only for a call that needs one.
+1. Record everything the loop does or hears, in one log that is only ever added to. The loop never reads that log to decide anything ([ADR-0003](0003-the-loop-writes-the-event-log-but-never-reads-it.md), [ADR-0004](0004-one-wide-event-per-stage-run-in-opentelemetry-shape.md)).
+2. A person's attention is the scarce resource. Ask a person only for a call that needs one.
 
 ## Consequences
 
-- Each stage run writes an event.
-- Each move out of In progress writes a comment on the issue with the reason.
-- Limits on work in progress stop the loop from queuing more PRs than a person can review ([ADR-0008](0008-one-item-in-progress-per-tenant.md)).
+- Every stage run writes an event.
+- Every move out of In progress writes a comment on the issue that gives the reason.
+- Limits on work in progress stop the loop from queuing more PRs than a person can review ([ADR-0008](0008-work-on-one-item-at-a-time-per-tenant.md)).
