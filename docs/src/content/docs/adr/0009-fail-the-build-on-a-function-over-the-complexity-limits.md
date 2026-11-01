@@ -10,7 +10,7 @@ title: "ADR-0009: Fail the build on a function over the complexity limits"
 
 Cyclix's code is read far more often than it is written, and much of it is written in agent sessions. Without a limit, a function can keep gaining branches until no one can follow it. Before this decision, the check of each config value had a cyclomatic complexity of 20, and the check of the code host's branch protection reached 12 before it was split. Review catches some of this. A limit that fails the build catches it every time, and it costs no reviewer attention.
 
-There are two common measures, and each misses what the other catches. Cyclomatic complexity counts the independent paths through a function: one, plus one for each branch or loop. A flat run of eleven `if` statements scores 11 and is easy to read. Cognitive complexity, defined by SonarSource, charges each branch and loop one more for every level it is nested in, and also charges for breaks in the flow. So it is closer to how hard the code is to read. A function with loops and conditions nested four deep can score 16 on cognitive complexity and only 8 on cyclomatic complexity.
+There are two common measures, and each misses what the other catches. Cyclomatic complexity counts the independent paths through a function: one, plus one for each branch or loop. A flat run of ten `if` statements scores 11 and is easy to read. Cognitive complexity, defined by SonarSource, charges each branch and loop one more for every level it is nested in, and also charges for breaks in the flow. So it is closer to how hard the code is to read. A function with loops and conditions nested four deep can score 16 on cognitive complexity and only 8 on cyclomatic complexity.
 
 ## Decision
 
