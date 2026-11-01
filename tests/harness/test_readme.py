@@ -22,19 +22,19 @@ def listed_subcommands(help_text):
     return names
 
 
-def usage_section(text):
-    match = re.search(r"(?ms)^## Usage\s*$(.*?)(?=^## |\Z)", text)
-    assert match, "README.md has no '## Usage' section"
+def commands_section(text):
+    match = re.search(r"(?ms)^## What each command does\s*$(.*?)(?=^## |\Z)", text)
+    assert match, "README.md has no '## What each command does' section"
     return match.group(1)
 
 
 @then(
     'each subcommand it lists appears in a "cyclix <subcommand>" example '
-    "in the README's Usage section"
+    "in the README's commands section"
 )
 def readme_has_each_subcommand(result):
     names = listed_subcommands(result.stdout)
     assert names, f"found no subcommands in the help output:\n{result.stdout}"
-    usage = usage_section(README.read_text())
-    missing = [n for n in names if not re.search(rf"cyclix {re.escape(n)}(?=\s|$)", usage)]
-    assert not missing, f"no example in the README's Usage section for: {', '.join(missing)}"
+    commands = commands_section(README.read_text())
+    missing = [n for n in names if not re.search(rf"cyclix {re.escape(n)}(?=\s|$)", commands)]
+    assert not missing, f"no example in the README's commands section for: {', '.join(missing)}"
