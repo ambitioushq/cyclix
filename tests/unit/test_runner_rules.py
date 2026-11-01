@@ -14,7 +14,9 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from cyclix import config, runner
+from cyclix import checks, config, runner
+from cyclix.adapters import kinds
+from cyclix.adapters.github_codehost import GitHubCodeHost
 from cyclix.adapters.github_tracker import GitHubTracker
 from cyclix.stages.base import StageResult
 from cyclix.state import sqlite as state_sqlite
@@ -258,3 +260,40 @@ def test_a_comment_is_posted_on_the_issue(world):
         "--body",
         "Parked: why",
     ]
+
+
+@pytest.fixture
+def other_kind(world, monkeypatch):
+    """Register adapters under the kind "other", and name it in the config. Return what was built."""
+    built = []
+
+    class OtherTracker(GitHubTracker):
+        def __init__(self, cfg):
+            built.append("tracker")
+            super().__init__(cfg)
+
+    class OtherCodeHost(GitHubCodeHost):
+        def __init__(self, cfg):
+            built.append("codehost")
+            super().__init__(cfg)
+
+    monkeypatch.setitem(kinds.TRACKERS, "other", OtherTracker)
+    monkeypatch.setitem(kinds.CODEHOSTS, "other", OtherCodeHost)
+    text = world.config.read_text()
+    assert text.count('kind = "github"') == 2
+    world.config.write_text(text.replace('kind = "github"', 'kind = "other"'))
+    return built
+
+
+def test_the_sweep_builds_the_adapters_of_the_configured_kind(world, stages, other_kind):
+    stages()
+    world.add_issue(12, state="Ready")
+    assert sweep(world) == 0
+    assert other_kind == ["tracker", "codehost"]
+    assert world.board_state(12) == "In progress"
+
+
+def test_check_builds_the_adapters_of_the_configured_kind(world, other_kind):
+    results = checks.run(world.config, config.load(world.config))
+    assert other_kind == ["tracker", "codehost"]
+    assert [r for r in results if r.failure is not None or r.needs] == []

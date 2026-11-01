@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Protocol
 
+from cyclix.adapters.readiness import Readiness
+
 
 @dataclass(frozen=True)
 class AgentResult:
@@ -21,7 +23,7 @@ class AgentResult:
     turns: int
 
 
-class Agent(Protocol):
+class Agent(Readiness, Protocol):
     def run(self, prompt, cwd, stage, run_dir) -> AgentResult:
         """Run one prompt in cwd as the given stage. The prompt and answer go in run_dir.
 

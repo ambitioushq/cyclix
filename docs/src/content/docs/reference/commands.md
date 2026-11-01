@@ -14,6 +14,28 @@ Every command exits with one of three codes:
 
 `--tenant NAME` picks the tenant. Cyclix then reads `~/.config/cyclix/NAME.toml`, or the file in `CYCLIX_CONFIG`. See [Configuration](/reference/configuration/).
 
+## Turn on shell completion
+
+Shell completion lets the Tab key complete `cyclix`'s commands and flags in bash, zsh and fish. It needs the optional `extras` group, which installs [argcomplete](https://github.com/kislyuk/argcomplete). A plain install of Cyclix leaves it out (see [ADR-0008](/adr/0008-offer-shell-completion-through-an-optional-argcomplete-extra/)).
+
+1. Install Cyclix with the `extras` group, and put argcomplete's `register-python-argcomplete` command on your `PATH`:
+
+   ```sh
+   uv tool install --with-executables-from argcomplete "cyclix[extras] @ git+https://github.com/ambitioushq/cyclix"
+   ```
+
+   With `pipx`, run `pipx install --include-deps "cyclix[extras] @ git+https://github.com/ambitioushq/cyclix"`.
+
+2. Register `cyclix` with your shell:
+
+   | Shell | What to do |
+   | --- | --- |
+   | bash | Add `eval "$(register-python-argcomplete cyclix)"` to `~/.bashrc`. |
+   | zsh | Add `eval "$(register-python-argcomplete cyclix)"` to `~/.zshrc`, after the line that runs `compinit`. |
+   | fish | Run `mkdir -p ~/.config/fish/completions`, then `register-python-argcomplete --shell fish cyclix > ~/.config/fish/completions/cyclix.fish`, once. |
+
+3. Open a new shell.
+
 ## `cyclix check`
 
 ```sh
@@ -79,7 +101,7 @@ GitHub shows neither protection nor rulesets for a private repository on a free 
 
 ### When a check is skipped
 
-The board check and the branch check need both the config and a signed-in `gh`. The agent check needs the config. When what they need fails, they print `skipped: <what>: needs <the failed checks>`, such as `skipped: board acme/1: needs gh signed in`. When the config fails, the label has no owner and project, because the config is not known: `skipped: board: needs the config`.
+The board check and the branch check need both the config and a signed-in `gh`. The agent check needs the config. When what they need fails, they print `skipped: <what>: needs <the failed checks>`, such as `skipped: board: needs gh signed in` or `skipped: board: needs the config and gh signed in`.
 
 ## `cyclix run`
 

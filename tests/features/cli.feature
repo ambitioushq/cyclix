@@ -23,8 +23,8 @@ Feature: The cyclix command checks a tenant's setup and refuses unknown subcomma
     When I run "cyclix check"
     Then it exits 1
     And it reports "FAIL: gh: not signed in" with the fix "run \"gh auth login\""
-    And it prints "skipped: board o/1: needs gh signed in"
-    And it prints "skipped: protection of the base branch \"main\": needs gh signed in"
+    And it prints "skipped: board: needs gh signed in"
+    And it prints "skipped: protection of the base branch: needs gh signed in"
 
   Scenario: check fails when the agent command is not on PATH
     Given a valid tenant config whose agent command is "no-such-agent"
@@ -71,6 +71,10 @@ Feature: The cyclix command checks a tenant's setup and refuses unknown subcomma
     When I run "cyclix check"
     Then it exits 1
     And it reports "FAIL: protection of the base branch \"main\": cannot read it: gh: Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)" with the fix "make o/r public, or move its owner to a paid GitHub plan; then add a ruleset for \"main\" in the settings of o/r"
+
+  Scenario: The shell completes a command when the extras group is installed
+    When the shell asks cyclix to complete "cyclix ch"
+    Then it offers "check"
 
   Scenario: An unknown subcommand is a usage error
     When I run "cyclix fly"

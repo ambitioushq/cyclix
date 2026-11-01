@@ -14,6 +14,7 @@ the reason, so a stage handles every failure the same way.
 """
 
 import json
+import shutil
 import signal
 import subprocess
 import time
@@ -23,6 +24,7 @@ from pathlib import Path
 from cyclix.adapters import environment
 from cyclix.adapters.agent import AgentResult
 from cyclix.adapters.process import kill_group
+from cyclix.adapters.readiness import Result
 
 # How long the agent has to print its result after SIGINT, before SIGKILL.
 GRACE_SECONDS = 30
@@ -35,6 +37,9 @@ CAP_REASONS = {
 
 
 class ClaudeCode:
+    label = "agent command"
+    prerequisites = ()
+
     def __init__(self, agent_config, timeout_seconds=None, grace_seconds=GRACE_SECONDS):
         """timeout_seconds, when given, takes the place of the config's timeout."""
         self.command = agent_config.command
@@ -44,6 +49,14 @@ class ClaudeCode:
         self.timeout_seconds = timeout_seconds
         self.grace_seconds = grace_seconds
         self.pass_env = agent_config.pass_env
+
+    def readiness(self, config_path):
+        """Is the agent command on PATH?"""
+        what = f"{self.label} {self.command[0]}"
+        if shutil.which(self.command[0]) is None:
+            fix = f"install it, or change [agent] command in {config_path}"
+            return [Result(what, "not on PATH", fix)]
+        return [Result(what)]
 
     def run(self, prompt, cwd, stage, run_dir):
         run_dir = Path(run_dir)

@@ -4,42 +4,6 @@ title: Engine
 
 This page describes the parts of the engine: the state core, the adapters, the run folders, the event log schema and the sweep. [Architecture](/design/architecture/) covers the design as a whole. [How Cyclix works](/concepts/how-cyclix-works/) covers the stages and the work states from the operator's side, and [Configuration](/reference/configuration/) covers the config keys.
 
-## How the code is laid out
-
-```
-src/cyclix/
-  __init__.py
-  __main__.py        python -m cyclix
-  cli.py             argparse entry point
-  config.py          load and validate the tenant TOML
-  workstate.py       the work states and the transition table
-  state/
-    core.py          the StateCore protocol (the narrow interface)
-    sqlite.py        the SQLite implementation
-  adapters/
-    gh.py            runs gh, parses JSON, raises one error type
-    process.py       runs a command with a time limit and kills its whole process group
-    environment.py   the environment the agent and the gate get
-    tracker.py       the Tracker protocol
-    github_tracker.py
-    codehost.py      the CodeHost protocol
-    github_codehost.py
-    agent.py         the Agent protocol
-    claude_code.py
-  events/
-    schema.py        field names, outcome values, schema version
-    log.py           the JSON-lines writer
-  runner.py          the sweep and the stage sequence
-  stages/
-    base.py          the Stage protocol and the run context
-    admission.py plan.py build.py gate.py pr.py reconciler.py
-    prompts/         plan.txt build.txt: the agent prompts, so a prompt changes without code
-  install.py         writes the systemd user units
-tests/               see Testing
-scripts/
-  record_gh_shapes.py
-```
-
 ## The work states and the transition table
 
 `src/cyclix/workstate.py` holds the table of moves from [How Cyclix works](/concepts/how-cyclix-works/#the-work-states-and-who-moves-them) as data. The function `move` refuses any move that is not in it. A unit test reads the table in that page and fails if the two differ, so a change to one needs the same change to the other. Rows that only a person writes are left out of the code, because the engine never makes them.
@@ -89,13 +53,17 @@ The file opens in WAL mode (write-ahead logging, which lets readers work while a
 
 An **adapter** is the module that talks to one outside system behind a narrow interface: `Tracker`, `CodeHost` or `Agent`. Nothing else talks to that system. The adapter parses what it gets back, raises one kind of error, and keeps its credentials to itself. Each adapter picks how it talks to its system, through a command-line program or an HTTP API. The current adapters run `gh` and `claude`, because each program handles login, protocol and output format.
 
+**The config's `kind` chooses the adapter.** `kind` in `[tracker]` and `[codehost]` names the adapter to build, and the config refuses a kind that has no adapter. `"github"` is the only kind today. The agent has no `kind`, because Claude Code is the only agent. To add a tracker or a code host, write one class with its readiness check and register its kind.
+
+**Each adapter checks its own readiness.** `cyclix check` asks each adapter whether its outside system is ready, so a new adapter brings its own checks and `cyclix check` does not change. A check that more than one adapter needs, such as `gh` being signed in, runs once, before the adapters' own checks. An adapter's check is skipped when the config or one of the checks it needs has failed. When the config does not load, the kinds are not known, so `cyclix check` runs the shared checks of every adapter. `cyclix check` itself keeps only the two checks that belong to no adapter: the config loads, and the state directory can be written. [Commands](/reference/commands/#cyclix-check) lists every check and its fix.
+
 ### The `gh` module
 
 All GitHub calls go through `adapters/gh.py`. It runs `gh` with `--json` output where the command supports it, parses the JSON, and raises `GhError` with the exit code and stderr on failure. Nothing else in the engine calls `gh`. A call that runs past its time limit is a `GhError` with exit code 124. There are no retries: the next timer run makes the pass again. [Configuration](/reference/configuration/#time-limits-that-are-not-in-the-config) lists the limits.
 
 ### The tracker
 
-The `Tracker` protocol has five methods: `items()`, `item_state(issue)`, `set_state(issue, state)`, `issue(issue)` and `comment(issue, body)`. The GitHub implementation uses:
+The `Tracker` protocol has five methods of its own: `items()`, `item_state(issue)`, `set_state(issue, state)`, `issue(issue)` and `comment(issue, body)`. The GitHub implementation uses:
 
 - `gh api graphql` with the `BoardFields` query, for the project ID, the Status field ID and its option IDs. Read once per pass.
 - `gh api graphql` with the `BoardItems` query, for each item's ID, issue number, title, state, repository and Status value. Read once per pass.
@@ -103,6 +71,7 @@ The `Tracker` protocol has five methods: `items()`, `item_state(issue)`, `set_st
 - `gh project item-edit --id <item> --project-id <p> --field-id <f> --single-select-option-id <opt>`, to move an item.
 - `gh issue view <n> -R <repo> --json number,title,body,state,author,labels`, to read an issue.
 - `gh issue comment <n> -R <repo> --body <text>`, to say why an item moved.
+- `gh project field-list <project> --owner <owner> --format json`, for its readiness check: the Status field and an option for each state.
 
 The tracker keeps only items whose issue belongs to `[codehost] repo`. A draft, a PR or another repository's issue is ignored, and so is an item whose option is not mapped in `[tracker.states]`.
 
@@ -118,12 +87,13 @@ Moving an item uses `gh project item-edit`, which reads nothing. The field and o
 
 ### The code host
 
-The `CodeHost` protocol has these methods: `ensure_clone()`, `new_worktree(issue, slug, run_dir)`, `remove_worktree(worktree)`, `add_local_files(worktree, files)`, `head_sha(worktree)`, `push(worktree)`, `find_pr(branch)`, `open_pr(branch, title, body)` and `pr_state(number)`. Every failure raises `CodeHostError`. The GitHub implementation runs `git` for the clone's fetches, the worktrees and the push, and uses:
+The `CodeHost` protocol has these methods of its own: `ensure_clone()`, `new_worktree(issue, slug, run_dir)`, `remove_worktree(worktree)`, `add_local_files(worktree, files)`, `head_sha(worktree)`, `push(worktree)`, `find_pr(branch)`, `open_pr(branch, title, body)` and `pr_state(number)`. Every failure raises `CodeHostError`. The GitHub implementation runs `git` for the clone's fetches, the worktrees and the push, and uses:
 
 - `gh repo clone <repo> <dir>`, for the one clone, so `gh` picks the protocol and the credentials.
 - `gh pr create -R <repo> --head <branch> --base <base> --title <t> --body-file <f>`
 - `gh pr list -R <repo> --head <branch> --state all --json number,state,url`
 - `gh pr view <n> -R <repo> --json state,mergedAt,closedAt,headRefOid,url`
+- `gh api repos/<repo>/branches/<base>/protection` and `gh api repos/<repo>/rules/branches/<base>`, for its readiness check: the base branch requires a pull request and refuses force-pushes and deletion.
 
 `push` sets the upstream and never forces, so a push that would drop a commit on the remote branch fails. `find_pr` returns the newest PR on the branch in any state. `open_pr` first looks for an open PR on the branch and returns it, so a run that crashed after it opened its PR never opens a second one. A closed or merged PR on the branch is not reused: a new one is opened. `pr_state` returns `open`, `merged` or `closed`, with the head SHA and the merge and close times.
 
@@ -131,7 +101,7 @@ Every git call has a time limit, and sets `GIT_TERMINAL_PROMPT=0`, so git never 
 
 ### The agent
 
-The `Agent` protocol has one method, `run(prompt, cwd, stage, run_dir)`, where `stage` is the stage's model, caps and tools from the config. The result holds the text answer, whether the call failed and why, the exit code, the model, the input and output tokens, the cost, the duration and the number of turns.
+The `Agent` protocol has one method of its own, `run(prompt, cwd, stage, run_dir)`, where `stage` is the stage's model, caps and tools from the config. The result holds the text answer, whether the call failed and why, the exit code, the model, the input and output tokens, the cost, the duration and the number of turns.
 
 The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds the flags that [Isolation](/design/isolation/#what-is-built) lists after the command, including `--output-format stream-json --verbose`. In that mode Claude Code prints each assistant message as it comes, with that message's token counts, and a result line at the end. The engine reads the result line.
 

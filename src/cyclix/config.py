@@ -15,7 +15,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-from cyclix.adapters import environment
+from cyclix.adapters import environment, kinds
 
 STATES = ("ready", "in_progress", "in_review", "parked", "needs_decision", "done")
 # The states that may carry a WIP limit. The engine adds nothing to Ready, and Done is the end.
@@ -168,7 +168,6 @@ SCHEMA = {
     "gate": {"commands": ARGV_LIST, "timeout_minutes": COUNT, "pass_env": NAMES},
     "limits": {"runs_per_day": WHOLE},
 }
-KINDS = {"tracker": "github", "codehost": "github"}
 # The flags the agent command may hold after the program, each with whether it
 # takes a value. Every other flag is refused: the engine sets the agent's
 # permissions, tools, caps and output format itself, appending its flags after
@@ -196,9 +195,11 @@ def load(path=None, tenant=None):
     folder = agent.pop("instructions", None) if isinstance(agent, dict) else None
     check_table(data, SCHEMA, "")
     check_wip(wip)
-    for table, kind in KINDS.items():
-        if data[table]["kind"] != kind:
-            raise ConfigError(f'[{table}] kind must be "{kind}", not "{data[table]["kind"]}"')
+    for table, adapters in (("tracker", kinds.TRACKERS), ("codehost", kinds.CODEHOSTS)):
+        kind = data[table]["kind"]
+        if kind not in adapters:
+            names = " or ".join(f'"{name}"' for name in adapters)
+            raise ConfigError(f'[{table}] kind must be {names}, not "{kind}"')
     check_agent_command(data["agent"]["command"])
     for stage in ("plan", "build"):
         check_tools(data["agent"][stage]["tools"], f"agent.{stage}")

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from fakes.runner import BIN, environment, run_cyclix
+from fakes.runner import BIN, environment, run, run_cyclix
 
 from cyclix import cli
 
@@ -121,7 +121,7 @@ def test_gh_missing_from_path_fails_and_skips_the_board(world, tmp_path):
     assert reports(
         result, "FAIL: gh: not on PATH", "install gh, the GitHub CLI, and put it on PATH"
     ), result.stdout
-    assert "skipped: board o/1: needs gh signed in" in lines(result)
+    assert "skipped: board: needs gh signed in" in lines(result)
 
 
 def test_an_unreadable_board_fails(world):
@@ -192,3 +192,14 @@ def test_a_board_without_the_status_field_fails(world):
         'add a single-select field "Stage" to the board, '
         f"or change [tracker] status_field in {world.config}",
     ), result.stdout
+
+
+def test_cyclix_runs_without_argcomplete(world):
+    # None in sys.modules makes the import fail, as it does when the extras group is not installed.
+    code = (
+        "import sys; sys.modules['argcomplete'] = None; from cyclix import cli; "
+        "assert cli.argcomplete is None; sys.exit(cli.main(['--help']))"
+    )
+    result = run(world, [sys.executable, "-c", code])
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.startswith("usage: cyclix")

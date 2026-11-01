@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
+from cyclix.adapters.readiness import Readiness
+
 
 class CodeHostError(Exception):
     """A git or code-host call failed. The message says which call and why."""
@@ -38,7 +40,7 @@ class PRState:
     closed_at: datetime | None
 
 
-class CodeHost(Protocol):
+class CodeHost(Readiness, Protocol):
     def ensure_clone(self) -> None: ...
     def new_worktree(self, issue: int, slug: str, run_dir: Path) -> Worktree: ...
     def remove_worktree(self, worktree: Worktree) -> None: ...

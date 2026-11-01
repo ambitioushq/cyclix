@@ -16,6 +16,7 @@ from pathlib import Path
 
 from cyclix.adapters import gh, process
 from cyclix.adapters.codehost import PR, CodeHostError, PRState, Worktree
+from cyclix.adapters.readiness import Result
 
 SLUG_LENGTH = 40
 # Seconds a git call may take. A call that reaches the remote gets longer than one
@@ -23,6 +24,14 @@ SLUG_LENGTH = 40
 GIT_NETWORK_SECONDS = 300
 GIT_LOCAL_SECONDS = 60
 NETWORK_COMMANDS = {"clone", "fetch", "pull", "push", "ls-remote"}
+
+# What protecting the base branch takes: each rule as a ruleset names it, what the
+# branch allows without it, and the rule's name in GitHub's ruleset settings.
+PROTECTION_RULES = (
+    ("pull_request", "lets a change skip a pull request", "Require a pull request before merging"),
+    ("non_fast_forward", "allows force-pushes", "Block force pushes"),
+    ("deletion", "allows deletion", "Restrict deletions"),
+)
 
 
 def slug(title):
@@ -62,6 +71,9 @@ def gh_call(call, *args):
 
 
 class GitHubCodeHost:
+    label = "protection of the base branch"
+    prerequisites = (gh.SIGNED_IN,)
+
     def __init__(self, config):
         self.repo = config.codehost.repo
         self.base = config.codehost.base
@@ -166,6 +178,54 @@ class GitHubCodeHost:
             closed_at=timestamp(pr["closedAt"]),
         )
 
+    def readiness(self, config_path):
+        """Does the base branch require a pull request and refuse force-pushes and deletion?"""
+        what = f'{self.label} "{self.base}"'
+        found, unreadable = self._protection_rules()
+        missing = [(gap, setting) for rule, gap, setting in PROTECTION_RULES if rule not in found]
+        if not missing:
+            return [Result(what)]
+        if unreadable:
+            return [Result(what, f"cannot read it: {unreadable}", self._unreadable_fix(unreadable))]
+        gaps = and_list([gap for gap, _ in missing])
+        settings = and_list([f'"{setting}"' for _, setting in missing])
+        fix = f'in the settings of {self.repo}, add a ruleset for "{self.base}" with {settings}'
+        return [Result(what, gaps, fix)]
+
+    def _protection_rules(self):
+        """The rules that protect the base branch, and gh's error if a read failed, else None.
+
+        A rule counts whether it comes from classic branch protection or from a ruleset.
+        Reading classic protection needs admin rights, which a narrow token lacks, so a
+        ruleset alone is enough when it holds every rule.
+        """
+        found, unreadable = set(), None
+        try:
+            classic = gh.json("api", f"repos/{self.repo}/branches/{self.base}/protection")
+        except gh.GhError as error:
+            if "Branch not protected" not in error.stderr:
+                unreadable = error.stderr
+        else:
+            found |= classic_rules(classic)
+        try:
+            rules = gh.json("api", f"repos/{self.repo}/rules/branches/{self.base}")
+        except gh.GhError as error:
+            unreadable = unreadable or error.stderr
+        else:
+            found.update(rule.get("type") for rule in rules)
+        return found, unreadable
+
+    def _unreadable_fix(self, unreadable):
+        repo, base = self.repo, self.base
+        # GitHub protects no branch of a private repository on a free plan, so
+        # neither a ruleset nor admin rights help there.
+        if "make this repository public" in unreadable:
+            return (
+                f"make {repo} public, or move its owner to a paid GitHub plan; "
+                f'then add a ruleset for "{base}" in the settings of {repo}'
+            )
+        return f'protect "{base}" with a ruleset in the settings of {repo}, or sign gh in as an admin of {repo}'
+
     def _prs(self, branch):
         """Every PR on the branch, newest first."""
         prs = gh_call(
@@ -187,3 +247,16 @@ def exclude_pattern(path):
 def timestamp(value):
     """gh gives times as ISO 8601 in UTC, and an unset time as null."""
     return datetime.fromisoformat(value) if value else None
+
+
+def classic_rules(protection):
+    """The rules, named as a ruleset names them, that classic branch protection holds."""
+    found = {"pull_request"} if "required_pull_request_reviews" in protection else set()
+    for rule, key in (("non_fast_forward", "allow_force_pushes"), ("deletion", "allow_deletions")):
+        if protection.get(key, {}).get("enabled") is False:
+            found.add(rule)
+    return found
+
+
+def and_list(items):
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]

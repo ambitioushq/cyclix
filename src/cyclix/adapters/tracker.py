@@ -7,6 +7,7 @@ workstate.TRANSITIONS, and a human may make any move.
 from dataclasses import dataclass
 from typing import Protocol
 
+from cyclix.adapters.readiness import Readiness
 from cyclix.workstate import State
 
 
@@ -33,7 +34,7 @@ class Issue:
     labels: tuple[str, ...]
 
 
-class Tracker(Protocol):
+class Tracker(Readiness, Protocol):
     def items(self) -> list[Item]:
         """Every item in a Cyclix state, oldest issue first. An item in any other state is left out."""
 

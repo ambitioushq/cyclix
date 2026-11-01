@@ -6,10 +6,12 @@ one error type whatever went wrong.
 
 import json as jsonlib
 import logging
+import shutil
 import subprocess
 import time
 
 from cyclix.adapters import process
+from cyclix.adapters.readiness import Prerequisite, Result
 
 logger = logging.getLogger(__name__)
 
@@ -58,3 +60,18 @@ def json(*args):
         return jsonlib.loads(out)
     except ValueError:
         raise GhError(args, 0, f"output is not JSON: {out[:200]}") from None
+
+
+def signed_in():
+    """Is gh on PATH and signed in?"""
+    if shutil.which("gh") is None:
+        return Result("gh", "not on PATH", "install gh, the GitHub CLI, and put it on PATH")
+    try:
+        run("auth", "status")
+    except GhError:
+        return Result("gh", "not signed in", 'run "gh auth login"')
+    return Result("gh is signed in")
+
+
+# Every adapter that calls gh needs this check, so cyclix check runs it once for them all.
+SIGNED_IN = Prerequisite("gh signed in", signed_in)

@@ -90,7 +90,7 @@ The tracker is where the work items live. Only `github` is supported, and it mea
 
 | Key | Type | Meaning |
 | --- | --- | --- |
-| `kind` | string | Must be `"github"`. |
+| `kind` | string | Chooses the tracker adapter. `"github"` is the only kind today. |
 | `owner` | string | The GitHub user or organization that owns the board. |
 | `project` | whole number, 1 or more | The board's number. |
 | `status_field` | string | The name of the board's single-select field that holds an item's state. |
@@ -116,7 +116,7 @@ The code host is where the repository and its PRs live.
 
 | Key | Type | Meaning |
 | --- | --- | --- |
-| `kind` | string | Must be `"github"`. |
+| `kind` | string | Chooses the code host adapter. `"github"` is the only kind today. |
 | `repo` | string | The repository, written `owner/name`. |
 | `base` | string | The branch that PRs target. Cyclix starts each branch from `origin/<base>`. |
 
