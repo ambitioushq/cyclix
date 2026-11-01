@@ -1,6 +1,8 @@
 import re
+import subprocess
 
-from pytest_bdd import given, parsers, scenarios, then
+from fakes.runner import environment
+from pytest_bdd import given, parsers, scenarios, then, when
 
 scenarios("cli.feature")
 
@@ -47,6 +49,28 @@ def board_has_every_option(world):
 @given(parsers.parse('the board has no "{option}" option'))
 def board_lacks_option(world, option):
     world.remove_option(option)
+
+
+@when(parsers.parse('the shell asks cyclix to complete "{line}"'), target_fixture="completions")
+def complete(world, tmp_path, line):
+    """Run cyclix the way argcomplete's shell hook does, and return what it offers."""
+    out = tmp_path / "completions"
+    env = {
+        **environment(world),
+        "_ARGCOMPLETE": "1",
+        "COMP_LINE": line,
+        "COMP_POINT": str(len(line)),
+        "_ARGCOMPLETE_STDOUT_FILENAME": str(out),
+    }
+    result = subprocess.run(["cyclix"], env=env, capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr
+    # argcomplete separates the offers with a vertical tab, and ends a whole word with a space.
+    return [offer.strip() for offer in out.read_text().split("\v")]
+
+
+@then(parsers.parse('it offers "{word}"'))
+def offers(completions, word):
+    assert completions == [word]
 
 
 @then(parsers.parse('every line ends in "{text}"'))

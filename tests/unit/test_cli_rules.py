@@ -203,17 +203,3 @@ def test_cyclix_runs_without_argcomplete(world):
     result = run(world, [sys.executable, "-c", code])
     assert result.returncode == 0, result.stderr
     assert result.stdout.startswith("usage: cyclix")
-
-
-def test_with_argcomplete_the_shell_completes_a_command(world, tmp_path):
-    completions = tmp_path / "completions"
-    env = {
-        **environment(world),
-        "_ARGCOMPLETE": "1",
-        "COMP_LINE": "cyclix ch",
-        "COMP_POINT": "9",
-        "_ARGCOMPLETE_STDOUT_FILENAME": str(completions),
-    }
-    result = subprocess.run(["cyclix"], env=env, capture_output=True, text=True, check=False)
-    assert result.returncode == 0, result.stderr
-    assert completions.read_text() == "check "  # the space ends a whole word

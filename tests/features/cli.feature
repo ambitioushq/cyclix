@@ -72,6 +72,10 @@ Feature: The cyclix command checks a tenant's setup and refuses unknown subcomma
     Then it exits 1
     And it reports "FAIL: protection of the base branch \"main\": cannot read it: gh: Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)" with the fix "make o/r public, or move its owner to a paid GitHub plan; then add a ruleset for \"main\" in the settings of o/r"
 
+  Scenario: The shell completes a command when the extras group is installed
+    When the shell asks cyclix to complete "cyclix ch"
+    Then it offers "check"
+
   Scenario: An unknown subcommand is a usage error
     When I run "cyclix fly"
     Then it exits 2
