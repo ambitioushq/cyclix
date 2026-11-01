@@ -17,4 +17,4 @@ Development tools are not covered by this rule. Programs on the host, such as `g
 ## Consequences
 
 - Installing Cyclix installs no other package.
-- A job that a library would do, such as an HTTP client, is written with the standard library or left to a program on the host.
+- A job that a library would do, such as an HTTP client, is written with the standard library.
