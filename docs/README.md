@@ -20,12 +20,13 @@ The site is served at `http://localhost:4321` and reloads when a page changes. `
 
 ## How the site is deployed
 
-Cloudflare's Git integration for Workers, Workers Builds, builds the site from `main` and deploys it as the Worker `cyclix-docs`, which serves only static files. [`wrangler.jsonc`](wrangler.jsonc) names the Worker and the built site folder. Cloudflare keeps the build settings in its dashboard, under the Worker's Settings → Build:
+Cloudflare's Git integration for Workers, Workers Builds, builds the site from `main` and deploys it as the Worker `cyclix-docs`, which serves only static files at https://docs.cyclix.dev. [`wrangler.jsonc`](wrangler.jsonc) names the Worker, the built site folder and the custom domain, and turns off the Worker's `workers.dev` address and its per-version preview links, so the site has one address. Cloudflare keeps the build settings in its dashboard, under the Worker's Settings → Build:
 
 - Root directory: `docs`
 - Build command: `npm ci && npm run build`
 - Deploy command: `npx wrangler deploy`, which runs the Wrangler version in `package-lock.json`
-- Build watch paths: include `docs/*`, so a change elsewhere in the repository starts no build
+- Build watch paths: include only `docs/*`, so a change elsewhere in the repository starts no build
+- Preview builds: off, so a branch other than `main` starts no build
 
 GitHub CI builds the site on every pull request that touches `docs/`, so a broken link fails the pull request before Cloudflare deploys anything. A change to these settings in the dashboard must change this list too.
 

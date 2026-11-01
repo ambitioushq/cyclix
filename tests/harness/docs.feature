@@ -19,6 +19,41 @@ Feature: The links in the docs lead somewhere
     When the links in that folder are checked
     Then the report is empty
 
+  Scenario: A link to a docs site page that does not exist is reported
+    Given a docs folder where "README.md" links to the site page "https://docs.cyclix.dev/missing/"
+    When the links in that folder are checked
+    Then the report names "README.md" and "https://docs.cyclix.dev/missing/"
+
+  Scenario: A link to a docs site heading that does not exist is reported
+    Given a docs folder where "README.md" links to the site page "https://docs.cyclix.dev/b/#nowhere"
+    When the links in that folder are checked
+    Then the report names "README.md" and "https://docs.cyclix.dev/b/#nowhere"
+
+  Scenario: A link to a docs site page and heading that exist passes
+    Given a docs folder where "README.md" links to the site page "https://docs.cyclix.dev/b/#the-second-part"
+    When the links in that folder are checked
+    Then the report is empty
+
+  Scenario: A link to a page whose source file starts with an underscore is reported
+    Given a docs folder where "README.md" links to the site page "https://docs.cyclix.dev/_draft/"
+    When the links in that folder are checked
+    Then the report names "README.md" and "https://docs.cyclix.dev/_draft/"
+
+  Scenario: A link to a docs site page with a query string passes
+    Given a docs folder where "README.md" links to the site page "https://docs.cyclix.dev/b/?from=readme#the-second-part"
+    When the links in that folder are checked
+    Then the report is empty
+
+  Scenario: A link to a docs site heading with no slash after the domain is reported
+    Given a docs folder where "README.md" links to the site page "https://docs.cyclix.dev#nowhere"
+    When the links in that folder are checked
+    Then the report names "README.md" and "https://docs.cyclix.dev#nowhere"
+
+  Scenario: A link to the docs site's home page passes
+    Given a docs folder where "README.md" links to the site page "https://docs.cyclix.dev/"
+    When the links in that folder are checked
+    Then the report is empty
+
   Scenario: Markdown files of installed packages are not checked
     Given a docs folder where "node_modules/pkg/a.md" links to "missing.md"
     When the links in that folder are checked

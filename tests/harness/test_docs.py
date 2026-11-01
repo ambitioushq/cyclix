@@ -6,6 +6,8 @@ from pytest_bdd import given, parsers, scenarios, then, when
 scenarios(str(Path(__file__).parent / "docs.feature"))
 
 ROOT = Path(__file__).resolve().parents[2]
+SITE = re.compile(r"https://docs\.cyclix\.dev(?=[/?#]|$)")
+PAGES = Path("docs/src/content/docs")
 
 LINK = re.compile(r"""(?<!!)\[[^\]]*\]\(<?([^)\s>]+)>?(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)""")
 REFERENCE = re.compile(r"^ {0,3}\[[^\]]+\]:\s*<?([^\s>]+)>?")
@@ -51,20 +53,36 @@ def anchors(path):
     return found
 
 
+def site_page(pages, route):
+    """The file in the pages folder for the page at this route, or None when that file builds no page."""
+    route = route.partition("?")[0].strip("/")
+    if not route:
+        return pages / "index.md"
+    file = pages / f"{route}.md"
+    if not file.exists():
+        file = pages / route / "index.md"
+    # Starlight builds no page from a file whose name starts with an underscore.
+    return None if file.name.startswith("_") else file
+
+
 def broken_links(files, root):
-    """Each relative link in the files whose file or heading does not exist, as text lines."""
+    """Each relative link, or link to the docs site, whose file or heading does not exist, as text lines."""
     problems = []
     for path in files:
         for line in prose_lines(path):
             for target in [*LINK.findall(line), *REFERENCE.findall(line)]:
-                if re.match(r"[a-z][a-z0-9+.-]*:", target):
+                if site := SITE.match(target):
+                    route, _, heading = target[site.end() :].partition("#")
+                    linked = site_page(root / PAGES, route)
+                elif re.match(r"[a-z][a-z0-9+.-]*:", target):
                     continue  # a URL, not a file in the repository
-                if target.startswith("/"):
+                elif target.startswith("/"):
                     continue  # a page on the docs site, which the site build checks
-                name, _, heading = target.partition("#")
-                linked = path if not name else (path.parent / name).resolve()
+                else:
+                    name, _, heading = target.partition("#")
+                    linked = path if not name else (path.parent / name).resolve()
                 shown = path.relative_to(root)
-                if not linked.exists():
+                if linked is None or not linked.exists():
                     problems.append(f"{shown}: {target} does not exist")
                 elif heading and (linked.suffix != ".md" or heading not in anchors(linked)):
                     problems.append(f"{shown}: {target} has no such heading")
@@ -84,6 +102,20 @@ def folder_with_link(tmp_path, name, target):
     (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
     (tmp_path / name).write_text(f"See [it]({target}).\n")
     (tmp_path / "b.md").write_text("# The first part\n\n## The second part\n")
+    return tmp_path
+
+
+@given(
+    parsers.parse('a docs folder where "{name}" links to the site page "{target}"'),
+    target_fixture="docs_folder",
+)
+def folder_with_site_link(tmp_path, name, target):
+    pages = tmp_path / PAGES
+    pages.mkdir(parents=True)
+    (pages / "index.md").write_text("---\ntitle: Home\n---\n")
+    (pages / "b.md").write_text("# The first part\n\n## The second part\n")
+    (pages / "_draft.md").write_text("# A draft\n")
+    (tmp_path / name).write_text(f"See [it]({target}).\n")
     return tmp_path
 
 

@@ -13,7 +13,7 @@ Cyclix turns issues into pull requests (PRs) without a person at the keyboard. I
 3. When every stage passes, the item moves to In review with its PR. When a stage stops, the item moves to Parked, and a comment on the issue says why.
 4. A person reviews the PR and merges or closes it. A later pass moves the item to Done or Parked.
 
-[How Cyclix works](docs/src/content/docs/concepts/how-cyclix-works.md) covers each stage, the work states and where Cyclix keeps its data.
+[How Cyclix works](https://docs.cyclix.dev/concepts/how-cyclix-works/) covers each stage, the work states and where Cyclix keeps its data.
 
 ## What you need
 
@@ -24,7 +24,7 @@ Cyclix turns issues into pull requests (PRs) without a person at the keyboard. I
 - A GitHub repository. Its base branch must be protected by a ruleset (see step 5 of [Get started](#get-started)). GitHub offers rulesets on a free plan only for public repositories.
 - A GitHub Projects board for the repository. Its Status field needs one option for each of Cyclix's six work states.
 - For `cyclix install`: Linux with a systemd user session.
-- A separate user account on the host, holding only the tokens Cyclix needs. Run Cyclix as that user. The agent and the gate run as the same user, and code they run can read any file that user can read, such as a saved GitHub login. A passing `cyclix check` does not change this. [Isolation](docs/src/content/docs/design/isolation.md) explains.
+- A separate user account on the host, holding only the tokens Cyclix needs. Run Cyclix as that user. The agent and the gate run as the same user, and code they run can read any file that user can read, such as a saved GitHub login. A passing `cyclix check` does not change this. [Isolation](https://docs.cyclix.dev/design/isolation/) explains.
 
 ## Install Cyclix
 
@@ -62,7 +62,7 @@ A **tenant** is one repository, its board and one config file. These steps set u
    - `[gate] commands`: the checks a change must pass, such as your tests.
    - `[agent.build] tools`: the commands the agent may run while it builds. Keep the file and git tools, and replace `Bash(uv run *)` with your own build and test commands, such as `Bash(npm test*)`. The agent cannot run a command that is not on this list.
 
-   [Configuration](docs/src/content/docs/reference/configuration.md) explains every key.
+   [Configuration](https://docs.cyclix.dev/reference/configuration/) explains every key.
 
 3. On the board, give the Status field these six options: Ready, In progress, In review, Parked, Needs decision and Done. To use other names, change them under `[tracker.states]` in the config.
 
@@ -98,7 +98,7 @@ A **tenant** is one repository, its board and one config file. These steps set u
    cyclix install --tenant storefront
    ```
 
-   The timer does not use your shell's `PATH`. It gets systemd's default `PATH` for user services. So `gh`, `git`, `claude` and your gate commands must be in a directory on that path, or a pass that works by hand can fail on the timer. [Commands](docs/src/content/docs/reference/commands.md#cyclix-install) explains.
+   The timer does not use your shell's `PATH`. It gets systemd's default `PATH` for user services. So `gh`, `git`, `claude` and your gate commands must be in a directory on that path, or a pass that works by hand can fail on the timer. [Commands](https://docs.cyclix.dev/reference/commands/#cyclix-install) explains.
 
 ## When `cyclix check` fails
 
@@ -111,7 +111,7 @@ FAIL: board option "Blocked" for needs_decision: not on the Status field
 board option "Done" for done: ok
 ```
 
-The `fix:` line names the full path of your config file. Do what it says, then run `cyclix check` again. [Commands](docs/src/content/docs/reference/commands.md#the-checks-with-the-fix-for-each-failure) lists every check and its fix.
+The `fix:` line names the full path of your config file. Do what it says, then run `cyclix check` again. [Commands](https://docs.cyclix.dev/reference/commands/#the-checks-with-the-fix-for-each-failure) lists every check and its fix.
 
 ## What each command does
 
@@ -122,7 +122,7 @@ Each command takes `--tenant NAME`. Cyclix reads `~/.config/cyclix/NAME.toml`, o
 - `cyclix install --tenant storefront` runs a pass every 10 minutes on a systemd user timer. `--every` sets another interval, `--dry-run` prints the units and changes nothing, and `--force` replaces units that differ.
 - `cyclix uninstall --tenant storefront` stops the timer and removes its units.
 
-[Commands](docs/src/content/docs/reference/commands.md) gives each command's output and exit codes.
+[Commands](https://docs.cyclix.dev/reference/commands/) gives each command's output and exit codes.
 
 ## Where it runs
 
@@ -132,10 +132,10 @@ Each command takes `--tenant NAME`. Cyclix reads `~/.config/cyclix/NAME.toml`, o
 
 ## Read more
 
-- To run Cyclix: [how it works](docs/src/content/docs/concepts/how-cyclix-works.md), [the config](docs/src/content/docs/reference/configuration.md) and [the commands](docs/src/content/docs/reference/commands.md).
-- To work on its code: [the architecture](docs/src/content/docs/design/architecture.md), [the engine](docs/src/content/docs/design/engine.md), [the tests](docs/src/content/docs/design/testing.md) and [isolation](docs/src/content/docs/design/isolation.md).
-- [The decisions](docs/src/content/docs/adr/index.md): one record for each settled call.
-- [All the documentation](docs/src/content/docs/index.md).
+- To run Cyclix: [how it works](https://docs.cyclix.dev/concepts/how-cyclix-works/), [the config](https://docs.cyclix.dev/reference/configuration/) and [the commands](https://docs.cyclix.dev/reference/commands/).
+- To work on its code: [the architecture](https://docs.cyclix.dev/design/architecture/), [the engine](https://docs.cyclix.dev/design/engine/), [the tests](https://docs.cyclix.dev/design/testing/) and [isolation](https://docs.cyclix.dev/design/isolation/).
+- [The decisions](https://docs.cyclix.dev/adr/): one record for each settled call.
+- [All the documentation](https://docs.cyclix.dev/).
 
 ## Contribute or report a vulnerability
 
