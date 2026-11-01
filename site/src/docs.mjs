@@ -29,9 +29,10 @@ function route(id) {
 function firstHeading(text) {
 	let fence = null;
 	for (const line of text.split('\n')) {
-		const marker = line.match(/^ {0,3}(`{3,}|~{3,})/)?.[1];
+		const [, marker, rest] = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/) ?? [];
 		if (fence) {
-			if (marker && marker[0] === fence[0] && marker.length >= fence.length) fence = null;
+			// A fence closes only with its own character, at least as long, and nothing after it.
+			if (marker && marker[0] === fence[0] && marker.length >= fence.length && !rest.trim()) fence = null;
 		} else if (marker) {
 			fence = marker;
 		} else {
