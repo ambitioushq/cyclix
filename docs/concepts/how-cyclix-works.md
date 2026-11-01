@@ -42,7 +42,7 @@ If an earlier run on the same issue left its branch, the new run goes on from th
 
 ### What the agent can do
 
-The plan and build stages run Claude Code with a list of tools for each stage, set in the config. A call outside the list is refused. The agent gets no GitHub login. Cyclix does every push and every PR call itself. [ADR-0006](../adr/0006-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) and [ADR-0007](../adr/0007-keep-code-host-credentials-out-of-the-agent-and-the-gate.md) give the reasons, and [Isolation](../design/isolation.md) says what the setup does not stop.
+The plan and build stages run Claude Code with a list of tools for each stage, set in the config. A call outside the list is refused. The agent gets no GitHub login. Cyclix does every push and every PR call itself. [ADR-0005](../adr/0005-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) and [ADR-0006](../adr/0006-keep-code-host-credentials-out-of-the-agent-and-the-gate.md) give the reasons, and [Isolation](../design/isolation.md) says what the setup does not stop.
 
 ## The six work states
 

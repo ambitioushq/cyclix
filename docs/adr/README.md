@@ -13,6 +13,5 @@ A record is not edited to change a decision. A new record replaces it, and the o
 | [0002](0002-each-kind-of-data-has-one-owner.md) | Each kind of data has one owner | Accepted |
 | [0003](0003-one-wide-event-per-stage-run-in-opentelemetry-shape.md) | Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines | Accepted |
 | [0004](0004-use-only-the-standard-library-unless-a-dependency-has-a-written-reason.md) | Use only the standard library unless a dependency has a written reason | Accepted |
-| [0005](0005-the-build-agent-writes-the-pr-body.md) | The build agent writes the PR body | Accepted |
-| [0006](0006-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) | Run the agent without approval prompts, with a tool list for each stage, and allow only listed flags in its command | Accepted |
-| [0007](0007-keep-code-host-credentials-out-of-the-agent-and-the-gate.md) | Keep code host credentials out of the agent's and the gate's environment | Accepted |
+| [0005](0005-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) | Run the agent without approval prompts, with a tool list for each stage, and allow only listed flags in its command | Accepted |
+| [0006](0006-keep-code-host-credentials-out-of-the-agent-and-the-gate.md) | Keep code host credentials out of the agent's and the gate's environment | Accepted |
