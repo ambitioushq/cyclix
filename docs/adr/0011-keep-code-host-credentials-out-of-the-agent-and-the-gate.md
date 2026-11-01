@@ -1,4 +1,4 @@
-# ADR-0012: Keep code host credentials out of the agent's and the gate's environment
+# ADR-0011: Keep code host credentials out of the agent's and the gate's environment
 
 **Status:** Accepted
 

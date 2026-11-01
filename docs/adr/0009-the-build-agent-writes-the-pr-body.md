@@ -1,4 +1,4 @@
-# ADR-0010: The build agent writes the PR body
+# ADR-0009: The build agent writes the PR body
 
 **Status:** Accepted
 
@@ -21,5 +21,7 @@ The PR stage makes sure the first line is that closing line. The plan does not g
 - A tenant changes the body's shape by changing its template.
 
 ## Alternatives Considered
+
+**The engine writes the body from the plan and the diff.** Rejected. The engine sees what changed, but not why the agent made each change. The body would mostly restate the plan, and the plan stays out of the PR.
 
 **A separate agent call in the PR stage.** Rejected. It costs one more call per run.

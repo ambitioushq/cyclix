@@ -148,7 +148,9 @@ A useful command that is missing from `tools` is refused, and the run fails unti
 
 `[agent] instructions` names a folder of instruction files, such as `CLAUDE.md`, that you keep outside the repository. Most tenants keep these files in the repository and leave the key out.
 
-The path is absolute or starts with `~`, and the folder must exist. Admission copies each file into the run's worktree at the same relative path, before the plan stage. It copies the content, not a link. No commit includes the copied files. If the repository already tracks a file at one of those paths, admission writes nothing and parks the item, and the comment names the file. The reasons are in [ADR-0013](../adr/0013-copy-private-instruction-files-from-one-configured-folder.md).
+The path is absolute or starts with `~`, and the folder must exist. Admission copies each file into the run's worktree at the same relative path, before the plan stage. It copies the content, not a link, because some agents, Claude Code among them, do not read an instruction file that is symlinked from outside the working folder, and a container could not follow the link. Admission adds each path to the worktree's git exclude file, so no commit includes the copied files. If the repository already tracks a file at one of those paths, admission writes nothing and parks the item, and the comment names the file.
+
+Each event records `cyclix.agent.instructions.version`, a hash of the folder's files, so you can see which rules the agent had for a run. A change in the folder applies from the next run.
 
 ## `[gate]`
 
@@ -190,7 +192,7 @@ The agent and the gate do not get Cyclix's own environment. They get an allow-li
 - Set by Cyclix: `GH_CONFIG_DIR` pointing at an empty folder, so `gh` finds no login. `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1`, so git reads no credential helper. `GIT_TERMINAL_PROMPT=0`. And the author and committer name and email, so commits carry the identity git would have used.
 - The names in `pass_env`.
 
-The config is refused if `pass_env` names a GitHub token (`GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN` or `GITHUB_ENTERPRISE_TOKEN`), `GH_CONFIG_DIR`, `SSH_AUTH_SOCK`, a program that git or SSH would ask for a credential (`GIT_ASKPASS`, `SSH_ASKPASS`, `GIT_SSH` or `GIT_SSH_COMMAND`), `GIT_TERMINAL_PROMPT`, or any name that starts with `GIT_CONFIG`. The gate's list also may not name the Claude login. A tenant whose tests need `DATABASE_URL`, for example, lists it in `[gate] pass_env`. [ADR-0012](../adr/0012-keep-code-host-credentials-out-of-the-agent-and-the-gate.md) has the reasons.
+The config is refused if `pass_env` names a GitHub token (`GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN` or `GITHUB_ENTERPRISE_TOKEN`), `GH_CONFIG_DIR`, `SSH_AUTH_SOCK`, a program that git or SSH would ask for a credential (`GIT_ASKPASS`, `SSH_ASKPASS`, `GIT_SSH` or `GIT_SSH_COMMAND`), `GIT_TERMINAL_PROMPT`, or any name that starts with `GIT_CONFIG`. The gate's list also may not name the Claude login. A tenant whose tests need `DATABASE_URL`, for example, lists it in `[gate] pass_env`. [ADR-0011](../adr/0011-keep-code-host-credentials-out-of-the-agent-and-the-gate.md) has the reasons.
 
 ## Values Cyclix checks for form
 
