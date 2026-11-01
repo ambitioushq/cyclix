@@ -18,7 +18,7 @@ Cyclix turns issues into pull requests (PRs) without a person at the keyboard. I
 ## What you need
 
 - Python 3.14 or later.
-- git.
+- git, with `user.name` and `user.email` set for the account that runs Cyclix. The agent's commits use them, and `cyclix check` does not check them. Set them with `git config --global user.name "..."` and `git config --global user.email "..."`.
 - The GitHub CLI, `gh`, signed in with the `project` scope. Cyclix reads and moves board items through it.
 - Claude Code 2.1.259 or later, signed in. It is the coding agent.
 - A GitHub repository. Its base branch must be protected by a ruleset (see step 5 of [Get started](#get-started)). GitHub offers rulesets on a free plan only for public repositories.
