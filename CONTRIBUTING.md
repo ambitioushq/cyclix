@@ -27,7 +27,7 @@ Cyclix is licensed under the [Apache License 2.0](LICENSE). When you send a cont
 
 ## Setting up locally
 
-You need Python 3.14 and [`uv`](https://docs.astral.sh/uv/). Clone the repository and install Cyclix with its development tools:
+You need Python 3.14, [`uv`](https://docs.astral.sh/uv/), and Node 26 for the docs site. Clone the repository and install Cyclix with its development tools:
 
 ```sh
 git clone https://github.com/ambitioushq/cyclix.git
@@ -42,8 +42,9 @@ uv run ruff check
 uv run ruff format --check
 uv run coverage run -m pytest
 uv run coverage report
+(cd docs && npm ci && npm run build)
 ```
 
-CI fails when test coverage drops below the floor set by `fail_under` in `pyproject.toml`.
+CI fails when test coverage drops below the floor set by `fail_under` in `pyproject.toml`. The docs build fails when a link between pages reaches no page or heading.
 
 [tests/README.md](tests/README.md) explains how the tests are laid out, and where a new scenario goes.
