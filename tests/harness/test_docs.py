@@ -6,7 +6,7 @@ from pytest_bdd import given, parsers, scenarios, then, when
 scenarios(str(Path(__file__).parent / "docs.feature"))
 
 ROOT = Path(__file__).resolve().parents[2]
-SITE = "https://docs.cyclix.dev/"
+SITE = re.compile(r"https://docs\.cyclix\.dev(?=[/?#]|$)")
 PAGES = Path("docs/src/content/docs")
 
 LINK = re.compile(r"""(?<!!)\[[^\]]*\]\(<?([^)\s>]+)>?(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)""")
@@ -71,8 +71,8 @@ def broken_links(files, root):
     for path in files:
         for line in prose_lines(path):
             for target in [*LINK.findall(line), *REFERENCE.findall(line)]:
-                if target.startswith(SITE):
-                    route, _, heading = target.removeprefix(SITE).partition("#")
+                if site := SITE.match(target):
+                    route, _, heading = target[site.end() :].partition("#")
                     linked = site_page(root / PAGES, route)
                 elif re.match(r"[a-z][a-z0-9+.-]*:", target):
                     continue  # a URL, not a file in the repository
