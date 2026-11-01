@@ -7,9 +7,8 @@ here. Each adapter checks its own outside system.
 import tempfile
 
 from cyclix import config
+from cyclix.adapters import kinds
 from cyclix.adapters.claude_code import ClaudeCode
-from cyclix.adapters.github_codehost import GitHubCodeHost
-from cyclix.adapters.github_tracker import GitHubTracker
 from cyclix.adapters.readiness import Result
 
 
@@ -26,14 +25,15 @@ def run(path, cfg, error=None):
     if cfg is None:
         failed = {"the config"}
         results = [config_failure(error, path)]
-        adapters = [(adapter, None) for adapter in (ClaudeCode, GitHubTracker, GitHubCodeHost)]
+        every = (ClaudeCode, *kinds.TRACKERS.values(), *kinds.CODEHOSTS.values())
+        adapters = [(adapter, None) for adapter in every]
     else:
         failed = set()
         results = [Result(f"config for tenant {cfg.tenant.name}")]
         adapters = [
             (ClaudeCode(cfg.agent), cfg.agent),
-            (GitHubTracker(cfg), cfg.tracker),
-            (GitHubCodeHost(cfg), cfg.codehost),
+            (kinds.TRACKERS[cfg.tracker.kind](cfg), cfg.tracker),
+            (kinds.CODEHOSTS[cfg.codehost.kind](cfg), cfg.codehost),
         ]
 
     # dict.fromkeys drops a prerequisite that a second adapter shares, and keeps the order.

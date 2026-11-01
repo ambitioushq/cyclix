@@ -16,6 +16,11 @@ Feature: The tenant config loads, or names what is wrong with it
     When the config is loaded
     Then it fails with 'config: unknown key "colour" in [gate]'
 
+  Scenario: An unknown code host kind is refused
+    Given the example config with "kind" set to "gitlab" under [codehost]
+    When the config is loaded
+    Then it fails with 'config: [codehost] kind must be "github", not "gitlab"'
+
   Scenario: CYCLIX_CONFIG picks the file
     Given CYCLIX_CONFIG points at a config for tenant "sandbox"
     When the config is loaded with no path

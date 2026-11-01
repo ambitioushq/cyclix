@@ -18,11 +18,9 @@ from collections import Counter
 from contextlib import contextmanager
 from datetime import UTC, datetime
 
-from cyclix.adapters import gh
+from cyclix.adapters import gh, kinds
 from cyclix.adapters.claude_code import ClaudeCode
 from cyclix.adapters.codehost import CodeHostError, Worktree
-from cyclix.adapters.github_codehost import GitHubCodeHost
-from cyclix.adapters.github_tracker import GitHubTracker
 from cyclix.adapters.tracker import TrackerError
 from cyclix.events import log, schema
 from cyclix.events.log import EventError
@@ -59,10 +57,9 @@ def sweep(config):
             return OK
         state = SqliteStateCore(config.state_dir)
         try:
-            Sweep(
-                config, state, GitHubTracker(config), GitHubCodeHost(config),
-                ClaudeCode(config.agent), STAGES,
-            ).run()  # fmt: skip
+            tracker = kinds.TRACKERS[config.tracker.kind](config)
+            codehost = kinds.CODEHOSTS[config.codehost.kind](config)
+            Sweep(config, state, tracker, codehost, ClaudeCode(config.agent), STAGES).run()
         except PASS_ERRORS as error:
             logger.error("cyclix run: %s", error)
             return FAILED

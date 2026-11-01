@@ -5,6 +5,7 @@ import pytest
 from fakes.world import World
 
 from cyclix import config
+from cyclix.adapters import kinds
 
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = ROOT / "docs" / "examples" / "tenant.toml"
@@ -77,6 +78,16 @@ def test_the_version_changes_with_the_file(tmp_path):
 def test_bad_keys_are_named(tmp_path, old, new, message):
     assert old in example()
     assert fails(tmp_path, example().replace(old, new, 1)) == message
+
+
+def test_a_kind_is_one_in_its_table_and_a_refusal_names_them_all(tmp_path, monkeypatch):
+    monkeypatch.setitem(kinds.CODEHOSTS, "gitlab", object)
+    text = example().replace('kind = "github"\nrepo', 'kind = "gitlab"\nrepo', 1)
+    assert config.load(write(tmp_path, text)).codehost.kind == "gitlab"
+    text = example().replace('kind = "github"\nrepo', 'kind = "forgejo"\nrepo', 1)
+    assert fails(tmp_path, text) == (
+        'config: [codehost] kind must be "github" or "gitlab", not "forgejo"'
+    )
 
 
 @pytest.mark.parametrize(
