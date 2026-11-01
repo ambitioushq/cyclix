@@ -1,4 +1,4 @@
-# ADR-0010: Run the agent without approval prompts, with a tool list for each stage, and allow only listed flags in its command
+# ADR-0009: Run the agent without approval prompts, with a tool list for each stage, and allow only listed flags in its command
 
 **Status:** Accepted
 

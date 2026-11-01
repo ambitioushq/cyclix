@@ -17,4 +17,4 @@ Cyclix runs unattended. Each design call has to balance two things: how well a p
 
 - Every stage run writes an event.
 - Every move out of In progress writes a comment on the issue that gives the reason.
-- Limits on work in progress stop the loop from queuing more PRs than a person can review ([ADR-0007](0007-work-on-one-item-at-a-time-per-tenant.md)).
+- Limits on work in progress stop the loop from queuing more PRs than a person can review.

@@ -15,8 +15,7 @@ A record is not edited to change a decision. A new record replaces it, and the o
 | [0004](0004-one-wide-event-per-stage-run-in-opentelemetry-shape.md) | Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines | Accepted |
 | [0005](0005-use-only-the-standard-library-unless-a-dependency-has-a-written-reason.md) | Use only the standard library unless a dependency has a written reason | Accepted |
 | [0006](0006-run-one-pass-at-a-time-from-the-service-manager.md) | Run one pass at a time from the host's service manager, with no long-running process | Accepted |
-| [0007](0007-work-on-one-item-at-a-time-per-tenant.md) | Work on one item at a time for each tenant | Accepted |
-| [0008](0008-test-against-fake-outside-systems-that-keep-state.md) | Test against fake outside systems that keep state, not recorded answers | Accepted |
-| [0009](0009-the-build-agent-writes-the-pr-body.md) | The build agent writes the PR body | Accepted |
-| [0010](0010-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) | Run the agent without approval prompts, with a tool list for each stage, and allow only listed flags in its command | Accepted |
-| [0011](0011-keep-code-host-credentials-out-of-the-agent-and-the-gate.md) | Keep code host credentials out of the agent's and the gate's environment | Accepted |
+| [0007](0007-test-against-fake-outside-systems-that-keep-state.md) | Test against fake outside systems that keep state, not recorded answers | Accepted |
+| [0008](0008-the-build-agent-writes-the-pr-body.md) | The build agent writes the PR body | Accepted |
+| [0009](0009-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) | Run the agent without approval prompts, with a tool list for each stage, and allow only listed flags in its command | Accepted |
+| [0010](0010-keep-code-host-credentials-out-of-the-agent-and-the-gate.md) | Keep code host credentials out of the agent's and the gate's environment | Accepted |

@@ -15,13 +15,13 @@ Cyclix merges a PR in two cases:
 1. A designated person has approved it.
 2. A written rule covers it. The rule names a class of PR, such as a lockfile refresh or a dependency bot's PR, and its conditions, such as CI green and the review approved.
 
-Every other PR waits for a person to merge it. Only the engine merges. The agent and the gate never do ([ADR-0011](0011-keep-code-host-credentials-out-of-the-agent-and-the-gate.md)).
+Every other PR waits for a person to merge it. Only the engine merges. The agent and the gate never do ([ADR-0010](0010-keep-code-host-credentials-out-of-the-agent-and-the-gate.md)).
 
 ## Consequences
 
 - Branch protection on the base branch is the backstop. `cyclix check` confirms that it requires a pull request and refuses force-pushes and deletion.
 - Each merge is recorded with the approval or the rule that allowed it.
-- A PR that no rule covers waits In review. A limit on In review caps how many wait ([ADR-0007](0007-work-on-one-item-at-a-time-per-tenant.md)).
+- A PR that no rule covers waits In review. A limit on In review caps how many wait.
 - A change to a rule is reviewed like a change to code, because it widens what the loop merges.
 
 ## Alternatives Considered
