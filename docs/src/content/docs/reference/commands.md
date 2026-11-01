@@ -32,7 +32,7 @@ Shell completion lets the Tab key complete `cyclix`'s commands and flags in bash
    | --- | --- |
    | bash | Add `eval "$(register-python-argcomplete cyclix)"` to `~/.bashrc`. |
    | zsh | Add `eval "$(register-python-argcomplete cyclix)"` to `~/.zshrc`, after the line that runs `compinit`. |
-   | fish | Run `register-python-argcomplete --shell fish cyclix > ~/.config/fish/completions/cyclix.fish` once. |
+   | fish | Run `mkdir -p ~/.config/fish/completions`, then `register-python-argcomplete --shell fish cyclix > ~/.config/fish/completions/cyclix.fish`, once. |
 
 3. Open a new shell.
 
