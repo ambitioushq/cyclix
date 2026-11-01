@@ -60,6 +60,7 @@ A **tenant** is one repository, its board and one config file. These steps set u
    - `[tracker] owner` and `project`: the board's owner and number.
    - `[codehost] repo` and `base`: the repository and its base branch.
    - `[gate] commands`: the checks a change must pass, such as your tests.
+   - `[agent.build] tools`: the commands the agent may run while it builds. Keep the file and git tools, and replace `Bash(uv run *)` with your own build and test commands, such as `Bash(npm test*)`. The agent cannot run a command that is not on this list.
 
    [Configuration](docs/reference/configuration.md) explains every key.
 
