@@ -131,7 +131,7 @@ Every git call has a time limit, and sets `GIT_TERMINAL_PROMPT=0`, so git never 
 
 The `Agent` protocol has one method, `run(prompt, cwd, stage, run_dir)`, where `stage` is the stage's model, caps and tools from the config. The result holds the text answer, whether the call failed and why, the exit code, the model, the input and output tokens, the cost, the duration and the number of turns.
 
-The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds the flags of [ADR-0005](../adr/0005-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) after the command, including `--output-format stream-json --verbose`. In that mode Claude Code prints each assistant message as it comes, with that message's token counts, and a result line at the end. The engine reads the result line.
+The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds the flags that [Isolation](isolation.md#what-is-built) lists after the command, including `--output-format stream-json --verbose`. In that mode Claude Code prints each assistant message as it comes, with that message's token counts, and a result line at the end. The engine reads the result line.
 
 **A call that runs past its timeout** gets SIGINT, which lets Claude Code stop its own tools and print a result line of subtype `error_during_execution` that holds the cost so far. After 30 seconds the whole process group is killed. Claude Code's plain `--output-format json` prints nothing when it is interrupted, so a timed-out call would lose its cost. This is why the engine uses stream-json.
 
