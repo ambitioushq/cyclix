@@ -121,7 +121,7 @@ def test_gh_missing_from_path_fails_and_skips_the_board(world, tmp_path):
     assert reports(
         result, "FAIL: gh: not on PATH", "install gh, the GitHub CLI, and put it on PATH"
     ), result.stdout
-    assert "skipped: board o/1: needs gh signed in" in lines(result)
+    assert "skipped: board: needs gh signed in" in lines(result)
 
 
 def test_an_unreadable_board_fails(world):

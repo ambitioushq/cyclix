@@ -13,45 +13,56 @@ from cyclix.adapters.readiness import Result
 
 
 def run(path, cfg, error=None):
-    """Run every check and return one Result per line that `cyclix check` prints, in order.
+    """Run every check, and return one Result for each line that `cyclix check` prints, in order.
 
     path is the config file, or None when no file was named. cfg is the loaded
     config, or None when loading it raised error.
-
-    The prerequisites that the adapters share run once, after the config check.
-    An adapter whose config or prerequisite failed is skipped. Without a config
-    the adapters are not known, so the prerequisites of every adapter run.
     """
     if cfg is None:
-        failed = {"the config"}
-        results = [config_failure(error, path)]
-        every = (ClaudeCode, *kinds.TRACKERS.values(), *kinds.CODEHOSTS.values())
-        adapters = [(adapter, None) for adapter in every]
-    else:
-        failed = set()
-        results = [Result(f"config for tenant {cfg.tenant.name}")]
-        adapters = [
-            (ClaudeCode(cfg.agent), cfg.agent),
-            (kinds.TRACKERS[cfg.tracker.kind](cfg), cfg.tracker),
-            (kinds.CODEHOSTS[cfg.codehost.kind](cfg), cfg.codehost),
-        ]
+        return run_without_config(path, error)
+    adapters = [
+        ClaudeCode(cfg.agent),
+        kinds.TRACKERS[cfg.tracker.kind](cfg),
+        kinds.CODEHOSTS[cfg.codehost.kind](cfg),
+    ]
+    shared, failed = run_prerequisites(adapters)
+    results = [Result(f"config for tenant {cfg.tenant.name}"), *shared]
+    results.append(check_state_dir(config.state_dir()))
+    for adapter in adapters:
+        missing = [p.name for p in adapter.prerequisites if p.name in failed]
+        if missing:
+            results.append(skipped(adapter, missing))
+        else:
+            results.extend(adapter.readiness(path))
+    return results
 
+
+def run_without_config(path, error):
+    """The kinds are unknown, so run the prerequisites of every adapter, then skip every adapter."""
+    adapters = [ClaudeCode, *kinds.TRACKERS.values(), *kinds.CODEHOSTS.values()]
+    shared, failed = run_prerequisites(adapters)
+    results = [config_failure(error, path), *shared]
+    results.append(check_state_dir(config.state_dir()))
+    for adapter in adapters:
+        missing = [p.name for p in adapter.prerequisites if p.name in failed]
+        results.append(skipped(adapter, ["the config", *missing]))
+    return results
+
+
+def run_prerequisites(adapters):
+    """Run each prerequisite of the adapters once. Return the results and the names that failed."""
+    results, failed = [], set()
     # dict.fromkeys drops a prerequisite that a second adapter shares, and keeps the order.
-    for prerequisite in dict.fromkeys(p for adapter, _ in adapters for p in adapter.needs):
+    for prerequisite in dict.fromkeys(p for adapter in adapters for p in adapter.prerequisites):
         result = prerequisite.check()
         if result.failure is not None:
             failed.add(prerequisite.name)
         results.append(result)
-    results.append(check_state_dir(config.state_dir()))
-    for adapter, table in adapters:
-        needs = [
-            need for need in ("the config", *(p.name for p in adapter.needs)) if need in failed
-        ]
-        if needs:
-            results.append(Result(adapter.readiness_label(table), needs=" and ".join(needs)))
-        else:
-            results.extend(adapter.readiness(path))
-    return results
+    return results, failed
+
+
+def skipped(adapter, missing):
+    return Result(adapter.label, needs=" and ".join(missing))
 
 
 def config_failure(error, path):

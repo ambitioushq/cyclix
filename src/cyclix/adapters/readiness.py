@@ -21,16 +21,10 @@ class Prerequisite(NamedTuple):
 
 
 class Readiness(Protocol):
+    # What readiness checks, as the line that reports it skipped names it.
+    label: ClassVar[str]
     # The shared checks that must pass before readiness can run.
-    needs: ClassVar[tuple[Prerequisite, ...]]
-
-    @staticmethod
-    def readiness_label(table=None) -> str:
-        """What readiness checks, as the line that reports it skipped names it.
-
-        table is the adapter's table of the config, or None when the config did not load.
-        """
-        ...
+    prerequisites: ClassVar[tuple[Prerequisite, ...]]
 
     def readiness(self, config_path) -> list[Result]:
         """Check the outside system, with one Result for each thing checked.

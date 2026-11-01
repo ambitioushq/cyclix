@@ -71,10 +71,10 @@ def gh_call(call, *args):
 
 
 class GitHubCodeHost:
-    needs = (gh.SIGNED_IN,)
+    label = "protection of the base branch"
+    prerequisites = (gh.SIGNED_IN,)
 
     def __init__(self, config):
-        self.codehost = config.codehost
         self.repo = config.codehost.repo
         self.base = config.codehost.base
         self.clone = config.state_dir / "repos" / config.tenant.name
@@ -178,59 +178,53 @@ class GitHubCodeHost:
             closed_at=timestamp(pr["closedAt"]),
         )
 
-    @staticmethod
-    def readiness_label(table=None):
-        what = "protection of the base branch"
-        return what if table is None else f'{what} "{table.base}"'
-
     def readiness(self, config_path):
-        """Does the base branch require a pull request and refuse force-pushes and deletion?
+        """Does the base branch require a pull request and refuse force-pushes and deletion?"""
+        what = f'{self.label} "{self.base}"'
+        found, unreadable = self._protection_rules()
+        missing = [(gap, setting) for rule, gap, setting in PROTECTION_RULES if rule not in found]
+        if not missing:
+            return [Result(what)]
+        if unreadable:
+            return [Result(what, f"cannot read it: {unreadable}", self._unreadable_fix(unreadable))]
+        gaps = and_list([gap for gap, _ in missing])
+        settings = and_list([f'"{setting}"' for _, setting in missing])
+        fix = f'in the settings of {self.repo}, add a ruleset for "{self.base}" with {settings}'
+        return [Result(what, gaps, fix)]
+
+    def _protection_rules(self):
+        """The rules that protect the base branch, and gh's error if a read failed, else None.
 
         A rule counts whether it comes from classic branch protection or from a ruleset.
         Reading classic protection needs admin rights, which a narrow token lacks, so a
         ruleset alone is enough when it holds every rule.
         """
-        base, repo = self.base, self.repo
-        what = self.readiness_label(self.codehost)
         found, unreadable = set(), None
         try:
-            classic = gh.json("api", f"repos/{repo}/branches/{base}/protection")
+            classic = gh.json("api", f"repos/{self.repo}/branches/{self.base}/protection")
         except gh.GhError as error:
             if "Branch not protected" not in error.stderr:
                 unreadable = error.stderr
         else:
-            if "required_pull_request_reviews" in classic:
-                found.add("pull_request")
-            for rule, key in (
-                ("non_fast_forward", "allow_force_pushes"),
-                ("deletion", "allow_deletions"),
-            ):
-                if classic.get(key, {}).get("enabled") is False:
-                    found.add(rule)
+            found |= classic_rules(classic)
         try:
-            rules = gh.json("api", f"repos/{repo}/rules/branches/{base}")
+            rules = gh.json("api", f"repos/{self.repo}/rules/branches/{self.base}")
         except gh.GhError as error:
             unreadable = unreadable or error.stderr
         else:
             found.update(rule.get("type") for rule in rules)
+        return found, unreadable
 
-        missing = [(gap, setting) for rule, gap, setting in PROTECTION_RULES if rule not in found]
-        if not missing:
-            return [Result(what)]
-        if unreadable:
-            # GitHub protects no branch of a private repository on a free plan, so
-            # neither a ruleset nor admin rights help there.
-            if "make this repository public" in unreadable:
-                fix = f"make {repo} public, or move its owner to a paid GitHub plan; "
-                fix += f'then add a ruleset for "{base}" in the settings of {repo}'
-            else:
-                fix = f'protect "{base}" with a ruleset in the settings of {repo}, '
-                fix += f"or sign gh in as an admin of {repo}"
-            return [Result(what, f"cannot read it: {unreadable}", fix)]
-        gaps = and_list([gap for gap, _ in missing])
-        settings = and_list([f'"{setting}"' for _, setting in missing])
-        fix = f'in the settings of {repo}, add a ruleset for "{base}" with {settings}'
-        return [Result(what, gaps, fix)]
+    def _unreadable_fix(self, unreadable):
+        repo, base = self.repo, self.base
+        # GitHub protects no branch of a private repository on a free plan, so
+        # neither a ruleset nor admin rights help there.
+        if "make this repository public" in unreadable:
+            return (
+                f"make {repo} public, or move its owner to a paid GitHub plan; "
+                f'then add a ruleset for "{base}" in the settings of {repo}'
+            )
+        return f'protect "{base}" with a ruleset in the settings of {repo}, or sign gh in as an admin of {repo}'
 
     def _prs(self, branch):
         """Every PR on the branch, newest first."""
@@ -253,6 +247,15 @@ def exclude_pattern(path):
 def timestamp(value):
     """gh gives times as ISO 8601 in UTC, and an unset time as null."""
     return datetime.fromisoformat(value) if value else None
+
+
+def classic_rules(protection):
+    """The rules, named as a ruleset names them, that classic branch protection holds."""
+    found = {"pull_request"} if "required_pull_request_reviews" in protection else set()
+    for rule, key in (("non_fast_forward", "allow_force_pushes"), ("deletion", "allow_deletions")):
+        if protection.get(key, {}).get("enabled") is False:
+            found.add(rule)
+    return found
 
 
 def and_list(items):

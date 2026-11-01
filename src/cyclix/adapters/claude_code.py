@@ -37,7 +37,8 @@ CAP_REASONS = {
 
 
 class ClaudeCode:
-    needs = ()
+    label = "agent command"
+    prerequisites = ()
 
     def __init__(self, agent_config, timeout_seconds=None, grace_seconds=GRACE_SECONDS):
         """timeout_seconds, when given, takes the place of the config's timeout."""
@@ -49,14 +50,9 @@ class ClaudeCode:
         self.grace_seconds = grace_seconds
         self.pass_env = agent_config.pass_env
 
-    @staticmethod
-    def readiness_label(table=None):
-        # Only a config that did not load skips this check, so the label never has a table.
-        return "agent command"
-
     def readiness(self, config_path):
         """Is the agent command on PATH?"""
-        what = f"agent command {self.command[0]}"
+        what = f"{self.label} {self.command[0]}"
         if shutil.which(self.command[0]) is None:
             fix = f"install it, or change [agent] command in {config_path}"
             return [Result(what, "not on PATH", fix)]

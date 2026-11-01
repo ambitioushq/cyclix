@@ -101,7 +101,7 @@ GitHub shows neither protection nor rulesets for a private repository on a free 
 
 ### When a check is skipped
 
-The board check and the branch check need both the config and a signed-in `gh`. The agent check needs the config. When what they need fails, they print `skipped: <what>: needs <the failed checks>`, such as `skipped: board acme/1: needs gh signed in`. When the config fails, the label has no owner and project, because the config is not known: `skipped: board: needs the config`.
+The board check and the branch check need both the config and a signed-in `gh`. The agent check needs the config. When what they need fails, they print `skipped: <what>: needs <the failed checks>`, such as `skipped: board: needs gh signed in` or `skipped: board: needs the config and gh signed in`.
 
 ## `cyclix run`
 

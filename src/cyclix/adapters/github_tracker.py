@@ -67,7 +67,8 @@ query BoardItem($item: ID!, $field: String!) {
 
 
 class GitHubTracker:
-    needs = (gh.SIGNED_IN,)
+    label = "board"
+    prerequisites = (gh.SIGNED_IN,)
 
     def __init__(self, config):
         self.tracker = config.tracker
@@ -132,14 +133,10 @@ class GitHubTracker:
     def comment(self, issue, body):
         gh.run("issue", "comment", str(issue), "-R", self.repo, "--body", body)
 
-    @staticmethod
-    def readiness_label(table=None):
-        return "board" if table is None else f"board {table.owner}/{table.project}"
-
     def readiness(self, config_path):
         """One result per Cyclix state: is its option on the board's Status field?"""
         tracker = self.tracker
-        board = self.readiness_label(tracker)
+        board = f"{self.label} {tracker.owner}/{tracker.project}"
         try:
             listing = gh.json(
                 "project", "field-list", str(tracker.project),
