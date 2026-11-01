@@ -1,0 +1,10 @@
+// Deploys the built site as a Cloudflare Worker that serves only static files.
+// The docs workflow runs `wrangler deploy` from main. See docs/README.md.
+{
+	"name": "cyclix-docs",
+	"compatibility_date": "2026-11-01",
+	"assets": {
+		"directory": "./dist",
+		"not_found_handling": "404-page"
+	}
+}
