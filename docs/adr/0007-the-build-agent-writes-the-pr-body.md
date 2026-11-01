@@ -1,4 +1,4 @@
-# ADR-0008: The build agent writes the PR body
+# ADR-0007: The build agent writes the PR body
 
 **Status:** Accepted
 

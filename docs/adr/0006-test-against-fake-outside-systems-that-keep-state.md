@@ -1,4 +1,4 @@
-# ADR-0007: Test against fake outside systems that keep state, not recorded answers
+# ADR-0006: Test against fake outside systems that keep state, not recorded answers
 
 **Status:** Accepted
 

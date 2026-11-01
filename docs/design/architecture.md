@@ -42,9 +42,9 @@ A crash cannot lose an event. The stage-run event builds up in the SQLite file w
 
 - **Python 3.14, and the standard library by default.** A new runtime dependency needs a written reason in these docs and approval in the PR that adds it ([ADR-0005](../adr/0005-use-only-the-standard-library-unless-a-dependency-has-a-written-reason.md)). The development tools (pytest, pytest-bdd, ruff, coverage and zizmor) are dev dependencies.
 - **Each adapter chooses how it talks to its system.** An adapter is the module that talks to one outside system behind a narrow interface. The GitHub adapters call the `gh` command-line program, and the agent adapter runs `claude` today. Another adapter could use an HTTP API.
-- **The host's service manager does the scheduling.** `cyclix run` makes one pass and exits. On Linux, `cyclix install` writes systemd units that start it on a timer ([ADR-0006](../adr/0006-run-one-pass-at-a-time-from-the-service-manager.md)).
+- **The host's service manager does the scheduling.** `cyclix run` makes one pass and exits. On Linux, `cyclix install` writes systemd units that start it on a timer. Cyclix has no long-running process today, so it has no scheduler, restart logic or hang detection of its own.
 - **One item in progress for each tenant.** A pass runs its item through every stage while it holds the tenant's lock, so the config refuses an In progress limit other than 1.
-- **The agent is Claude Code.** It runs with a tool list for each stage ([ADR-0009](../adr/0009-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md)). It and the gate get no GitHub credential through their environment ([ADR-0010](../adr/0010-keep-code-host-credentials-out-of-the-agent-and-the-gate.md)). [Isolation](isolation.md) describes what that does not stop and the container that is coming soon.
+- **The agent is Claude Code.** It runs with a tool list for each stage ([ADR-0008](../adr/0008-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md)). It and the gate get no GitHub credential through their environment ([ADR-0009](../adr/0009-keep-code-host-credentials-out-of-the-agent-and-the-gate.md)). [Isolation](isolation.md) describes what that does not stop and the container that is coming soon.
 
 ## The feature files are the functional spec
 

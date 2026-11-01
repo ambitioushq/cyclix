@@ -131,7 +131,7 @@ Every git call has a time limit, and sets `GIT_TERMINAL_PROMPT=0`, so git never 
 
 The `Agent` protocol has one method, `run(prompt, cwd, stage, run_dir)`, where `stage` is the stage's model, caps and tools from the config. The result holds the text answer, whether the call failed and why, the exit code, the model, the input and output tokens, the cost, the duration and the number of turns.
 
-The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds the flags of [ADR-0009](../adr/0009-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) after the command, including `--output-format stream-json --verbose`. In that mode Claude Code prints each assistant message as it comes, with that message's token counts, and a result line at the end. The engine reads the result line.
+The Claude Code implementation runs the configured command (by default `claude -p`) with the prompt on stdin and the worktree as its working directory. The engine adds the flags of [ADR-0008](../adr/0008-run-the-agent-without-approval-prompts-and-with-a-tool-list-per-stage.md) after the command, including `--output-format stream-json --verbose`. In that mode Claude Code prints each assistant message as it comes, with that message's token counts, and a result line at the end. The engine reads the result line.
 
 **A call that runs past its timeout** gets SIGINT, which lets Claude Code stop its own tools and print a result line of subtype `error_during_execution` that holds the cost so far. After 30 seconds the whole process group is killed. Claude Code's plain `--output-format json` prints nothing when it is interrupted, so a timed-out call would lose its cost. This is why the engine uses stream-json.
 
@@ -216,7 +216,7 @@ Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an 
 
 `cyclix run` makes one pass for one tenant, under a file lock so two passes never overlap. [How Cyclix works](../concepts/how-cyclix-works.md#what-happens-in-one-pass) lists the four steps. `src/cyclix/runner.py` holds the sweep and the order of the stages. This section gives the rules behind them.
 
-**The lock decides which runs crashed.** The lock is an `flock` on `<state directory>/<tenant>.lock` ([ADR-0006](../adr/0006-run-one-pass-at-a-time-from-the-service-manager.md)). Only the pass that holds it runs stages for the tenant, so any run still open when a pass takes the lock was left by a pass that died. The sweep ends it as `crashed`, writes its event, and parks its item with the reason "run crashed in phase <phase>".
+**The lock decides which runs crashed.** The lock is an `flock` on `<state directory>/<tenant>.lock`. Only the pass that holds it runs stages for the tenant, so any run still open when a pass takes the lock was left by a pass that died. The sweep ends it as `crashed`, writes its event, and parks its item with the reason "run crashed in phase <phase>". A pass that is alive but hung keeps the lock, and later passes exit without doing anything until it ends.
 
 **A claim lasts while the engine holds the item.** The engine holds an item while it is In progress or In review. A claim on an item in any other state is released, with the run's worktree. This covers a person's move and the engine's own move to Parked or Needs decision. The reconciler releases the claim when it moves an item out of In review.
 
@@ -230,4 +230,4 @@ Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an 
 
 **Admission and the reconciler are stages like the others.** Each is a class with a `name` and a `run(ctx)` method, and the runner runs every stage the same way. When the runner claims an item, it makes one `RunContext` for the run: the adapters, the run ID, the issue number and the run folder. Admission fills in the issue's details and the worktree, and plan, build, gate and PR read them, so the context is not frozen. The reconciler is made for one item and its ended PR, and its context has no worktree. Two frozen contexts were considered and left out: a small one for admission and the reconciler, with admission returning the full one in its result. That needs a second context type, and a result field that only admission sets.
 
-**The PR body comes from the build stage** ([ADR-0008](../adr/0008-the-build-agent-writes-the-pr-body.md)). The PR stage reads `pr.md`, makes sure its first line is `Closes #<issue>`, and opens the PR with the issue's title.
+**The PR body comes from the build stage** ([ADR-0007](../adr/0007-the-build-agent-writes-the-pr-body.md)). The PR stage reads `pr.md`, makes sure its first line is `Closes #<issue>`, and opens the PR with the issue's title.
