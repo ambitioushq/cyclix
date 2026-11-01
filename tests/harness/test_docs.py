@@ -71,22 +71,36 @@ def broken_links(files, root):
     for path in files:
         for line in prose_lines(path):
             for target in [*LINK.findall(line), *REFERENCE.findall(line)]:
-                if site := SITE.match(target):
-                    route, _, heading = target[site.end() :].partition("#")
-                    linked = site_page(root / PAGES, route)
-                elif re.match(r"[a-z][a-z0-9+.-]*:", target):
-                    continue  # a URL, not a file in the repository
-                elif target.startswith("/"):
-                    continue  # a page on the docs site, which the site build checks
-                else:
-                    name, _, heading = target.partition("#")
-                    linked = path if not name else (path.parent / name).resolve()
-                shown = path.relative_to(root)
-                if linked is None or not linked.exists():
-                    problems.append(f"{shown}: {target} does not exist")
-                elif heading and (linked.suffix != ".md" or heading not in anchors(linked)):
-                    problems.append(f"{shown}: {target} has no such heading")
+                if problem := link_problem(path, target, root):
+                    problems.append(problem)
     return problems
+
+
+def link_problem(path, target, root):
+    """Why the link to target in path is broken, as a text line, or None when it is not."""
+    destination = link_destination(path, target, root)
+    if destination is None:
+        return None
+    linked, heading = destination
+    shown = path.relative_to(root)
+    if linked is None or not linked.exists():
+        return f"{shown}: {target} does not exist"
+    if heading and (linked.suffix != ".md" or heading not in anchors(linked)):
+        return f"{shown}: {target} has no such heading"
+    return None
+
+
+def link_destination(path, target, root):
+    """The file a link in path points to and the heading it names, or None for a link not checked here."""
+    if site := SITE.match(target):
+        route, _, heading = target[site.end() :].partition("#")
+        return site_page(root / PAGES, route), heading
+    if re.match(r"[a-z][a-z0-9+.-]*:", target):
+        return None  # a URL, not a file in the repository
+    if target.startswith("/"):
+        return None  # a page on the docs site, which the site build checks
+    name, _, heading = target.partition("#")
+    return (path if not name else (path.parent / name).resolve()), heading
 
 
 def markdown_files(top):
