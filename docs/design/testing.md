@@ -24,7 +24,7 @@ A scenario runs the fake `gh` on the same commands and fails if its output has o
 
 ## The sandbox runs against real GitHub
 
-The sandbox is a private repository, `ambitioushq/cyclix-sandbox`, and a private board, `ambitioushq` project 2, whose Status field holds the six option names. Its tenant config is [`docs/examples/sandbox.toml`](../examples/sandbox.toml).
+The sandbox is a private repository and a private board, whose Status field holds the six option names. Its tenant config is [`docs/examples/sandbox.toml`](../examples/sandbox.toml).
 
 Scenarios tagged `@sandbox` run against it with the real `gh` and the real agent, and only when `CYCLIX_SANDBOX=1`. The workflow `sandbox.yml` runs them by hand and weekly, never on a PR.
 

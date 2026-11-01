@@ -36,7 +36,7 @@ The event log is a record of wide events. A **wide event** covers one unit of wo
 2. **One for each human act** (coming soon): a merge, a close with its reason, a review round, a card move. It would carry which stage produced the work and how long the work waited on a person.
 3. **One when an issue closes** (coming soon): a summary of the issue's whole life.
 
-A crash cannot lose an event. The stage-run event builds up in the SQLite file while the run goes. If the run dies, the next sweep writes it with the outcome `crashed` ([ADR-0003](../adr/0003-the-loop-writes-the-event-log-but-never-reads-it.md)).
+The stage-run event builds up in the SQLite file while the run goes. If the run dies while its row is open, the next sweep writes it with the outcome `crashed`. The runner marks the row ended before it writes the event, so a crash between those two steps loses that one event ([ADR-0003](../adr/0003-the-loop-writes-the-event-log-but-never-reads-it.md)).
 
 ## How Cyclix is built
 

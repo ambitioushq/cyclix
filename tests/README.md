@@ -53,7 +53,7 @@ These steps are defined in `conftest.py`, so any feature can use them.
 
 ## The sandbox
 
-`features/sandbox.feature` runs against real GitHub: the private repo `ambitioushq/cyclix-sandbox` and the board `ambitioushq` project 2, with the tenant config `docs/examples/sandbox.toml`. Its steps are in `sandbox/test_sandbox.py`. Scenarios tagged `@sandbox` are skipped unless `CYCLIX_SANDBOX=1`. They use the real `gh` and the real `claude`, so they need a `gh` login (or `GH_TOKEN`) with access to the sandbox repo and board, and a signed-in `claude`. Each one clears what an earlier run left, and closes and deletes what it made.
+`features/sandbox.feature` runs against real GitHub: a private repository and board, named in the tenant config `docs/examples/sandbox.toml`. Its steps are in `sandbox/test_sandbox.py`. Scenarios tagged `@sandbox` are skipped unless `CYCLIX_SANDBOX=1`. They use the real `gh` and the real `claude`, so they need a `gh` login (or `GH_TOKEN`) with access to the sandbox repo and board, and a signed-in `claude`. Each one clears what an earlier run left, and closes and deletes what it made.
 
 ```
 CYCLIX_SANDBOX=1 uv run pytest -m sandbox

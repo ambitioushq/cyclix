@@ -16,4 +16,4 @@ The event log is for people, to review and debug. The loop decides from the trac
 
 - Anyone can query, copy, rotate or delete the log without changing what the loop does next.
 - The log's schema can change without moving the loop's state.
-- A stage-run event builds up in the local store while the run goes. The log gets it once, when the run ends. If the run dies, the next sweep writes it with the outcome `crashed`.
+- A stage-run event builds up in the local store while the run goes. The log gets it once, when the run ends. If the run dies while its row is open, the next sweep writes it with the outcome `crashed`. The engine marks the row ended before it writes the event, so a crash between those two steps loses that one event.

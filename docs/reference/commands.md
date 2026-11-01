@@ -121,7 +121,7 @@ Runs the loop on a systemd user timer. It needs systemd on the host.
 **What it puts in the service.** `cyclix install` writes two files to `$XDG_CONFIG_HOME/systemd/user`, else `~/.config/systemd/user`:
 
 - `cyclix-<tenant>.service`, a one-shot service. Its `ExecStart` is the absolute path of the `cyclix` command that ran `install`, then `run --tenant <tenant>`. Its `Environment` sets `CYCLIX_CONFIG` to the absolute path of the tenant's config.
-- `cyclix-<tenant>.timer`. It starts the service 2 minutes after boot and then every `SPAN` after the service last started. `Persistent=true` makes it catch up a run that was missed while the host was off. It is wanted by `timers.target`.
+- `cyclix-<tenant>.timer`. It starts the service 2 minutes after boot and then every `SPAN` after the service last started. The unit also sets `Persistent=true`, which has no effect, because systemd applies it only to timers that use `OnCalendar`. A pass missed while the host was off is not made up. The timer starts again 2 minutes after boot. It is wanted by `timers.target`.
 
 The service sets no `PATH`, so it gets systemd's default for user services, not your shell's. `gh`, `git`, the agent command and the gate commands must be in a directory on that path.
 
