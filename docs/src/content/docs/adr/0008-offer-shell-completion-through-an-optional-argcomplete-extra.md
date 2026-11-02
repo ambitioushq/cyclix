@@ -19,7 +19,7 @@ Cyclix offers shell completion through an optional dependency group named `extra
 ## Consequences
 
 - A plain install still imports only the standard library, so ADR-0004 holds for every host that does not ask for completion.
-- An operator who wants completion installs the `extras` group and adds one line to the shell's startup file. [Commands](/reference/commands/#turn-on-shell-completion) gives the line for each shell.
+- An operator who wants completion installs the `extras` group and adds one line to the shell's startup file. [Turn on shell completion](/guides/turn-on-shell-completion/) gives the line for each shell.
 - On a host with the extra installed, every `cyclix` run imports argcomplete, the unattended runs from the timer included. argcomplete does its work only when the shell asks for completions.
 - Cyclix's tests run with argcomplete installed, and one test hides it to show that Cyclix still runs without it.
 
