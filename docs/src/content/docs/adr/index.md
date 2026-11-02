@@ -1,5 +1,7 @@
 ---
 title: Architecture decision records
+sidebar:
+  order: 0
 ---
 
 An architecture decision record (ADR) is one short file about one decision. It says what the options were, what Cyclix chose, and what follows from the choice. Read one when you want to reopen a decision: it holds the reasons that were weighed.

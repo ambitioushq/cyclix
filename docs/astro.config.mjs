@@ -12,10 +12,20 @@ export default defineConfig({
 			sidebar: [
 				{
 					label: 'For people who run Cyclix',
-					items: [{ autogenerate: { directory: 'concepts' } }, { autogenerate: { directory: 'reference' } }],
+					items: [
+						{ label: 'Guides', items: [{ autogenerate: { directory: 'guides' } }] },
+						{ label: 'Concepts', items: [{ autogenerate: { directory: 'concepts' } }] },
+						{ label: 'Reference', items: [{ autogenerate: { directory: 'reference' } }] },
+						{ label: 'Patterns', items: [{ autogenerate: { directory: 'patterns' } }] },
+					],
 				},
-				{ label: "For people who work on Cyclix's code", items: [{ autogenerate: { directory: 'design' } }] },
-				{ label: 'The decisions', items: [{ autogenerate: { directory: 'adr' } }] },
+				{
+					label: "For people who work on Cyclix's code",
+					items: [
+						{ label: 'Design', items: [{ autogenerate: { directory: 'design' } }] },
+						{ label: 'Architecture decision records', items: [{ autogenerate: { directory: 'adr' } }] },
+					],
+				},
 			],
 			plugins: [starlightLinksValidator()],
 		}),

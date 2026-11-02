@@ -4,7 +4,7 @@ Cyclix is an engine for an unattended issue-to-PR loop, written in Python 3.14 w
 
 Read these before reviewing:
 
-- `docs/src/content/docs/index.md`: lists every document.
+- `docs/src/content/docs/index.md`: links each section of the docs, with what each holds.
 - `docs/src/content/docs/design/architecture.md` and `docs/src/content/docs/design/engine.md`: how the engine is built, and its parts.
 - `docs/src/content/docs/adr/`: the settled design calls, with the options that were weighed.
 - `tests/README.md`: how the tests are laid out.
