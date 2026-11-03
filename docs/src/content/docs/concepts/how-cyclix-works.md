@@ -65,18 +65,18 @@ The engine makes only the moves in the table below. A person can make any move.
 
 ## The work states and who moves them
 
-| From | To | Written by | When |
+| From | To | Moved by | When |
 | --- | --- | --- | --- |
-| Ready | In progress | Runner (admission) | The item is claimed for a run |
+| Ready | In progress | Admission stage | The item is claimed for a run |
 | In progress | In review | PR stage | The PR is open |
-| In progress | Parked | Any stage, or the sweep | A STOP, a failed gate, an error, or a crashed run found by the sweep |
+| In progress | Parked | Admission stage, plan stage, build stage, gate stage, PR stage, reconciler, or the sweep | A STOP, a failed gate, an error, or a crashed run found by the sweep |
 | In progress | Needs decision | Plan stage | The plan needs a human call |
 | In review | Done | Reconciler | The PR merged |
 | In review | Parked | Reconciler | The PR closed without merging |
 | Parked, Needs decision | Ready | A human only | |
 | Any | Done | A human, or GitHub closing the issue | The reconciler observes it and releases any claim |
 
-"Any stage" means admission, plan, build, gate, PR or the reconciler. The **sweep** is the first half of a pass, where Cyclix corrects its state file. It is not a stage. It may park an item that is In progress when that item's run crashed, and it makes no other move.
+The **sweep** is the first half of a pass, where Cyclix corrects its state file. It is not a stage. It may park an item that is In progress when that item's run crashed, and it makes no other move.
 
 The plan stage may move an item to Needs decision, but it does not do so today. Every STOP parks the item.
 

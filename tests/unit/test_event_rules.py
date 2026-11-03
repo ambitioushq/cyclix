@@ -83,7 +83,7 @@ def test_a_long_string_inside_gate_checks_is_refused(tmp_path):
 @pytest.mark.parametrize(
     ("key", "value", "message"),
     [
-        ("cyclix.stage", "station", "event stage 'station' is not a stage"),
+        ("cyclix.stage", "deploy", "event stage 'deploy' is not a stage"),
         ("cyclix.outcome", "ok", "event outcome 'ok' is not an outcome"),
     ],
 )

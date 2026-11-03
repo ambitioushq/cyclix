@@ -8,7 +8,7 @@ tell after a crash how far the stage got.
 
 from cyclix.events import schema
 from cyclix.stages.base import StageResult
-from cyclix.workstate import State, Writer, move
+from cyclix.workstate import Mover, State, move
 
 
 def ensure_closes(body, number):
@@ -32,7 +32,7 @@ class PR:
         body = ensure_closes(written.read_text() if written.exists() else "", issue.number)
         pr = ctx.codehost.open_pr(ctx.worktree.branch, issue.title, body)
         ctx.state.set_phase(ctx.run_id, "move")
-        move(ctx.tracker, issue.number, State.IN_PROGRESS, State.IN_REVIEW, Writer.PR)
+        move(ctx.tracker, issue.number, State.IN_PROGRESS, State.IN_REVIEW, Mover.PR)
         ctx.tracker.comment(issue.number, f"{State.IN_REVIEW.label}: {pr.url}")
         fields = {
             schema.CHANGE_ID: str(pr.number),

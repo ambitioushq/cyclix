@@ -8,7 +8,7 @@ This page describes the parts of the engine: the state core, the adapters, the r
 
 `src/cyclix/workstate.py` holds the table of moves from [How Cyclix works](/concepts/how-cyclix-works/#the-work-states-and-who-moves-them) as data. The function `move` refuses any move that is not in it. A unit test reads the table in that page and fails if the two differ, so a change to one needs the same change to the other. Rows that only a person writes are left out of the code, because the engine never makes them.
 
-Each writer may make only its own moves, so a stage cannot put an item in a state that another writer owns. A stage with no writer of its own (build and gate) moves as "any stage".
+Each stage has its own mover, named after the stage, and the sweep has one too. Each mover may make only its own moves, so a stage cannot put an item in a state that another mover owns.
 
 ## The state core
 
