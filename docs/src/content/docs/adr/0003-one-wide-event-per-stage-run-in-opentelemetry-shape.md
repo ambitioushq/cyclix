@@ -2,7 +2,7 @@
 title: "ADR-0003: Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines"
 ---
 
-**Status:** Accepted
+**Status:** Accepted. [ADR-0010](/adr/0010-leave-trace-and-span-ids-out-of-the-events/) replaces how events relate to traces.
 
 **Date:** October 2026
 

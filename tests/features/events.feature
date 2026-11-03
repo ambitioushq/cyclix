@@ -19,12 +19,6 @@ Feature: Each stage run writes one event to the event log
     Then it fails with "event attribute cyclix.prompt is not in schema cyclix.event/1"
     And the event log is unchanged
 
-  Scenario: Each stage run is its own trace
-    Given two stage runs for #12
-    When both events are written
-    Then the two lines have different trace IDs
-    And both carry cyclix.issue.id 12
-
   Scenario: Every stage-run event carries the repository URL
     Given an issue #7 in state "Ready" on the board
     And the agent writes a plan, then commits a change

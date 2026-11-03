@@ -7,7 +7,6 @@ the caller saw written survives a crash.
 
 import json
 import os
-import secrets
 from datetime import UTC, datetime
 from importlib.metadata import version
 from pathlib import Path
@@ -37,8 +36,6 @@ def write_stage_run(state_dir: Path, tenant: str, fields: dict[str, object]) -> 
     event = {
         "schema": schema.SCHEMA,
         "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
-        "trace_id": secrets.token_hex(16),
-        "span_id": secrets.token_hex(8),
         "body": schema.STAGE_RUN,
         "resource": {"service.name": schema.SERVICE_NAME, "service.version": version("cyclix")},
         "attributes": attributes,

@@ -141,14 +141,12 @@ The worktree is on the branch `cyclix/<issue>-<slug>`, made from the remote base
 
 The engine writes the event log and never reads it. It decides from the tracker, the code host and the state file, so anyone can query, copy, rotate or delete the log without changing what the loop does next.
 
-Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an OpenTelemetry log record ([ADR-0003](/adr/0003-one-wide-event-per-stage-run-in-opentelemetry-shape/)). The schema version is 1. Any change to the schema is made here first, and then in `src/cyclix/events/schema.py`.
+Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an OpenTelemetry log record ([ADR-0003](/adr/0003-one-wide-event-per-stage-run-in-opentelemetry-shape/)). The schema version is 1. Any change to the schema is made here first, and then in `src/cyclix/events/schema.py`. An event has no trace or span ID ([ADR-0010](/adr/0010-leave-trace-and-span-ids-out-of-the-events/)): `cyclix.run.id` groups a run's events, and `cyclix.issue.id` an issue's.
 
 ```json
 {
   "schema": "cyclix.event/1",
   "timestamp": "2026-10-02T14:03:11.204Z",
-  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
-  "span_id": "00f067aa0ba902b7",
   "body": "stage_run",
   "resource": {"service.name": "cyclix", "service.version": "0.0.1"},
   "attributes": {
@@ -177,7 +175,6 @@ Each event is one JSON object per line in `events/<tenant>.jsonl`, shaped as an 
 
 - `cyclix.stage` is one of `admission`, `plan`, `build`, `gate`, `pr`, `reconciler`, one for each stage in [How Cyclix works](/concepts/how-cyclix-works/#the-stages-an-issue-goes-through).
 - `cyclix.outcome` is one of `passed`, `parked`, `stopped`, `failed`, `crashed`.
-- `trace_id` is new for each stage run, and `span_id` names the stage's span. An issue can take days to reach a merge, so every event also carries `cyclix.issue.id`, and grouping by it rebuilds an issue's life.
 - A field with no value is written as `null`, so every line has the same keys. `cyclix.gate.checks` is on every line, and is `null` for stages other than the gate.
 - The writer refuses a key that is not in the list above, and writes nothing.
 - The writer refuses any string attribute over 500 characters, including strings inside `cyclix.gate.checks`. A string that long is most likely prompt or code text, which belongs in the run folder.
