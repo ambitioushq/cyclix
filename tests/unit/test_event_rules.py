@@ -42,6 +42,16 @@ def test_a_line_has_the_same_keys_as_the_design_doc_example(tmp_path):
     assert list(event["resource"]) == list(example["resource"])
 
 
+def test_a_line_names_the_schema_and_the_stage_run_body(tmp_path):
+    event = write_stage_run(tmp_path, "t", fields())
+    assert (event["schema"], event["body"]) == ("cyclix.event/1", "stage_run")
+
+
+def test_a_field_with_no_value_is_written_as_null(tmp_path):
+    event = write_stage_run(tmp_path, "t", fields())
+    assert event["attributes"]["gen_ai.request.model"] is None
+
+
 def test_the_written_line_is_the_returned_event(tmp_path):
     event = write_stage_run(tmp_path, "t", fields())
     assert [json.loads(line) for line in lines(tmp_path)] == [event]
@@ -71,6 +81,25 @@ def test_gate_checks_are_written_as_given(tmp_path):
 def test_a_string_at_the_limit_is_kept(tmp_path):
     write_stage_run(tmp_path, "t", fields(**{"cyclix.outcome.reason": "x" * MAX_STRING}))
     assert len(lines(tmp_path)) == 1
+
+
+def test_a_long_reason_is_refused_and_the_log_is_unchanged(tmp_path):
+    write_stage_run(tmp_path, "t", fields())
+    before = lines(tmp_path)
+    reason = "x" * (MAX_STRING + 1)
+    with pytest.raises(EventError, match="^event attribute cyclix.outcome.reason is too long$"):
+        write_stage_run(tmp_path, "t", fields(**{"cyclix.outcome.reason": reason}))
+    assert lines(tmp_path) == before
+
+
+def test_a_key_outside_the_schema_is_refused_and_the_log_is_unchanged(tmp_path):
+    write_stage_run(tmp_path, "t", fields())
+    before = lines(tmp_path)
+    with pytest.raises(
+        EventError, match="^event attribute cyclix.prompt is not in schema cyclix.event/1$"
+    ):
+        write_stage_run(tmp_path, "t", fields(**{"cyclix.prompt": "plan the change"}))
+    assert lines(tmp_path) == before
 
 
 def test_a_long_string_inside_gate_checks_is_refused(tmp_path):

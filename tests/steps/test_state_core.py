@@ -1,10 +1,8 @@
-import json
 import sqlite3
 
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from cyclix.state.core import RunStart, StateError
 from cyclix.state.sqlite import SqliteStateCore
 
 TENANT = "test"
@@ -13,13 +11,8 @@ scenarios("state_core.feature")
 
 
 @pytest.fixture
-def state_dir(tmp_path):
-    return tmp_path / "state"
-
-
-@pytest.fixture
-def core(state_dir):
-    core = SqliteStateCore(state_dir)
+def core(world):
+    core = SqliteStateCore(world.state_dir)
     yield core
     core.close()
 
@@ -33,28 +26,15 @@ def seen():
 # Given
 
 
-@given("an empty state core")
-def empty_core(core):
-    pass
+@given(parsers.parse("one run holds issue #{issue:d}"))
+def run_holds(core, issue):
+    assert core.claim(TENANT, issue, "r1")
 
 
-@given(parsers.parse('run "{run_id}" has begun for #{issue:d} at stage "{stage}"'))
-def run_begun(core, run_id, issue, stage):
-    core.begin_run(RunStart(run_id=run_id, tenant=TENANT, issue=issue, stage=stage))
-
-
-@given(parsers.parse('run "{run_id}" has begun and not ended'))
-def run_open(core, seen, run_id):
-    core.begin_run(RunStart(run_id=run_id, tenant=TENANT, issue=5, stage="pr"))
-    core.set_phase(run_id, "push")
-    core.set_phase(run_id, "open_pr")
-    seen["last_phase"] = "open_pr"
-
-
-@given(parsers.parse("a state file at schema version {version:d}"))
-def state_file_at(state_dir, version):
-    state_dir.mkdir(parents=True)
-    with sqlite3.connect(state_dir / "state.db") as db:
+@given(parsers.parse("the state file was written by a newer Cyclix, at schema version {version:d}"))
+def newer_state_file(world, version):
+    world.state_dir.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(world.state_dir / "state.db") as db:
         db.execute("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         db.execute("INSERT INTO meta VALUES ('schema_version', ?)", (str(version),))
     db.close()
@@ -63,64 +43,19 @@ def state_file_at(state_dir, version):
 # When
 
 
-@when(parsers.parse('run "{run_id}" claims #{issue:d}'))
-def claims(core, seen, run_id, issue):
-    seen.setdefault("claims", []).append(core.claim(TENANT, issue, run_id))
-
-
-@when(parsers.re(r"the fields (?P<pairs>.+) are added"))
-def fields_added(core, pairs):
-    fields = {}
-    for pair in pairs.split(" and "):
-        key, value = pair.split(" = ")
-        fields[json.loads(key)] = json.loads(value)
-    core.add_fields("r1", fields)
-
-
-@when(parsers.parse('the run ends with outcome "{outcome}"'))
-def run_ends(core, seen, outcome):
-    seen["fields"] = core.end_run("r1", outcome, "")
-
-
-@when("open runs are listed")
-def list_open(core, seen):
-    seen["open"] = core.open_runs(TENANT)
-
-
-@when("the state core opens it")
-def opens(state_dir, seen):
-    try:
-        SqliteStateCore(state_dir).close()
-    except StateError as error:
-        seen["error"] = error
+@when(parsers.parse("a second run tries to take issue #{issue:d}"))
+def second_run_takes(core, seen, issue):
+    seen["taken"] = core.claim(TENANT, issue, "r2")
 
 
 # Then
 
 
-@then("the first claim succeeds")
-def first_succeeds(seen):
-    assert seen["claims"][0] is True
+@then(parsers.parse("the second run does not get issue #{issue:d}"))
+def second_run_refused(seen, issue):
+    assert seen["taken"] is False
 
 
-@then("the second claim fails")
-def second_fails(seen):
-    assert seen["claims"][1] is False
-
-
-@then("the returned fields hold the duration, the cost and the outcome")
-def fields_hold(seen):
-    fields = seen["fields"]
-    assert fields["cyclix.duration_ms"] == 1200, fields
-    assert fields["cyclix.cost.usd"] == 0.4, fields
-    assert fields["cyclix.outcome"] == "passed", fields
-
-
-@then(parsers.parse('"{run_id}" is listed with its last phase'))
-def listed_with_phase(seen, run_id):
-    assert [(r.run_id, r.phase) for r in seen["open"]] == [(run_id, seen["last_phase"])]
-
-
-@then(parsers.parse('it fails with "{message}"'))
-def fails_with(seen, message):
-    assert str(seen.get("error")) == message
+@then(parsers.parse("issue #{issue:d} stays with the first run"))
+def stays_with_first(core, issue):
+    assert [(c.issue, c.run_id) for c in core.claims(TENANT)] == [(issue, "r1")]

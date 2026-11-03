@@ -15,7 +15,7 @@ import fcntl
 import logging
 import time
 from collections import Counter
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from datetime import UTC, datetime
 
 from cyclix.adapters import gh, kinds
@@ -55,16 +55,14 @@ def sweep(config):
         if not held:
             logger.info("another pass is running")
             return OK
-        state = SqliteStateCore(config.state_dir)
         try:
-            tracker = kinds.TRACKERS[config.tracker.kind](config)
-            codehost = kinds.CODEHOSTS[config.codehost.kind](config)
-            Sweep(config, state, tracker, codehost, ClaudeCode(config.agent), STAGES).run()
+            with closing(SqliteStateCore(config.state_dir)) as state:
+                tracker = kinds.TRACKERS[config.tracker.kind](config)
+                codehost = kinds.CODEHOSTS[config.codehost.kind](config)
+                Sweep(config, state, tracker, codehost, ClaudeCode(config.agent), STAGES).run()
         except PASS_ERRORS as error:
             logger.error("cyclix run: %s", error)
             return FAILED
-        finally:
-            state.close()
     return OK
 
 

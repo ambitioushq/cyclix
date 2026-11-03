@@ -176,6 +176,23 @@ def test_begin_run_seeds_the_event_identity(core):
     }
 
 
+def test_a_runs_fields_build_up_and_come_back_at_the_end(core):
+    begin(core, stage="build")
+    core.add_fields("r1", {"cyclix.duration_ms": 1200})
+    core.add_fields("r1", {"cyclix.cost.usd": 0.4})
+    fields = core.end_run("r1", "passed", "")
+    assert fields["cyclix.duration_ms"] == 1200, fields
+    assert fields["cyclix.cost.usd"] == 0.4, fields
+    assert fields["cyclix.outcome"] == "passed", fields
+
+
+def test_an_open_run_is_listed_with_its_last_phase(core):
+    begin(core, stage="pr")
+    core.set_phase("r1", "push")
+    core.set_phase("r1", "open_pr")
+    assert [(r.run_id, r.phase) for r in core.open_runs("t")] == [("r1", "open_pr")]
+
+
 def test_an_ended_run_is_not_open(core):
     begin(core)
     core.end_run("r1", "passed", "")
