@@ -59,7 +59,7 @@ Each agent call and each gate run starts a fresh container with rootless Podman,
 
 Why Podman: it runs without a root daemon, works under the systemd user manager that already runs the timer, and uses the standard container image format, so a tenant can build its image with any tool. Docker's daemon runs as root by default. A full VM for each run (Firecracker, for example) gives a stronger boundary, but it costs much more to set up on one host. Anthropic's sandbox runtime (`@anthropic-ai/sandbox-runtime`) wraps a process without containers, but it is a beta research preview, its config format may change, and on Linux it builds its list of protected paths only once, at start.
 
-Podman is a host requirement, like `git` and `gh`. It is not a Python dependency, so the rule "standard library only at runtime" still holds ([ADR-0004](/adr/0004-use-only-the-standard-library-unless-a-dependency-has-a-written-reason/)). `cyclix check` would confirm that Podman is installed and can run a rootless container.
+Podman is a host requirement, like `git` and `gh`. It is not a Python dependency. `cyclix check` would confirm that Podman is installed and can run a rootless container.
 
 ### 2. Coming soon: the only credential inside is the Claude login
 

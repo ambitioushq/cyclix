@@ -16,9 +16,10 @@ A record is not edited to change a decision. A new record replaces it, and the o
 | [0001](/adr/0001-merge-only-after-approval-or-under-a-written-rule/) | Cyclix merges a PR only after a person approves it or a written rule allows it | Accepted |
 | [0002](/adr/0002-each-kind-of-data-has-one-owner/) | Each kind of data has one owner | Accepted |
 | [0003](/adr/0003-one-wide-event-per-stage-run-in-opentelemetry-shape/) | Write one wide event per stage run, in OpenTelemetry shape, as local JSON lines | Accepted |
-| [0004](/adr/0004-use-only-the-standard-library-unless-a-dependency-has-a-written-reason/) | Use only the standard library unless a dependency has a written reason | Accepted |
+| [0004](/adr/0004-use-only-the-standard-library-unless-a-dependency-has-a-written-reason/) | Use only the standard library unless a dependency has a written reason | Superseded by 0011 |
 | [0005](/adr/0005-confine-the-agent-and-the-gate/) | Confine the agent and the gate | Accepted |
 | [0006](/adr/0006-build-the-docs-site-with-astro-and-starlight/) | Build the docs site with Astro and Starlight | Accepted, deploy replaced by 0007 |
 | [0007](/adr/0007-deploy-the-docs-site-through-the-hosts-git-integration/) | Deploy the docs site through the host's Git integration | Accepted |
 | [0008](/adr/0008-offer-shell-completion-through-an-optional-argcomplete-extra/) | Offer shell completion through an optional argcomplete extra | Accepted |
 | [0009](/adr/0009-fail-the-build-on-a-function-over-the-complexity-limits/) | Fail the build on a function over the complexity limits | Accepted |
+| [0011](/adr/0011-build-cyclix-on-protean/) | Build Cyclix on Protean | Accepted |

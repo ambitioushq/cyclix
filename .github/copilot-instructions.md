@@ -1,6 +1,6 @@
 # Reviewing Cyclix
 
-Cyclix is an engine for an unattended issue-to-PR loop, written in Python 3.14 with the standard library only. One maintainer settles design, and reviews and merges every PR.
+Cyclix is an engine for an unattended issue-to-PR loop, written in Python 3.14, with Protean as its runtime framework. One maintainer settles design, and reviews and merges every PR.
 
 Read these before reviewing:
 
@@ -15,7 +15,7 @@ This list holds every rule a change follows that a review can check.
 
 - The PR body follows `.github/pull_request_template.md`. When the PR resolves an issue, its first line is `Closes #<issue>`. A PR without an issue needs no issue line.
 - Every PR from someone outside `@ambitioushq/maintainers` links the issue where its approach was agreed, however small the change. Flag one that does not. The rule above, that a PR without an issue needs no issue line, covers only maintainer PRs.
-- The runtime imports only the standard library. A new runtime dependency needs a written reason in the design docs.
+- Protean is the runtime framework (ADR-0011), and the code moves onto it in a later change. Any other runtime dependency needs a written reason in the design docs.
 - No private project, client or account names, private paths or tokens, in files or commit messages. The repository is public.
 - New behaviour has a scenario in the file in `tests/features/` for the capability it describes. A unit test is used only where a scenario cannot reach a rule cheaply.
 - A design choice the PR makes is listed under "Design notes" in the PR body and recorded in a design doc. Flag a design choice made silently.

@@ -2,7 +2,7 @@
 title: "ADR-0004: Use only the standard library unless a dependency has a written reason"
 ---
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0011](/adr/0011-build-cyclix-on-protean/)
 
 **Date:** October 2026
 

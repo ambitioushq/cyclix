@@ -42,7 +42,7 @@ The stage-run event builds up in the SQLite file while the run goes. If the run 
 
 ## How Cyclix is built
 
-- **Python 3.14, and the standard library by default.** A new runtime dependency needs a written reason in these docs and approval in the PR that adds it ([ADR-0004](/adr/0004-use-only-the-standard-library-unless-a-dependency-has-a-written-reason/)). The development tools (pytest, pytest-bdd, ruff, coverage and zizmor) are dev dependencies.
+- **Python 3.14, with Protean as the runtime framework** ([ADR-0011](/adr/0011-build-cyclix-on-protean/)). The engine's move onto Protean is coming soon. Any other runtime dependency needs a written reason in these docs and approval in the PR that adds it. The development tools (pytest, pytest-bdd, ruff, coverage and zizmor) are dev dependencies.
 - **Each adapter chooses how it talks to its system.** An adapter is the module that talks to one outside system behind a narrow interface. The GitHub adapters call the `gh` command-line program, and the agent adapter runs `claude` today. Another adapter could use an HTTP API.
 - **The host's service manager does the scheduling.** `cyclix run` makes one pass and exits. On Linux, `cyclix install` writes systemd units that start it on a timer. Cyclix has no long-running process today, so it has no scheduler, restart logic or hang detection of its own.
 - **One item in progress for each tenant.** A pass runs its item through every stage while it holds the tenant's lock, so the config refuses an In progress limit other than 1.
