@@ -2,7 +2,7 @@ import pytest
 from pytest_bdd import parsers, scenarios, then, when
 
 from cyclix import config
-from cyclix.workstate import IllegalMove, Mover, State, allowed, move
+from cyclix.workstate import IllegalMove, Mover, State, move
 
 scenarios("workstate.feature")
 
@@ -20,6 +20,8 @@ def seen():
 
 @when(parsers.parse('the PR stage tries to move #{number:d} to "{state}"'))
 def pr_stage_moves(world, seen, number, state):
+    # No pass makes an illegal move, since each stage names a from-state the table
+    # allows, so the step calls the move the way a stage does.
     from cyclix.adapters.github_tracker import GitHubTracker  # built by #9
 
     tracker = GitHubTracker(config.load(world.config))
@@ -31,19 +33,15 @@ def pr_stage_moves(world, seen, number, state):
 # Then
 
 
-@then(parsers.re(r"(?P<mover>\w+) may move an item from (?P<from_state>.+) to (?P<to_state>.+)"))
-def mover_may_move(mover, from_state, to_state):
-    assert allowed(STATES[from_state], STATES[to_state], Mover(mover))
+@then(parsers.parse("no stage runs for #{number:d}"))
+def no_stage_runs(world, result, number):
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert [e for e in world.events() if e["attributes"]["cyclix.issue.id"] == number] == []
+    assert world.agent_calls() == []
 
 
-@then(parsers.parse("no engine mover may move an item from {from_state} to {to_state}"))
-def no_mover_may_move(from_state, to_state):
-    movers = [m for m in Mover if allowed(STATES[from_state], STATES[to_state], m)]
-    assert movers == []
-
-
-@then("the move fails as illegal")
-def move_failed(seen):
+@then("the move is refused")
+def move_refused(seen):
     assert isinstance(seen["error"], IllegalMove)
 
 

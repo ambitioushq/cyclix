@@ -120,9 +120,39 @@ PRs that follow the template (#50):
   - The PR title is the issue title
   - The PR body follows the PR template
 
+Scenarios that describe what an operator sees on the board:
+
+- `workstate.feature`
+  - A pass does not pick up an item that waits for a person
+
+### Changed
+
+Scenarios reworded in an operator's words, with no method names or event keys:
+
+- `stage_run_events.feature`, renamed from `events.feature`, with every scenario in it
+  - A stage that makes no agent call writes its event with the agent fields empty, which was "A finished stage run writes one event with every key"
+  - With no instruction folder the version is empty, which was "With no instruction folder the version is null"
+- `state_core.feature`
+  - Two runs never hold the same issue, which was "An issue can be claimed once"
+  - A state file from a newer Cyclix is refused, which was "A newer schema is refused". `cyclix run` now logs `cyclix run: state.db is schema <n>; this Cyclix reads up to <m>` and exits 1, where it ended in a traceback.
+- `workstate.feature`
+  - A move the work states do not allow leaves the item where it is, which was "An illegal move changes nothing on the board"
+
 ### Removed
 
 Trace and span IDs out of the events:
 
 - `events.feature`
   - Each stage run is its own trace
+
+Scenarios that checked internal code, now unit tests:
+
+- `events.feature`
+  - Long text is refused
+  - A key outside the schema is refused
+- `state_core.feature`
+  - A run's fields build up and come back at the end
+  - An unfinished run is reported as open, which `sweep.feature`'s "A crashed run is recorded and parked" also covers
+- `workstate.feature`
+  - Allowed moves
+  - The engine never moves an item back to Ready

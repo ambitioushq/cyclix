@@ -98,7 +98,7 @@ Makes one pass for one tenant (see [How Cyclix works](/concepts/how-cyclix-works
 | `another pass is running` | The lock is held. This pass did nothing. |
 | `admission waits: <option> holds <n> of its WIP limit of <limit>` | A column is full, so nothing was admitted. |
 | `the day's limit of <n> runs is reached` | The tenant has used `runs_per_day`. |
-| `cyclix run: <error>` | The pass stopped on an error outside a stage, such as a failed board read. |
+| `cyclix run: <error>` | The pass stopped on an error outside a stage, such as a failed board read, or a state file written by a newer Cyclix. |
 | `config: <reason>` | The config did not load. |
 
 `--verbose` sets the level to DEBUG. Each line then starts with the level and the logger's name, as in `DEBUG cyclix.runner: admitted #12 as r-20261031-101500-12`. At DEBUG, Cyclix logs what the board read returned, each crashed run it ended, each claim it released, the item it admitted, and each stage's outcome, reason and duration. The `gh` adapter logs the first three words of each call, its exit code and its duration.

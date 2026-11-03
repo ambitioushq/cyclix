@@ -43,6 +43,31 @@ def test_the_doc_and_the_code_hold_the_same_table():
     assert doc_transitions() == set(TRANSITIONS)
 
 
+@pytest.mark.parametrize(
+    ("mover", "from_state", "to_state"),
+    [
+        (Mover.ADMISSION, State.READY, State.IN_PROGRESS),
+        (Mover.PR, State.IN_PROGRESS, State.IN_REVIEW),
+        (Mover.ADMISSION, State.IN_PROGRESS, State.PARKED),
+        (Mover.PLAN, State.IN_PROGRESS, State.PARKED),
+        (Mover.BUILD, State.IN_PROGRESS, State.PARKED),
+        (Mover.GATE, State.IN_PROGRESS, State.PARKED),
+        (Mover.PR, State.IN_PROGRESS, State.PARKED),
+        (Mover.RECONCILER, State.IN_PROGRESS, State.PARKED),
+        (Mover.PLAN, State.IN_PROGRESS, State.NEEDS_DECISION),
+        (Mover.RECONCILER, State.IN_REVIEW, State.DONE),
+        (Mover.RECONCILER, State.IN_REVIEW, State.PARKED),
+    ],
+)
+def test_each_mover_may_make_its_moves(mover, from_state, to_state):
+    assert allowed(from_state, to_state, mover)
+
+
+@pytest.mark.parametrize("from_state", [State.PARKED, State.NEEDS_DECISION])
+def test_no_engine_mover_moves_an_item_back_to_ready(from_state):
+    assert [m for m in Mover if allowed(from_state, State.READY, m)] == []
+
+
 def test_every_stage_may_park_an_item_in_progress():
     for stage in schema.STAGES:
         assert allowed(State.IN_PROGRESS, State.PARKED, Mover(stage))
