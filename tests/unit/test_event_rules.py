@@ -47,10 +47,8 @@ def test_the_written_line_is_the_returned_event(tmp_path):
     assert [json.loads(line) for line in lines(tmp_path)] == [event]
 
 
-def test_ids_timestamp_and_resource_have_the_schema_shapes(tmp_path):
+def test_timestamp_and_resource_have_the_schema_shapes(tmp_path):
     event = write_stage_run(tmp_path, "t", fields())
-    assert re.fullmatch(r"[0-9a-f]{32}", event["trace_id"])
-    assert re.fullmatch(r"[0-9a-f]{16}", event["span_id"])
     assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z", event["timestamp"])
     assert event["resource"] == {"service.name": "cyclix", "service.version": version("cyclix")}
 

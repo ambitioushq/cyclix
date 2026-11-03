@@ -73,12 +73,6 @@ def run_extra_field(core, seen, key, value):
     seen["runs"].append(stage_run(core, "r1", "plan", "passed", "", extra={key: value}))
 
 
-@given("two stage runs for #12")
-def two_runs(core, seen):
-    seen["runs"].append(stage_run(core, "r1", "plan", "passed", ""))
-    seen["runs"].append(stage_run(core, "r1", "build", "passed", ""))
-
-
 @given(parsers.parse("the agent reports a cost of {cost}"))
 def agent_reports_cost(world, cost):
     world.add_agent_step(answer="## Approach\nChange one file.\n", cost_usd=float(cost))
@@ -105,7 +99,6 @@ def plan_and_build_in_turns(world, plan_turns, build_turns):
 
 
 @when("its event is written")
-@when("both events are written")
 def events_written(state_dir, seen):
     seen["before"] = log_path(state_dir).read_bytes() if log_path(state_dir).exists() else None
     try:
@@ -151,17 +144,6 @@ def fails_with(seen, message):
 def log_unchanged(state_dir, seen):
     after = log_path(state_dir).read_bytes() if log_path(state_dir).exists() else None
     assert after == seen["before"]
-
-
-@then("the two lines have different trace IDs")
-def different_traces(state_dir):
-    first, second = log_lines(state_dir)
-    assert first["trace_id"] != second["trace_id"]
-
-
-@then(parsers.parse("both carry cyclix.issue.id {issue:d}"))
-def both_carry(state_dir, issue):
-    assert [line["attributes"]["cyclix.issue.id"] for line in log_lines(state_dir)] == [issue] * 2
 
 
 @then(

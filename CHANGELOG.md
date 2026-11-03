@@ -6,7 +6,7 @@ Behaviour changes are listed by scenario: the feature file and the scenario's na
 
 ### Added
 
-v0.0, the spine (#2 to #17). These 60 scenarios are the first entries of the functional spec:
+v0.0, the spine (#2 to #17). These 59 scenarios are the first entries of the functional spec:
 
 - `agent.feature`
   - A successful call returns the answer and the numbers
@@ -31,7 +31,6 @@ v0.0, the spine (#2 to #17). These 60 scenarios are the first entries of the fun
   - A finished stage run writes one event with every key
   - Long text is refused
   - A key outside the schema is refused
-  - Each stage run is its own trace
 - `fakes.feature`
   - The fake gh lists board items from the world
   - The fake gh moves an item
@@ -120,3 +119,10 @@ PRs that follow the template (#50):
 - `stages.feature`
   - The PR title is the issue title
   - The PR body follows the PR template
+
+### Removed
+
+Trace and span IDs out of the events:
+
+- `events.feature`
+  - Each stage run is its own trace
