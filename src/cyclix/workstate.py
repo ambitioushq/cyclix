@@ -1,7 +1,7 @@
 """The work states and the transition table: every move the engine may make, and who makes it.
 
-Each writer may make only its own moves, so a stage cannot put an item in a state
-another writer owns. The design doc holds the same table, and a unit test checks
+Each mover may make only its own moves, so a stage cannot put an item in a state
+another mover owns. The design doc holds the same table, and a unit test checks
 that the two agree.
 """
 
@@ -24,60 +24,60 @@ class State(StrEnum):
         return self.value.replace("_", " ").capitalize()
 
 
-class Writer(StrEnum):
-    """Who in the engine moves an item. A human is not a writer: a human may make any move."""
+class Mover(StrEnum):
+    """Who in the engine moves an item. A human is not a mover: a human may make any move.
+
+    Each stage's value is its name in `schema.STAGES`, so `Mover(stage)` finds a stage's mover.
+    """
 
     ADMISSION = "admission"
     PLAN = "plan"
-    ANY_STATION = "any"
+    BUILD = "build"
+    GATE = "gate"
     PR = "pr"
     RECONCILER = "reconciler"
     SWEEP = "sweep"
 
 
-# The writers that are stages. A move written by ANY_STATION may be made by any of them.
-STAGES = frozenset(
-    {Writer.ADMISSION, Writer.PLAN, Writer.ANY_STATION, Writer.PR, Writer.RECONCILER}
-)
-
-# (from, to, writer): the only moves the engine makes.
+# (from, to, mover): the only moves the engine makes.
 TRANSITIONS = (
-    (State.READY, State.IN_PROGRESS, Writer.ADMISSION),
-    (State.IN_PROGRESS, State.IN_REVIEW, Writer.PR),
-    (State.IN_PROGRESS, State.PARKED, Writer.ANY_STATION),
-    (State.IN_PROGRESS, State.PARKED, Writer.SWEEP),
-    (State.IN_PROGRESS, State.NEEDS_DECISION, Writer.PLAN),
-    (State.IN_REVIEW, State.DONE, Writer.RECONCILER),
-    (State.IN_REVIEW, State.PARKED, Writer.RECONCILER),
+    (State.READY, State.IN_PROGRESS, Mover.ADMISSION),
+    (State.IN_PROGRESS, State.IN_REVIEW, Mover.PR),
+    (State.IN_PROGRESS, State.PARKED, Mover.ADMISSION),
+    (State.IN_PROGRESS, State.PARKED, Mover.PLAN),
+    (State.IN_PROGRESS, State.PARKED, Mover.BUILD),
+    (State.IN_PROGRESS, State.PARKED, Mover.GATE),
+    (State.IN_PROGRESS, State.PARKED, Mover.PR),
+    (State.IN_PROGRESS, State.PARKED, Mover.RECONCILER),
+    (State.IN_PROGRESS, State.PARKED, Mover.SWEEP),
+    (State.IN_PROGRESS, State.NEEDS_DECISION, Mover.PLAN),
+    (State.IN_REVIEW, State.DONE, Mover.RECONCILER),
+    (State.IN_REVIEW, State.PARKED, Mover.RECONCILER),
 )
 
 
 class IllegalMove(Exception):
     """A move that is not in the transition table."""
 
-    def __init__(self, issue, from_state, to_state, writer):
+    def __init__(self, issue, from_state, to_state, mover):
         self.issue = issue
         self.from_state = from_state
         self.to_state = to_state
-        self.writer = writer
+        self.mover = mover
         super().__init__(
-            f"{writer} may not move #{issue} from {_label(from_state)} to {_label(to_state)}"
+            f"{mover} may not move #{issue} from {_label(from_state)} to {_label(to_state)}"
         )
 
 
-def allowed(from_state, to_state, writer):
-    """Whether the writer may move an item from from_state to to_state."""
-    return any(
-        (start, end) == (from_state, to_state)
-        and (who == writer or (who is Writer.ANY_STATION and writer in STAGES))
-        for start, end, who in TRANSITIONS
-    )
+def allowed(from_state, to_state, mover):
+    """Whether the mover may move an item from from_state to to_state."""
+    return (from_state, to_state, mover) in TRANSITIONS
 
 
-def move(tracker, issue, from_state, to_state, writer):
+def move(tracker, issue, from_state, to_state, mover):
     """Move the issue on the tracker. A move not in the table raises IllegalMove and changes nothing."""
-    if not allowed(from_state, to_state, writer):
-        raise IllegalMove(issue, from_state, to_state, writer)
+    if not allowed(from_state, to_state, mover):
+        raise IllegalMove(issue, from_state, to_state, mover)
     tracker.set_state(issue, to_state)
 
 

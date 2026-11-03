@@ -33,7 +33,7 @@ from cyclix.stages.pr import PR
 from cyclix.stages.reconciler import Reconciler, ended_pr
 from cyclix.state.core import RunStart, StateError
 from cyclix.state.sqlite import SqliteStateCore
-from cyclix.workstate import IllegalMove, State, Writer, move
+from cyclix.workstate import IllegalMove, Mover, State, move
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class Sweep:
             phase = run.phase or "none"
             reason = f"run crashed in phase {phase}"
             if board.get(run.issue) is State.IN_PROGRESS:
-                self.move(run.issue, State.PARKED, reason, Writer.SWEEP)
+                self.move(run.issue, State.PARKED, reason, Mover.SWEEP)
                 board[run.issue] = State.PARKED
             self.end(run.run_id, "crashed", reason)
             logger.debug("ended run %s for #%d as crashed", run.run_id, run.issue)
@@ -209,7 +209,7 @@ class Sweep:
         stopped_to = None
         if not go_on and self.tracker.item_state(issue) is State.IN_PROGRESS:
             stopped_to = result.move_to or State.PARKED
-            self.move(issue, stopped_to, result.reason, writer_for(name))
+            self.move(issue, stopped_to, result.reason, Mover(name))
         self.end(run_id, result.outcome, result.reason)
         if stopped_to not in (None, *HELD):
             self.release(issue, run_id)
@@ -217,9 +217,9 @@ class Sweep:
 
     # Shared steps
 
-    def move(self, issue, to, reason, writer):
+    def move(self, issue, to, reason, mover):
         """Move an item out of In progress, and say why in a comment on the issue."""
-        move(self.tracker, issue, State.IN_PROGRESS, to, writer)
+        move(self.tracker, issue, State.IN_PROGRESS, to, mover)
         self.tracker.comment(issue, f"{to.label}: {reason}")
 
     def end(self, run_id, outcome, reason):
@@ -246,11 +246,3 @@ def new_run_id(issue):
 def instructions_version(config):
     instructions = config.agent.instructions
     return None if instructions is None else instructions.version
-
-
-def writer_for(stage):
-    """A stage with a writer of its own moves as itself. Build and gate move as any stage."""
-    try:
-        return Writer(stage)
-    except ValueError:
-        return Writer.ANY_STATION

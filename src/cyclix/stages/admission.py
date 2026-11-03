@@ -10,7 +10,7 @@ the worktree, and parks the item if the repository tracks one of their paths.
 
 from cyclix.adapters.github_codehost import slug
 from cyclix.stages.base import StageResult
-from cyclix.workstate import State, Writer, move
+from cyclix.workstate import Mover, State, move
 
 
 class Admission:
@@ -18,7 +18,7 @@ class Admission:
 
     def run(self, ctx):
         ctx.state.set_phase(ctx.run_id, "move")
-        move(ctx.tracker, ctx.number, State.READY, State.IN_PROGRESS, Writer.ADMISSION)
+        move(ctx.tracker, ctx.number, State.READY, State.IN_PROGRESS, Mover.ADMISSION)
         ctx.issue = ctx.tracker.issue(ctx.number)
         ctx.state.set_phase(ctx.run_id, "worktree")
         ctx.worktree = ctx.codehost.new_worktree(ctx.number, slug(ctx.issue.title), ctx.run_dir)
