@@ -12,12 +12,15 @@ It does not mean the project is closed. The maintainer reads every issue and dec
 
 1. **Report bugs.** A bug you can reproduce is the most useful thing you can send. [Open an issue](https://github.com/ambitioushq/cyclix/issues/new/choose) with what you ran, what you expected, and what happened. Leave out secrets, tokens and private repository names, because issues are public. A security problem goes through private reporting instead, as [SECURITY.md](SECURITY.md) explains.
 2. **Share use cases and design feedback.** Tell us where Cyclix fits your repository or workflow badly, or where the docs mislead you. [Open an issue](https://github.com/ambitioushq/cyclix/issues) for it.
-3. **Fix the documentation.** Corrections and clarifications are welcome. [Open an issue](https://github.com/ambitioushq/cyclix/issues) for each one. Once we agree on the fix, you can send it as a pull request.
+3. **Fix the documentation.** Corrections and clarifications are welcome. [Open an issue](https://github.com/ambitioushq/cyclix/issues) for each one, naming the page and the fix.
 
 ## Code contributions
 
-- **Every pull request starts with an issue**, even a typo or a one-line fix. Open the issue first, and write code once we agree on the approach there. A pull request that arrives without one is not merged, however good the code is. Most of a change's cost is not the diff. It is whether the change fits the design, and the work of keeping it up afterwards.
-- **A pull request made with an AI tool meets the same bar, and the bar is understanding.** The pull request is tied to an agreed issue. You can explain every part of the change and why it fits Cyclix's design. A pull request that reads as unreviewed AI output is closed: one with no linked issue, generated boilerplate, or changes its author cannot explain. Judging whether a change fits the design is the real work, and a tool cannot do it for you.
+Only collaborators can open pull requests on this repository. Anyone can read the code, open issues and comment on pull requests.
+
+To propose a code or documentation change, open an issue. Describe the problem, the change you have in mind, and why it fits Cyclix's design. The maintainer then makes the change. A contributor who has worked through several issues with the maintainer may be invited to become a collaborator.
+
+AI tools can now write a pull request in minutes, but reviewing one still takes the maintainer hours. The review decides whether a change fits the design, and that judgement needs someone who understands the engine. Starting from an issue keeps review time for contributors who have that understanding.
 
 None of this is a judgement of your work. It is how one maintainer keeps one design. If that does not suit you, the Apache license lets you fork Cyclix.
 
@@ -35,7 +38,7 @@ cd cyclix
 uv sync --locked
 ```
 
-Run the same checks CI runs before you open a pull request:
+Run the same checks CI runs before you push:
 
 ```sh
 uv run ruff check
